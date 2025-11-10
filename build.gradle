@@ -39,7 +39,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 
 	// AI
-//	implementation 'org.springframework.ai:spring-ai-openai-spring-boot-starter:1.0.0-M4'
+	implementation 'org.springframework.ai:spring-ai-openai-spring-boot-starter:1.0.0-M4'
 
 	// GitHub 연동
 	implementation 'org.eclipse.jgit:org.eclipse.jgit:7.2.1.202505142326-r'
