@@ -7,9 +7,9 @@ import com.agilerunner.api.service.dto.GitHubCommentResponse;
 import com.agilerunner.domain.Review;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -20,9 +20,13 @@ public class GitHubWebhookController {
     private final GitHubCommentService gitHubCommentService;
 
     @PostMapping
-    public ResponseEntity<GitHubCommentResponse> handleGitHubEvent(GitHubEventRequest request) {
+    public ResponseEntity<GitHubCommentResponse> handleGitHubEvent(
+            @RequestHeader("X-GitHub-Event") String eventType,
+            @RequestBody Map<String, Object> payload) {
+        GitHubEventRequest request = GitHubEventRequest.of(eventType, payload);
+
         Review review = openAiService.generateReview(request.toService());
-        GitHubCommentResponse response = gitHubCommentService.comment(review);
+        GitHubCommentResponse response = gitHubCommentService.comment(review, request.toService());
         return ResponseEntity.ok(response);
     }
 }

@@ -1,9 +1,11 @@
 package com.agilerunner.api.service;
 
 import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
+import com.agilerunner.config.GitHubConfig;
 import com.agilerunner.domain.Review;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.kohsuke.github.GHPullRequest;
 import org.kohsuke.github.GHPullRequestFileDetail;
@@ -12,23 +14,29 @@ import org.kohsuke.github.GitHub;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 public class OpenAiService {
 
     private final ChatClient chatClient;
-    private final ObjectMapper objectMapper;
-    private final GitHub gitHub;
+    private final GitHubConfig gitHubConfig;
 
     public Review generateReview(GitHubEventServiceRequest request) {
         try {
-            JsonNode payload = objectMapper.readTree(request.payload());
+            GitHub gitHub = gitHubConfig.createGitHubClient(request.installationId());
 
-            String repositoryName = payload.path("repository").path("full_name").asText();
-            int pullRequestNumber = payload.path("pull_request").path("number").asInt();
+            Map<String, Object> payload = request.payload();
 
-            GHRepository repository = gitHub.getRepository(repositoryName);
-            GHPullRequest pullRequest = repository.getPullRequest(pullRequestNumber);
+            Map<String, Object> repository = (Map<String, Object>) payload.get("repository");
+            String repositoryName = (String) repository.get("full_name");
+
+            Map<String, Object> pullRequestData = (Map<String, Object>) payload.get("pull_request");
+            int pullRequestNumber = ((Number) pullRequestData.get("number")).intValue();
+
+            GHRepository repo = gitHub.getRepository(repositoryName);
+            GHPullRequest pullRequest = repo.getPullRequest(pullRequestNumber);
 
             StringBuilder stringBuilder = new StringBuilder();
             for (GHPullRequestFileDetail file : pullRequest.listFiles()) {
@@ -36,8 +44,12 @@ public class OpenAiService {
                 stringBuilder.append(file.getPatch()).append("\n\n");
             }
 
-            String prompt = "프롬프트임"
-                    .formatted(stringBuilder);
+            String prompt = """
+                    당신은 숙련된 Java 코드 리뷰어입니다.
+                    아래 코드를 분석하고 개선점, 보안, 가독성, 구조 측면에서 리뷰를 작성해주세요.
+                    코드:
+                    %s
+                    """.formatted(stringBuilder);
 
             String review = chatClient.prompt()
                     .user(prompt)

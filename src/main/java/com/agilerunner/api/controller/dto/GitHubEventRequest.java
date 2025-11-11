@@ -5,17 +5,31 @@ import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 
-public record GitHubEventRequest(
-        @RequestHeader("X-GitHub-Event") String eventType,
-        @RequestBody String payload
-) {
+import java.util.Map;
 
-    public static GitHubEventRequest of(String eventType, String payload) {
+public class GitHubEventRequest {
+    String eventType;
+    Map<String, Object> payload;
+
+    private GitHubEventRequest(String eventType, Map<String, Object> payload) {
+        this.eventType = eventType;
+        this.payload = payload;
+    }
+
+    public static GitHubEventRequest of(String eventType, Map<String, Object> payload) {
         return new GitHubEventRequest(eventType, payload);
     }
 
+    public Long getInstallationId() {
+        Map<String, Object> installation = (Map<String, Object>) payload.get("installation");
+        if (installation != null) {
+            return ((Number) installation.get("id")).longValue();
+        }
+        throw new IllegalStateException("payload에서 installaion을 찾을 수 없습니다.");
+    }
+
     public GitHubEventServiceRequest toService() {
-        return GitHubEventServiceRequest.of(GitHubEventType.of(eventType), payload);
+        return GitHubEventServiceRequest.of(GitHubEventType.of(eventType), payload, getInstallationId());
     }
 
 }
