@@ -5,6 +5,9 @@ RUN gradle clean build -x test
 
 FROM eclipse-temurin:21-jdk-alpine
 WORKDIR /app
-COPY build/libs/agile-runner-0.0.1-SNAPSHOT.jar app.jar
+
+COPY --from=builder /home/gradle/project/build/libs/agile-runner-0.0.1-SNAPSHOT.jar app.jar
+
+ENV PORT=8080
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT} -jar app.jar"]
