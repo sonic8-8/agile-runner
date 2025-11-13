@@ -48,7 +48,7 @@ public class OpenAiService {
             }
 
             String basePrompt = promptResource.getContentAsString(StandardCharsets.UTF_8);
-            String prompt = basePrompt.formatted(stringBuilder);
+            String prompt = basePrompt.replace("{PR_CONTENT}", stringBuilder.toString());
 
             String review = chatClient.prompt()
                     .user(prompt)
