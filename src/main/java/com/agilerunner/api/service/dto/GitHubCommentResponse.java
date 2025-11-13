@@ -1,8 +1,19 @@
 package com.agilerunner.api.service.dto;
 
-public record GitHubCommentResponse(long id, String html, String message) {
+import java.util.List;
 
-    public static GitHubCommentResponse of(long id, String html, String message) {
-        return new GitHubCommentResponse(id, html, message);
+public record GitHubCommentResponse(
+        long reviewCommentId,
+        String reviewCommentUrl,
+        List<PostedInlineCommentResponse> postedInlineCommentResponses,
+        String message
+) {
+
+    public static GitHubCommentResponse of(
+            long reviewId,
+            String reviewUrl,
+            List<PostedInlineCommentResponse> inlineComments,
+            String message) {
+        return new GitHubCommentResponse(reviewId, reviewUrl, inlineComments, message);
     }
 }
