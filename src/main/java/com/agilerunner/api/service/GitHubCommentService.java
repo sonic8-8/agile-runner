@@ -2,7 +2,7 @@ package com.agilerunner.api.service;
 
 import com.agilerunner.api.service.dto.GitHubCommentResponse;
 import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
-import com.agilerunner.config.GitHubConfig;
+import com.agilerunner.config.GitHubClientFactory;
 import com.agilerunner.domain.Review;
 import lombok.RequiredArgsConstructor;
 import org.kohsuke.github.GHIssueComment;
@@ -11,18 +11,15 @@ import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.util.Map;
-
 @Service
 @RequiredArgsConstructor
 public class GitHubCommentService {
 
-    private final GitHubConfig gitHubConfig;
+    private final GitHubClientFactory gitHubClientFactory;
 
     public GitHubCommentResponse comment(Review review, GitHubEventServiceRequest request) {
         try {
-            GitHub gitHub = gitHubConfig.createGitHubClient(request.installationId());
+            GitHub gitHub = gitHubClientFactory.createGitHubClient(request.installationId());
 
             GHRepository repository = gitHub.getRepository(review.getRepositoryName());
             GHPullRequest pullRequest = repository.getPullRequest(review.getPullRequestNumber());

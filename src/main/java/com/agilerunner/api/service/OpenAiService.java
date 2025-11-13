@@ -1,19 +1,19 @@
 package com.agilerunner.api.service;
 
 import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
-import com.agilerunner.config.GitHubConfig;
+import com.agilerunner.config.GitHubClientFactory;
 import com.agilerunner.domain.Review;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.kohsuke.github.GHPullRequest;
 import org.kohsuke.github.GHPullRequestFileDetail;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @Service
@@ -21,11 +21,14 @@ import java.util.Map;
 public class OpenAiService {
 
     private final ChatClient chatClient;
-    private final GitHubConfig gitHubConfig;
+    private final GitHubClientFactory gitHubClientFactory;
+
+    @Value("classpath:prompts/review-pr-prompt.txt")
+    private Resource promptResource;
 
     public Review generateReview(GitHubEventServiceRequest request) {
         try {
-            GitHub gitHub = gitHubConfig.createGitHubClient(request.installationId());
+            GitHub gitHub = gitHubClientFactory.createGitHubClient(request.installationId());
 
             Map<String, Object> payload = request.payload();
 
@@ -44,12 +47,8 @@ public class OpenAiService {
                 stringBuilder.append(file.getPatch()).append("\n\n");
             }
 
-            String prompt = """
-                    당신은 숙련된 Java 코드 리뷰어입니다.
-                    아래 코드를 분석하고 개선점, 보안, 가독성, 구조 측면에서 리뷰를 작성해주세요.
-                    코드:
-                    %s
-                    """.formatted(stringBuilder);
+            String basePrompt = promptResource.getContentAsString(StandardCharsets.UTF_8);
+            String prompt = basePrompt.formatted(stringBuilder);
 
             String review = chatClient.prompt()
                     .user(prompt)

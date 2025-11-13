@@ -2,8 +2,6 @@ package com.agilerunner.api.controller.dto;
 
 import com.agilerunner.GitHubEventType;
 import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.Map;
 
