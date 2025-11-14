@@ -6,6 +6,7 @@ import com.agilerunner.config.GitHubClientFactory;
 import com.agilerunner.domain.Review;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.kohsuke.github.GHPullRequest;
 import org.kohsuke.github.GHPullRequestFileDetail;
 import org.kohsuke.github.GHRepository;
@@ -20,6 +21,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OpenAiService {
 
     private final ChatClient chatClient;
@@ -38,6 +40,11 @@ public class OpenAiService {
             String repositoryName = (String) repository.get("full_name");
 
             Map<String, Object> pullRequestData = (Map<String, Object>) payload.get("pull_request");
+            if (pullRequestData == null) {
+                log.info("PR 이벤트가 아닙니다. \n 이벤트 타입: {}", request.gitHubEventType());
+                log.info("페이로드 key 목록: {}", request.payload().keySet());
+                return null;
+            }
             int pullRequestNumber = ((Number) pullRequestData.get("number")).intValue();
 
             GHRepository repo = gitHub.getRepository(repositoryName);
