@@ -66,7 +66,9 @@ public class OpenAiService {
 
             ReviewResponse reviewResponse = objectMapper.readValue(responseJson, ReviewResponse.class);
 
-            return Review.from(repositoryName, pullRequestNumber, reviewResponse);
+            Map<String, Set<Integer>> pathToCommentableLines = gitHubDiffService.buildPathToCommentableLines(fileDiffs);
+
+            return Review.from(repositoryName, pullRequestNumber, reviewResponse, pathToCommentableLines);
 
         } catch (Exception e) {
             throw new RuntimeException("리뷰 생성 실패", e);

@@ -1,8 +1,12 @@
 package com.agilerunner.domain;
 
+import com.agilerunner.api.service.dto.InlineCommentResponse;
 import com.agilerunner.api.service.dto.ReviewResponse;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 public class Review {
     private String repositoryName;
@@ -37,17 +41,23 @@ public class Review {
         return new Review(repositoryName, pullRequestNumber, review, inlineComments);
     }
 
-    public static Review from(String repositoryName, int pullRequestNumber, ReviewResponse response) {
-        List<InlineComment> inlineComments = response.inlineComments().stream()
-                .map(inlineCommentResponse
-                                -> InlineComment.of(
-                                inlineCommentResponse.path(),
-                                inlineCommentResponse.line(),
-                                inlineCommentResponse.body()
-                        )
-                )
+    public static Review from(String repositoryName, int pullRequestNumber, ReviewResponse response, Map<String, Set<Integer>> pathToCommentableLines) {
+        if (response == null) {
+            return Review.of(repositoryName, pullRequestNumber, "", List.of());
+        }
+
+        List<InlineCommentResponse> rawInlineComments = Optional.ofNullable(response.inlineComments()).orElse(List.of());
+
+        List<InlineComment> validatedInlineComments = rawInlineComments.stream()
+                .filter(inlineCommentResponse -> inlineCommentResponse.path() != null && !inlineCommentResponse.path().isBlank())
+                .filter(inlineCommentResponse -> pathToCommentableLines.containsKey(inlineCommentResponse.path()))
+                .filter(inlineCommentResponse -> inlineCommentResponse.line() > 0)
+                .filter(inlineCommentResponse -> pathToCommentableLines.get(inlineCommentResponse.path()).contains(inlineCommentResponse.line()))
+                .filter(inlineCommentResponse -> inlineCommentResponse.body() != null && !inlineCommentResponse.body().isBlank())
+                .map(inlineCommentResponse -> InlineComment.of(inlineCommentResponse.path(), inlineCommentResponse.line(), inlineCommentResponse.body()))
+                .limit(5)
                 .toList();
 
-        return Review.of(repositoryName, pullRequestNumber, response.reviewBody(), inlineComments);
+        return Review.of(repositoryName, pullRequestNumber, response.reviewBody(), validatedInlineComments);
     }
 }
