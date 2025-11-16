@@ -1,14 +1,14 @@
 package com.agilerunner.api.service;
 
-import com.agilerunner.api.service.dto.ReviewResponse;
+import com.agilerunner.api.service.dto.FileDiff;
 import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
+import com.agilerunner.api.service.dto.ReviewResponse;
 import com.agilerunner.config.GitHubClientFactory;
 import com.agilerunner.domain.Review;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.kohsuke.github.GHPullRequest;
-import org.kohsuke.github.GHPullRequestFileDetail;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
 import org.springframework.ai.chat.client.ChatClient;
@@ -17,7 +17,9 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +28,7 @@ public class OpenAiService {
 
     private final ChatClient chatClient;
     private final GitHubClientFactory gitHubClientFactory;
+    private final GitHubDiffService gitHubDiffService;
     private final ObjectMapper objectMapper;
 
     @Value("classpath:prompts/review-pr-prompt.txt")
@@ -42,7 +45,6 @@ public class OpenAiService {
             Map<String, Object> pullRequestData = (Map<String, Object>) payload.get("pull_request");
             if (pullRequestData == null) {
                 log.info("PR 이벤트가 아닙니다. \n 이벤트 타입: {}", request.gitHubEventType());
-                log.info("페이로드 key 목록: {}", request.payload().keySet());
                 return null;
             }
             int pullRequestNumber = ((Number) pullRequestData.get("number")).intValue();
@@ -50,21 +52,19 @@ public class OpenAiService {
             GHRepository repo = gitHub.getRepository(repositoryName);
             GHPullRequest pullRequest = repo.getPullRequest(pullRequestNumber);
 
-            StringBuilder differenceBuilder = new StringBuilder();
-            for (GHPullRequestFileDetail file : pullRequest.listFiles()) {
-                differenceBuilder.append("### File: ").append(file.getFilename()).append("\n");
-                differenceBuilder.append(file.getPatch()).append("\n\n");
-            }
+            List<FileDiff> fileDiffs = gitHubDiffService.buildFileDiffs(pullRequest);
+
+            String diffJson = objectMapper.writeValueAsString(fileDiffs);
 
             String basePrompt = promptResource.getContentAsString(StandardCharsets.UTF_8);
-            String prompt = basePrompt.replace("{PR_CONTENT}", differenceBuilder.toString());
+            String prompt = basePrompt.replace("{DIFF_JSON}", diffJson);
 
-            String json = chatClient.prompt()
+            String responseJson = chatClient.prompt()
                     .user(prompt)
                     .call()
                     .content();
 
-            ReviewResponse reviewResponse = objectMapper.readValue(json, ReviewResponse.class);
+            ReviewResponse reviewResponse = objectMapper.readValue(responseJson, ReviewResponse.class);
 
             return Review.from(repositoryName, pullRequestNumber, reviewResponse);
 
