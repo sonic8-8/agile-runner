@@ -10,6 +10,8 @@ spring:
       api-key: ${OPENAI_API_KEY}
       chat:
         model: gpt-4o-mini
+    retry:
+      enabled: false
 
   github:
     app-id: ${GITHUB_APP_ID}
