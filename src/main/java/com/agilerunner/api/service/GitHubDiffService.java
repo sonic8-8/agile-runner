@@ -39,8 +39,8 @@ public class GitHubDiffService {
 
         for (FileDiff fileDiff : fileDiffs) {
             pathToCommentableLines.put(
-                    fileDiff.getPath(),
-                    new HashSet<>(fileDiff.getCommentableLines())
+                    fileDiff.path(),
+                    new HashSet<>(fileDiff.commentableLines())
             );
         }
         return pathToCommentableLines;

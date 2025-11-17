@@ -1,8 +1,11 @@
 package com.agilerunner.util;
 
+import org.springframework.stereotype.Component;
+
 import java.util.ArrayList;
 import java.util.List;
 
+@Component
 public class GitHubPatchParser {
     public List<Integer> extractCommentableLines(String patch) {
         ArrayList<Integer> lines = new ArrayList<>();
