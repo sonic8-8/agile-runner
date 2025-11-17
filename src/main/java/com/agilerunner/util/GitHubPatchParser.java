@@ -4,33 +4,45 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 public class GitHubPatchParser {
+    private static final Pattern HUNK_HEADER = Pattern.compile(
+            "@@\\s+\\-(\\d+),?(\\d+)?\\s+\\+(\\d+),?(\\d+)?\\s+@@"
+    );
+
     public List<Integer> extractCommentableLines(String patch) {
-        ArrayList<Integer> lines = new ArrayList<>();
-        if (patch == null) {
-            return lines;
+        ArrayList<Integer> result = new ArrayList<>();
+
+        if (patch == null || patch.isBlank()) {
+            return result;
         }
 
-        int currentLine = 0;
+        String[] lines = patch.split("\n");
 
-        String[] split = patch.split("\n");
-        for (String line : split) {
-            if (line.startsWith("@@")) {
-                int plusIndex = line.indexOf("+");
-                int commaIndex = line.indexOf(",", plusIndex);
-                currentLine = Integer.parseInt(line.substring(plusIndex + 1, commaIndex));
+        int newLine = 0;
+
+        for (String line : lines) {
+            Matcher matcher = HUNK_HEADER.matcher(line);
+            if (matcher.find()) {
+                String newStartStr = matcher.group(3);
+                newLine = Integer.parseInt(newStartStr);
+
                 continue;
             }
 
-            if (line.startsWith("+") || line.startsWith(" ")) {
-                lines.add(currentLine);
-                currentLine++;
-            } else if (line.startsWith("-")) {
+            if (line.startsWith("+") && !line.startsWith("+++")) {
+                result.add(newLine);
+                newLine++;
+            } else if (line.startsWith(" ") || line.isEmpty()) {
+                result.add(newLine);
+                newLine++;
+            } else if (line.startsWith("-") && !line.startsWith("---")) {
 
             }
         }
-        return lines;
+        return result;
     }
 }
