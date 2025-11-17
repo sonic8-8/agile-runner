@@ -71,7 +71,8 @@ public class OpenAiService {
             return Review.from(repositoryName, pullRequestNumber, reviewResponse, pathToCommentableLines);
 
         } catch (Exception e) {
-            throw new RuntimeException("리뷰 생성 실패", e);
+            log.error("OpenAI 리뷰 생성 실패", e);
+            return null;
         }
     }
 }

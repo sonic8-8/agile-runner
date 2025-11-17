@@ -30,7 +30,7 @@ public class GitHubWebhookController {
         Review review = openAiService.generateReview(request.toService());
 
         if (review == null) {
-            log.info("리뷰 중복 생성을 방지하기 위해 200 응답을 반환합니다.");
+            log.info("리뷰 생성을 건너뜁니다.");
             return ResponseEntity.ok(null);
         }
 

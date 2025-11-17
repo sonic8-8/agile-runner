@@ -7,6 +7,7 @@ import com.agilerunner.config.GitHubClientFactory;
 import com.agilerunner.domain.InlineComment;
 import com.agilerunner.domain.Review;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.kohsuke.github.*;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +17,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class GitHubCommentService {
 
     private final GitHubClientFactory gitHubClientFactory;
@@ -27,7 +29,21 @@ public class GitHubCommentService {
             GHRepository repository = gitHub.getRepository(review.getRepositoryName());
             GHPullRequest pullRequest = repository.getPullRequest(review.getPullRequestNumber());
 
-            GHIssueComment comment = pullRequest.comment(review.getReviewBody());
+            GHIssueComment comment = null;
+            try {
+                comment = pullRequest.comment(review.getReviewBody());
+            } catch (HttpException e) {
+                if (isSecondaryRateLimit(e)) {
+                    log.warn("Secondary rate limit 발생! 전체 작업 중단");
+                    return null;
+                }
+                log.error("리뷰 본문 코멘트 실패", e);
+                return null;
+            }
+
+            if (comment == null) {
+                return null;
+            }
 
             ArrayList<PostedInlineCommentResponse> postedInlineCommentResponses = new ArrayList<>();
 
@@ -37,7 +53,12 @@ public class GitHubCommentService {
                 randomDelay();
 
                 GHPullRequestReviewComment reviewComment =
-                        retryCreateReviewComment(pullRequest, inlineComment, commitId);
+                        tryCreateReviewComment(pullRequest, inlineComment, commitId);
+
+                if (reviewComment == null) {
+                    log.warn("인라인 코멘트 생성 실패. 계속 진행");
+                    continue;
+                }
 
                 postedInlineCommentResponses.add(new PostedInlineCommentResponse(
                         reviewComment.getId(),
@@ -52,8 +73,15 @@ public class GitHubCommentService {
                     "리뷰 코멘트가 성공적으로 등록되었습니다."
             );
         } catch (Exception e) {
-            throw new RuntimeException("GitHub 코멘트 등록 실패", e);
+            log.error("GitHub 코멘트 등록 실패", e);
+            return null;
         }
+    }
+
+
+    private boolean isSecondaryRateLimit(HttpException e) {
+        return e.getResponseCode() == 403 &&
+                e.getMessage().contains("secondary rate limit");
     }
 
     private void randomDelay() {
@@ -65,16 +93,16 @@ public class GitHubCommentService {
         }
     }
 
-    private GHPullRequestReviewComment retryCreateReviewComment(
+    private GHPullRequestReviewComment tryCreateReviewComment(
             GHPullRequest pullRequest,
             InlineComment inlineComment,
             String commitId
-    ) throws InterruptedException {
+    ) {
 
         int attempts = 0;
         int maxAttempts = 5;
 
-        while (true) {
+        while (attempts < maxAttempts) {
             try {
                 return pullRequest.createReviewComment(
                         inlineComment.getBody(),
@@ -83,15 +111,26 @@ public class GitHubCommentService {
                         inlineComment.getLine()
                 );
 
+            } catch (HttpException e) {
+                if (isSecondaryRateLimit(e)) {
+                    log.warn("Secondary rate limit 발생! 재시도 중단");
+                    return null;
+                }
+                attempts++;
+                exponentialBackoff(attempts);
             } catch (IOException e) {
                 attempts++;
-                if (attempts >= maxAttempts) {
-                    throw new RuntimeException("GitHub API 재시도 초과", e);
-                }
-
-                long backoff = (long) (Math.pow(2, attempts) * 1000L);
-                Thread.sleep(backoff);
+                exponentialBackoff(attempts);
             }
+        }
+        return null;
+    }
+
+    private void exponentialBackoff(int attempt) {
+        try {
+            long ms = (long) Math.pow(2, attempt) * 1000;
+            Thread.sleep(ms);
+        } catch (InterruptedException ignored) {
         }
     }
 }
