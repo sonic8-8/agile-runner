@@ -1,6 +1,6 @@
 package com.agilerunner.api.service;
 
-import com.agilerunner.api.service.dto.FileDiff;
+import com.agilerunner.domain.FileDiff;
 import com.agilerunner.util.GitHubPatchParser;
 import lombok.RequiredArgsConstructor;
 import org.kohsuke.github.GHPullRequest;

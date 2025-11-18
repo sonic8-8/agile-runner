@@ -1,4 +1,4 @@
-package com.agilerunner.api.service.dto;
+package com.agilerunner.domain;
 
 import java.util.List;
 

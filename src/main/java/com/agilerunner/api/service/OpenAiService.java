@@ -1,6 +1,6 @@
 package com.agilerunner.api.service;
 
-import com.agilerunner.api.service.dto.FileDiff;
+import com.agilerunner.domain.FileDiff;
 import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
 import com.agilerunner.api.service.dto.ReviewResponse;
 import com.agilerunner.config.GitHubClientFactory;
