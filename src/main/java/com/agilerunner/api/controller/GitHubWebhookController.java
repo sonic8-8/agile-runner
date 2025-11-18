@@ -34,6 +34,11 @@ public class GitHubWebhookController {
             return ResponseEntity.ok(null);
         }
 
+        if (!eventType.equals("pull_request")) {
+            log.info("PR 이벤트가 아니므로 무시합니다.", eventType);
+            return ResponseEntity.ok(null);
+        }
+
         GitHubEventRequest request = GitHubEventRequest.of(eventType, payload);
 
         Review review = openAiService.generateReview(request.toService());
