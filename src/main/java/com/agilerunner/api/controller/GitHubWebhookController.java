@@ -7,7 +7,6 @@ import com.agilerunner.api.service.dto.GitHubCommentResponse;
 import com.agilerunner.domain.Review;
 import com.agilerunner.util.WebhookDeliveryCache;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,7 +15,6 @@ import java.util.Map;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/webhook/github")
-@Slf4j
 public class GitHubWebhookController {
 
     private final OpenAiService openAiService;
@@ -30,21 +28,17 @@ public class GitHubWebhookController {
             @RequestBody Map<String, Object> payload) {
 
         if (deliveryCache.isProcessed(deliveryId)) {
-            log.info("중복 webhook 요청 deliveryId={}", deliveryId);
             return ResponseEntity.ok(null);
         }
 
         if (!eventType.equals("pull_request")) {
-            log.info("PR 이벤트가 아니므로 무시합니다.", eventType);
             return ResponseEntity.ok(null);
         }
 
         GitHubEventRequest request = GitHubEventRequest.of(eventType, payload);
-
         Review review = openAiService.generateReview(request.toService());
 
         if (review == null) {
-            log.info("리뷰 생성을 건너뜁니다.");
             return ResponseEntity.ok(null);
         }
 

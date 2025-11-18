@@ -5,14 +5,14 @@ import java.util.List;
 public record GitHubCommentResponse(
         long reviewCommentId,
         String reviewCommentUrl,
-        List<PostedInlineCommentResponse> postedInlineCommentResponses,
+        List<PostedInlineComment> postedInlineCommentRespons,
         String message
 ) {
 
     public static GitHubCommentResponse of(
             long reviewId,
             String reviewUrl,
-            List<PostedInlineCommentResponse> inlineComments,
+            List<PostedInlineComment> inlineComments,
             String message) {
         return new GitHubCommentResponse(reviewId, reviewUrl, inlineComments, message);
     }
