@@ -1,6 +1,6 @@
 package com.agilerunner.api.service;
 
-import com.agilerunner.domain.FileDiff;
+import com.agilerunner.domain.ParsedFilePatch;
 import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
 import com.agilerunner.api.service.dto.ReviewResponse;
 import com.agilerunner.config.GitHubClientFactory;
@@ -30,7 +30,7 @@ public class OpenAiService {
 
     private final ChatClient chatClient;
     private final GitHubClientFactory gitHubClientFactory;
-    private final GitHubDiffService gitHubDiffService;
+    private final GitHubPatchService gitHubPatchService;
     private final ObjectMapper objectMapper;
 
     @Value("classpath:prompts/review-pr-prompt.txt")
@@ -45,13 +45,13 @@ public class OpenAiService {
             GHRepository repository = gitHub.getRepository(repositoryName);
             GHPullRequest pullRequest = repository.getPullRequest(pullRequestNumber);
 
-            List<FileDiff> fileDiffs = gitHubDiffService.buildFileDiffs(pullRequest);
-            String prompt = buildPromptFrom(fileDiffs);
+            List<ParsedFilePatch> filePatches = gitHubPatchService.buildFilePatches(pullRequest);
+            String prompt = buildPromptFrom(filePatches);
 
             ReviewResponse reviewResponse = callOpenAiWith(prompt);
-            Map<String, Set<Integer>> pathToCommentableLines = gitHubDiffService.buildPathToCommentableLines(fileDiffs);
+            Map<String, ParsedFilePatch> pathToParsedFilePatches = gitHubPatchService.buildPathToPatch(filePatches);
 
-            return Review.from(repositoryName, pullRequestNumber, reviewResponse, pathToCommentableLines);
+            return Review.from(repositoryName, pullRequestNumber, reviewResponse, pathToParsedFilePatches);
         } catch (Exception e) {
             log.error("리뷰 생성 실패, repository={}, PR={}", repositoryName, pullRequestNumber, e);
             throw new RuntimeException("리뷰 생성에 실패했습니다.");
@@ -70,8 +70,8 @@ public class OpenAiService {
         return ((Number) pullRequest.get("number")).intValue();
     }
 
-    private String buildPromptFrom(List<FileDiff> fileDiffs) throws IOException {
-        String diffJson = objectMapper.writeValueAsString(fileDiffs);
+    private String buildPromptFrom(List<ParsedFilePatch> parsedFilePatches) throws IOException {
+        String diffJson = objectMapper.writeValueAsString(parsedFilePatches);
         String basePrompt = promptResource.getContentAsString(StandardCharsets.UTF_8);
         return basePrompt.replace("{DIFF_JSON}", diffJson);
     }
