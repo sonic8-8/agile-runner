@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -45,13 +44,13 @@ public class OpenAiService {
             GHRepository repository = gitHub.getRepository(repositoryName);
             GHPullRequest pullRequest = repository.getPullRequest(pullRequestNumber);
 
-            List<ParsedFilePatch> filePatches = gitHubPatchService.buildFilePatches(pullRequest);
+            List<ParsedFilePatch> filePatches = gitHubPatchService.buildParsedFilePatches(pullRequest);
+
             String prompt = buildPromptFrom(filePatches);
 
             ReviewResponse reviewResponse = callOpenAiWith(prompt);
-            Map<String, ParsedFilePatch> pathToParsedFilePatches = gitHubPatchService.buildPathToPatch(filePatches);
 
-            return Review.from(repositoryName, pullRequestNumber, reviewResponse, pathToParsedFilePatches);
+            return Review.from(repositoryName, pullRequestNumber, reviewResponse);
         } catch (Exception e) {
             log.error("리뷰 생성 실패, repository={}, PR={}", repositoryName, pullRequestNumber, e);
             throw new RuntimeException("리뷰 생성에 실패했습니다.");

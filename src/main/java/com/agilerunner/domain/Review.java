@@ -41,7 +41,7 @@ public class Review {
         return new Review(repositoryName, pullRequestNumber, review, inlineComments);
     }
 
-    public static Review from(String repositoryName, int pullRequestNumber, ReviewResponse response, Map<String, Set<Integer>> pathToCommentableLines) {
+    public static Review from(String repositoryName, int pullRequestNumber, ReviewResponse response) {
         if (response == null) {
             return Review.of(repositoryName, pullRequestNumber, "", List.of());
         }
@@ -50,9 +50,7 @@ public class Review {
 
         List<InlineComment> validatedInlineComments = rawInlineComments.stream()
                 .filter(inlineCommentResponse -> inlineCommentResponse.path() != null && !inlineCommentResponse.path().isBlank())
-                .filter(inlineCommentResponse -> pathToCommentableLines.containsKey(inlineCommentResponse.path()))
                 .filter(inlineCommentResponse -> inlineCommentResponse.line() > 0)
-                .filter(inlineCommentResponse -> pathToCommentableLines.get(inlineCommentResponse.path()).contains(inlineCommentResponse.line()))
                 .filter(inlineCommentResponse -> inlineCommentResponse.body() != null && !inlineCommentResponse.body().isBlank())
                 .map(inlineCommentResponse -> InlineComment.of(inlineCommentResponse.path(), inlineCommentResponse.line(), inlineCommentResponse.body()))
                 .limit(5)

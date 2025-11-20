@@ -7,7 +7,10 @@ import org.kohsuke.github.GHPullRequest;
 import org.kohsuke.github.GHPullRequestFileDetail;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -15,7 +18,7 @@ public class GitHubPatchService {
 
     private final GitHubPatchParser gitHubPatchParser;
 
-    public List<ParsedFilePatch> buildFilePatches(GHPullRequest pullRequest) {
+    public List<ParsedFilePatch> buildParsedFilePatches(GHPullRequest pullRequest) {
         List<ParsedFilePatch> parsedFilePatches = new ArrayList<>();
 
         for (GHPullRequestFileDetail file : pullRequest.listFiles()) {
@@ -34,22 +37,10 @@ public class GitHubPatchService {
     public Map<String, ParsedFilePatch> buildPathToPatch(List<ParsedFilePatch> parsedFilePatches) {
         Map<String, ParsedFilePatch> pathToParsedFilePatches = new HashMap<>();
 
-        for (ParsedFilePatch filePatch  : parsedFilePatches) {
+        for (ParsedFilePatch filePatch : parsedFilePatches) {
             pathToParsedFilePatches.put(filePatch.getPath(), filePatch);
         }
 
         return pathToParsedFilePatches;
-    }
-
-    public Map<String, Set<Integer>> buildPathToCommentableLines(List<ParsedFilePatch> parsedFilePatches) {
-        HashMap<String, Set<Integer>> pathToCommentableLines = new HashMap<>();
-
-        for (ParsedFilePatch parsedFilePatch : parsedFilePatches) {
-            pathToCommentableLines.put(
-                    parsedFilePatch.path(),
-                    new HashSet<>(parsedFilePatch.commentableLines())
-            );
-        }
-        return pathToCommentableLines;
     }
 }
