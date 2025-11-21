@@ -17,19 +17,11 @@ public class HunkLine {
         return new HunkLine(oldLineIndex, newLineIndex, hunkLineType, content);
     }
 
-    public Integer getOldLineIndex() {
-        return oldLineIndex;
-    }
-
     public Integer getNewLineIndex() {
         return newLineIndex;
     }
 
     public HunkLineType getHunkLineType() {
         return hunkLineType;
-    }
-
-    public String getContent() {
-        return content;
     }
 }

@@ -17,14 +17,6 @@ public class Hunk {
         return new Hunk(oldStart, newStart, hunkLines);
     }
 
-    public int getOldStart() {
-        return oldStart;
-    }
-
-    public int getNewStart() {
-        return newStart;
-    }
-
     public List<HunkLine> getHunkLines() {
         return hunkLines;
     }

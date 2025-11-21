@@ -9,6 +9,4 @@ public enum HunkLineType {
     CONTEXT(' ');
 
     private final char symbol;
-
-
 }

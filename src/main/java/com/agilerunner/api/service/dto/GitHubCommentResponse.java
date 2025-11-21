@@ -5,7 +5,7 @@ import java.util.List;
 public record GitHubCommentResponse(
         long reviewCommentId,
         String reviewCommentUrl,
-        List<PostedInlineComment> postedInlineCommentRespons,
+        List<PostedInlineComment> postedInlineComments,
         String message
 ) {
 
