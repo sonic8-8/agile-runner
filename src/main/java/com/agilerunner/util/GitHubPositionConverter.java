@@ -11,7 +11,7 @@ import java.util.OptionalInt;
 @Component
 public class GitHubPositionConverter {
 
-    public OptionalInt toGitHubPosition(ParsedFilePatch patch, int newLineIndex) {
+    public OptionalInt toGitHubPosition(ParsedFilePatch patch, int line) {
         int position = 0;
 
         for (Hunk hunk : patch.getHunks()) {
@@ -19,8 +19,8 @@ public class GitHubPositionConverter {
 
             for (HunkLine hunkLine : hunk.getHunkLines()) {
                 if (hunkLine.getHunkLineType() != HunkLineType.REMOVED
-                        && hunkLine.getNewLineIndex() != null
-                        && hunkLine.getNewLineIndex() == newLineIndex) {
+                        && hunkLine.getLine() != null
+                        && hunkLine.getLine() == line) {
                     return OptionalInt.of(position);
                 }
 

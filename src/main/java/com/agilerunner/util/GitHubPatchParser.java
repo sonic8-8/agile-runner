@@ -17,42 +17,38 @@ public class GitHubPatchParser {
             "@@\\s+\\-(\\d+),?(\\d+)?\\s+\\+(\\d+),?(\\d+)?\\s+@@"
     );
 
-    private static final int OLD_START = 1;
-    private static final int OLD_LINE_COUNT = 2;
-    private static final int NEW_START = 3;
-    private static final int NEW_LINE_COUNT = 4;
+    private static final int ORIGINAL_START_LINE = 1;
+    private static final int START_LINE = 3;
 
     public ParsedFilePatch parse(String filePath, String patch) {
-        List<Hunk> hunks = new ArrayList<>();
-
         if (patch == null || patch.isBlank()) {
-            return ParsedFilePatch.of(filePath, hunks);
+            return ParsedFilePatch.of(filePath, List.of());
         }
 
         String[] lines = patch.split("\n");
 
+        List<Hunk> hunks = new ArrayList<>();
         List<HunkLine> currentHunkLines = null;
-        Integer oldStart = null;
-        Integer newStart = null;
-        int currentOldLine = 0;
-        int currentNewLine = 0;
+        Integer originalStartLine = null;
+        Integer startLine = null;
+        int currentOriginalLine = 0;
+        int currentLine = 0;
 
+        new ParseContext();
 
         for (String line : lines) {
-            Matcher matcher = HUNK_HEADER.matcher(line);
-
             // 새로운 Hunk 시작
-            if (matcher.find()) {
+            if (isHunkHeader(line)) {
                 // 이전 Hunk flush
                 if (currentHunkLines != null) {
-                    hunks.add(Hunk.of(oldStart, newStart, new ArrayList<>(currentHunkLines)));
+                    hunks.add(Hunk.of(originalStartLine, startLine, new ArrayList<>(currentHunkLines)));
                 }
 
-                oldStart = Integer.parseInt(matcher.group(OLD_START));
-                newStart = Integer.parseInt(matcher.group(NEW_START));
+                originalStartLine = Integer.parseInt(matcher.group(ORIGINAL_START_LINE));
+                startLine = Integer.parseInt(matcher.group(START_LINE));
 
-                currentOldLine = oldStart;
-                currentNewLine = newStart;
+                currentOriginalLine = originalStartLine;
+                currentLine = startLine;
                 currentHunkLines = new ArrayList<>();
 
                 continue;
@@ -68,27 +64,52 @@ public class GitHubPatchParser {
 
             if (symbol == ' ') {
                 currentHunkLines.add(
-                        HunkLine.of(currentOldLine, currentNewLine, HunkLineType.CONTEXT, content)
+                        HunkLine.of(currentOriginalLine, currentLine, HunkLineType.CONTEXT, content)
                 );
-                currentOldLine++;
-                currentNewLine++;
-            } else if (symbol == '+') {
+                currentOriginalLine++;
+                currentLine++;
+                continue;
+            }
+
+            if (symbol == '+') {
                 currentHunkLines.add(
-                        HunkLine.of(null, currentNewLine, HunkLineType.ADDED, content)
+                        HunkLine.of(null, currentLine, HunkLineType.ADDED, content)
                 );
-                currentNewLine++;
-            } else if (symbol == '-') {
+                currentLine++;
+                continue;
+            }
+
+            if (symbol == '-') {
                 currentHunkLines.add(
-                        HunkLine.of(currentOldLine, null, HunkLineType.REMOVED, content)
+                        HunkLine.of(currentOriginalLine, null, HunkLineType.REMOVED, content)
                 );
-                currentOldLine++;
+                currentOriginalLine++;
             }
         }
 
         if (currentHunkLines != null) {
-            hunks.add(Hunk.of(oldStart, newStart, currentHunkLines));
+            hunks.add(Hunk.of(originalStartLine, startLine, currentHunkLines));
         }
 
         return ParsedFilePatch.of(filePath, hunks);
+    }
+
+    private static boolean isHunkHeader(String line) {
+        Matcher matcher = HUNK_HEADER.matcher(line);
+        return matcher.find();
+    }
+
+    private static class ParseContext {
+        private List<Hunk> hunks;
+
+        private List<HunkLine> currentHunkLines;
+        private Integer originalStartLine;
+        private Integer startLine;
+        private int currentOriginalLine;
+        private int currentLine;
+
+        public ParseContext create() {
+            hunks = new ArrayList<>();
+        }
     }
 }

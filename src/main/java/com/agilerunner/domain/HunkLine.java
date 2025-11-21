@@ -1,24 +1,24 @@
 package com.agilerunner.domain;
 
 public class HunkLine {
-    private Integer oldLineIndex;
-    private Integer newLineIndex;
+    private Integer originalLine;
+    private Integer line;
     private HunkLineType hunkLineType;
-    private String content;
+    private String lineContent;
 
-    private HunkLine(Integer oldLineIndex, Integer newLineIndex, HunkLineType hunkLineType, String content) {
-        this.oldLineIndex = oldLineIndex;
-        this.newLineIndex = newLineIndex;
+    private HunkLine(Integer originalLine, Integer line, HunkLineType hunkLineType, String lineContent) {
+        this.originalLine = originalLine;
+        this.line = line;
         this.hunkLineType = hunkLineType;
-        this.content = content;
+        this.lineContent = lineContent;
     }
 
-    public static HunkLine of(Integer oldLineIndex, Integer newLineIndex, HunkLineType hunkLineType, String content) {
-        return new HunkLine(oldLineIndex, newLineIndex, hunkLineType, content);
+    public static HunkLine of(Integer originalLine, Integer line, HunkLineType hunkLineType, String lineContent) {
+        return new HunkLine(originalLine, line, hunkLineType, lineContent);
     }
 
-    public Integer getNewLineIndex() {
-        return newLineIndex;
+    public Integer getLine() {
+        return line;
     }
 
     public HunkLineType getHunkLineType() {
