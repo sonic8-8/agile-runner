@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Optional;
 
 public class Review {
+    public static final int MAX_INLINE_COMMENT_COUNT = 5;
+    public static final int MIN_INLINE_COMMENT_LINE = 1;
+
     private String repositoryName;
     private int pullRequestNumber;
     private String reviewBody;
@@ -39,21 +42,24 @@ public class Review {
         return new Review(repositoryName, pullRequestNumber, review, inlineComments);
     }
 
-    public static Review from(String repositoryName, int pullRequestNumber, ReviewResponse response) {
-        if (response == null) {
+    public static Review from(String repositoryName, int pullRequestNumber, ReviewResponse reviewResponse) {
+        if (reviewResponse == null) {
             return Review.of(repositoryName, pullRequestNumber, "", List.of());
         }
 
-        List<InlineCommentResponse> rawInlineComments = Optional.ofNullable(response.inlineComments()).orElse(List.of());
+        List<InlineComment> validatedInlineComments = validateInlineReviews(reviewResponse);
 
-        List<InlineComment> validatedInlineComments = rawInlineComments.stream()
+        return Review.of(repositoryName, pullRequestNumber, reviewResponse.reviewBody(), validatedInlineComments);
+    }
+
+    private static List<InlineComment> validateInlineReviews(ReviewResponse reviewResponse) {
+        List<InlineCommentResponse> rawInlineComments = Optional.ofNullable(reviewResponse.inlineComments()).orElse(List.of());
+        return rawInlineComments.stream()
                 .filter(inlineCommentResponse -> inlineCommentResponse.path() != null && !inlineCommentResponse.path().isBlank())
-                .filter(inlineCommentResponse -> inlineCommentResponse.line() > 0)
+                .filter(inlineCommentResponse -> inlineCommentResponse.line() >= MIN_INLINE_COMMENT_LINE)
                 .filter(inlineCommentResponse -> inlineCommentResponse.body() != null && !inlineCommentResponse.body().isBlank())
                 .map(inlineCommentResponse -> InlineComment.of(inlineCommentResponse.path(), inlineCommentResponse.line(), inlineCommentResponse.body()))
-                .limit(5)
+                .limit(MAX_INLINE_COMMENT_COUNT)
                 .toList();
-
-        return Review.of(repositoryName, pullRequestNumber, response.reviewBody(), validatedInlineComments);
     }
 }
