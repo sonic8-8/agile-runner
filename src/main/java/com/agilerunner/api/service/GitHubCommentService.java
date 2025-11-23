@@ -48,7 +48,7 @@ public class GitHubCommentService {
 
             for (InlineComment inlineComment : review.getInlineComments()) {
                 String path = inlineComment.getPath();
-                int newLine = inlineComment.getLine();
+                int line = inlineComment.getLine();
 
                 ParsedFilePatch parsedFilePatch = pathToParsedFilePatches.get(path);
                 if (parsedFilePatch == null) {
@@ -56,10 +56,10 @@ public class GitHubCommentService {
                     continue;
                 }
 
-                OptionalInt optionalGitHubPosition = gitHubPositionConverter.toGitHubPosition(parsedFilePatch, newLine);
+                OptionalInt optionalGitHubPosition = gitHubPositionConverter.toPosition(parsedFilePatch, line);
 
                 if (optionalGitHubPosition.isEmpty()) {
-                    log.warn("position 계산 실패 path={}, line={}", path, newLine);
+                    log.warn("position 계산 실패 path={}, line={}", path, line);
                     continue;
                 }
 

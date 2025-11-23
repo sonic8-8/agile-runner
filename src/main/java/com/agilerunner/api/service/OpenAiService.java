@@ -44,9 +44,9 @@ public class OpenAiService {
             GHRepository repository = gitHub.getRepository(repositoryName);
             GHPullRequest pullRequest = repository.getPullRequest(pullRequestNumber);
 
-            List<ParsedFilePatch> filePatches = gitHubPatchService.buildParsedFilePatches(pullRequest);
+            List<ParsedFilePatch> parsedFilePatches = gitHubPatchService.buildParsedFilePatches(pullRequest);
 
-            String prompt = buildPromptFrom(filePatches);
+            String prompt = buildPromptFrom(parsedFilePatches);
 
             ReviewResponse reviewResponse = callOpenAiWith(prompt);
 

@@ -27,8 +27,8 @@ public class GitHubPatchService {
                 continue;
             }
 
-            ParsedFilePatch filePatch = gitHubPatchParser.parse(file.getFilename(), patch);
-            parsedFilePatches.add(filePatch);
+            ParsedFilePatch parsedFilePatch = gitHubPatchParser.parse(file.getFilename(), patch);
+            parsedFilePatches.add(parsedFilePatch);
         }
 
         return parsedFilePatches;
