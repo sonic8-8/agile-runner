@@ -21,10 +21,6 @@ public class HunkLine {
         return line;
     }
 
-    public HunkLineType getHunkLineType() {
-        return hunkLineType;
-    }
-
     public boolean isRemoved() {
         return hunkLineType.isRemoved();
     }
