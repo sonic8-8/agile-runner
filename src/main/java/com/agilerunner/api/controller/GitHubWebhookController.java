@@ -27,7 +27,7 @@ public class GitHubWebhookController {
             @RequestHeader("X-GitHub-Delivery") String deliveryId,
             @RequestBody Map<String, Object> payload) {
 
-        if (deliveryCache.isProcessed(deliveryId)) {
+        if (deliveryCache.isDuplicate(deliveryId)) {
             return ResponseEntity.ok(null);
         }
 
@@ -44,7 +44,7 @@ public class GitHubWebhookController {
 
         GitHubCommentResponse response = gitHubCommentService.comment(review, request.toService());
 
-        deliveryCache.markProcessed(deliveryId);
+        deliveryCache.record(deliveryId);
         return ResponseEntity.ok(response);
     }
 }

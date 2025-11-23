@@ -2,28 +2,50 @@ package com.agilerunner.util;
 
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class WebhookDeliveryCache {
-
+    private static final long TTL_MILLIS = Duration.ofMinutes(10).toMillis();
     private final Map<String, Long> cache = new ConcurrentHashMap<>();
-    private final long ttlMillis = 1000 * 60 * 10; // 10분 유지
 
-    public boolean isProcessed(String deliveryId) {
-        Long timestamp = cache.get(deliveryId);
-        if (timestamp == null) return false;
+    public boolean isDuplicate(String deliveryId) {
+        Long timestamp = findTimestamp(deliveryId);
 
-        if (System.currentTimeMillis() - timestamp > ttlMillis) {
-            cache.remove(deliveryId);
+        if (isNotCached(timestamp)) {
+            return false;
+        }
+        if (isExpired(timestamp)) {
+            evict(deliveryId);
             return false;
         }
 
         return true;
     }
 
-    public void markProcessed(String deliveryId) {
-        cache.put(deliveryId, System.currentTimeMillis());
+    public void record(String deliveryId) {
+        cache.put(deliveryId, now());
+    }
+
+    private Long findTimestamp(String deliveryId) {
+        return cache.get(deliveryId);
+    }
+
+    private boolean isNotCached(Long timestamp) {
+        return timestamp == null;
+    }
+
+    private boolean isExpired(Long timestamp) {
+        return now() - timestamp > TTL_MILLIS;
+    }
+
+    private void evict(String deliveryId) {
+        cache.remove(deliveryId);
+    }
+
+    private long now() {
+        return System.currentTimeMillis();
     }
 }
