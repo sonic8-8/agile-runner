@@ -9,4 +9,16 @@ public enum HunkLineType {
     CONTEXT(' ');
 
     private final char symbol;
+
+    public static boolean isAdded(char symbol) {
+        return ADDED.symbol == symbol;
+    }
+
+    public static boolean isRemoved(char symbol) {
+        return REMOVED.symbol == symbol;
+    }
+
+    public static boolean isContext(char symbol) {
+        return CONTEXT.symbol == symbol;
+    }
 }

@@ -16,100 +16,150 @@ public class GitHubPatchParser {
     private static final Pattern HUNK_HEADER = Pattern.compile(
             "@@\\s+\\-(\\d+),?(\\d+)?\\s+\\+(\\d+),?(\\d+)?\\s+@@"
     );
-
     private static final int ORIGINAL_START_LINE = 1;
     private static final int START_LINE = 3;
+    public static final int HUNK_LINE_TYPE_INDEX = 0;
+    public static final int HUNK_LINE_CONTEXT_START = 1;
+    public static final String PATCH_LINE_SEPARATOR = "\n";
 
     public ParsedFilePatch parse(String filePath, String patch) {
-        if (patch == null || patch.isBlank()) {
+        if (hasNoPatchContent(patch)) {
             return ParsedFilePatch.of(filePath, List.of());
         }
 
-        String[] lines = patch.split("\n");
+        String[] lines = splitPatchIntoLines(patch);
+        ParseContext context = ParseContext.create();
 
-        List<Hunk> hunks = new ArrayList<>();
-        List<HunkLine> currentHunkLines = null;
-        Integer originalStartLine = null;
-        Integer startLine = null;
-        int currentOriginalLine = 0;
-        int currentLine = 0;
+        context.collectHunksFrom(lines);
 
-        new ParseContext();
-
-        for (String line : lines) {
-            // 새로운 Hunk 시작
-            if (isHunkHeader(line)) {
-                // 이전 Hunk flush
-                if (currentHunkLines != null) {
-                    hunks.add(Hunk.of(originalStartLine, startLine, new ArrayList<>(currentHunkLines)));
-                }
-
-                originalStartLine = Integer.parseInt(matcher.group(ORIGINAL_START_LINE));
-                startLine = Integer.parseInt(matcher.group(START_LINE));
-
-                currentOriginalLine = originalStartLine;
-                currentLine = startLine;
-                currentHunkLines = new ArrayList<>();
-
-                continue;
-            }
-
-            // 아직 Hunk가 시작되지 않았다면
-            if (currentHunkLines == null) {
-                continue;
-            }
-
-            char symbol = line.charAt(0);
-            String content = line.substring(1);
-
-            if (symbol == ' ') {
-                currentHunkLines.add(
-                        HunkLine.of(currentOriginalLine, currentLine, HunkLineType.CONTEXT, content)
-                );
-                currentOriginalLine++;
-                currentLine++;
-                continue;
-            }
-
-            if (symbol == '+') {
-                currentHunkLines.add(
-                        HunkLine.of(null, currentLine, HunkLineType.ADDED, content)
-                );
-                currentLine++;
-                continue;
-            }
-
-            if (symbol == '-') {
-                currentHunkLines.add(
-                        HunkLine.of(currentOriginalLine, null, HunkLineType.REMOVED, content)
-                );
-                currentOriginalLine++;
-            }
-        }
-
-        if (currentHunkLines != null) {
-            hunks.add(Hunk.of(originalStartLine, startLine, currentHunkLines));
-        }
-
-        return ParsedFilePatch.of(filePath, hunks);
+        return ParsedFilePatch.of(filePath, context.getHunks());
     }
 
-    private static boolean isHunkHeader(String line) {
-        Matcher matcher = HUNK_HEADER.matcher(line);
-        return matcher.find();
+    private String[] splitPatchIntoLines(String patch) {
+        return patch.split(PATCH_LINE_SEPARATOR);
+    }
+
+    private boolean hasNoPatchContent(String patch) {
+        return patch == null || patch.isBlank();
     }
 
     private static class ParseContext {
-        private List<Hunk> hunks;
+        private final List<Hunk> hunks = new ArrayList<>();
 
-        private List<HunkLine> currentHunkLines;
+        private List<HunkLine> pendingHunkLines;
         private Integer originalStartLine;
         private Integer startLine;
-        private int currentOriginalLine;
-        private int currentLine;
+        private int pendingOriginalLine;
+        private int pendingLine;
 
-        public ParseContext create() {
-            hunks = new ArrayList<>();
+        private ParseContext() {
+
+        }
+
+        public static ParseContext create() {
+            return new ParseContext();
+        }
+
+        public List<Hunk> getHunks() {
+            return hunks;
+        }
+
+        public void collectHunksFrom(String[] lines) {
+            for (String line : lines) {
+                handlePatchLine(line);
+            }
+
+            flushPendingHunkIfExists();
+        }
+
+        private void handlePatchLine(String line) {
+            if (tryStartNewHunk(line)) {
+                return;
+            }
+
+            if (hasNoPendingHunk()) {
+                return;
+            }
+
+            addHunkLine(line);
+        }
+
+        private boolean tryStartNewHunk(String line) {
+            Matcher matcher = HUNK_HEADER.matcher(line);
+            if (!matcher.find()) {
+                return false;
+            }
+
+            flushPendingHunkIfExists();
+            initNewHunk(matcher);
+            return true;
+        }
+
+        private void flushPendingHunkIfExists() {
+            if (hasPendingHunk()) {
+                flushPendingHunk();
+            }
+        }
+
+        private boolean hasPendingHunk() {
+            return pendingHunkLines != null;
+        }
+
+        private void flushPendingHunk() {
+            hunks.add(Hunk.of(originalStartLine, startLine, new ArrayList<>(pendingHunkLines)));
+            pendingHunkLines = null;
+        }
+
+        private void initNewHunk(Matcher matcher) {
+            originalStartLine = Integer.parseInt(matcher.group(ORIGINAL_START_LINE));
+            startLine = Integer.parseInt(matcher.group(START_LINE));
+
+            pendingOriginalLine = originalStartLine;
+            pendingLine = startLine;
+            pendingHunkLines = new ArrayList<>();
+        }
+
+        private boolean hasNoPendingHunk() {
+            return pendingHunkLines == null;
+        }
+
+        private void addHunkLine(String line) {
+            char symbol = line.charAt(HUNK_LINE_TYPE_INDEX);
+            String lineContent = line.substring(HUNK_LINE_CONTEXT_START);
+
+            if (HunkLineType.isAdded(symbol)) {
+                addAddedLine(lineContent);
+                return;
+            }
+            if (HunkLineType.isContext(symbol)) {
+                addContextLine(lineContent);
+                return;
+            }
+            if (HunkLineType.isRemoved(symbol)) {
+                addRemovedLine(lineContent);
+            }
+        }
+
+        private void addAddedLine(String lineContent) {
+            pendingHunkLines.add(
+                    HunkLine.of(null, pendingLine, HunkLineType.ADDED, lineContent)
+            );
+            pendingLine++;
+        }
+
+        private void addContextLine(String lineContent) {
+            pendingHunkLines.add(
+                    HunkLine.of(pendingOriginalLine, pendingLine, HunkLineType.CONTEXT, lineContent)
+            );
+            pendingOriginalLine++;
+            pendingLine++;
+        }
+
+        private void addRemovedLine(String lineContent) {
+            pendingHunkLines.add(
+                    HunkLine.of(pendingOriginalLine, null, HunkLineType.REMOVED, lineContent)
+            );
+            pendingOriginalLine++;
         }
     }
 }
