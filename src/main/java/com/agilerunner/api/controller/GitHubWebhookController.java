@@ -4,6 +4,7 @@ import com.agilerunner.api.controller.dto.GitHubEventRequest;
 import com.agilerunner.api.service.GitHubCommentService;
 import com.agilerunner.api.service.OpenAiService;
 import com.agilerunner.api.service.dto.GitHubCommentResponse;
+import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
 import com.agilerunner.domain.Review;
 import com.agilerunner.util.WebhookDeliveryCache;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,8 @@ import java.util.Map;
 @RequestMapping("/webhook/github")
 public class GitHubWebhookController {
 
+    private static final String PULL_REQUEST_EVENT = "pull_request";
+
     private final OpenAiService openAiService;
     private final GitHubCommentService gitHubCommentService;
     private final WebhookDeliveryCache deliveryCache;
@@ -28,23 +31,31 @@ public class GitHubWebhookController {
             @RequestBody Map<String, Object> payload) {
 
         if (deliveryCache.isDuplicate(deliveryId)) {
-            return ResponseEntity.ok(null);
+            return ResponseEntity.ok().build();
         }
-
-        if (!eventType.equals("pull_request")) {
-            return ResponseEntity.ok(null);
+        if (isNotPullRequest(eventType)) {
+            return ResponseEntity.ok().build();
         }
 
         GitHubEventRequest request = GitHubEventRequest.of(eventType, payload);
-        Review review = openAiService.generateReview(request.toService());
+        return handlePullRequestEvent(deliveryId, request);
+    }
 
+    private boolean isNotPullRequest(String eventType) {
+        return !PULL_REQUEST_EVENT.equals(eventType);
+    }
+
+    private ResponseEntity<GitHubCommentResponse> handlePullRequestEvent(String deliveryId, GitHubEventRequest request) {
+        GitHubEventServiceRequest serviceRequest = request.toService();
+
+        Review review = openAiService.generateReview(serviceRequest);
         if (review == null) {
-            return ResponseEntity.ok(null);
+            return ResponseEntity.ok().build();
         }
 
-        GitHubCommentResponse response = gitHubCommentService.comment(review, request.toService());
-
+        GitHubCommentResponse response = gitHubCommentService.comment(review, serviceRequest);
         deliveryCache.record(deliveryId);
+
         return ResponseEntity.ok(response);
     }
 }
