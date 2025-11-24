@@ -7,8 +7,11 @@ import org.kohsuke.github.GitHubBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
+import java.io.IOException;
 import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Instant;
 import java.util.Base64;
@@ -24,33 +27,26 @@ public class GitHubClientFactory {
     private String privateKey;
 
     public GitHub createGitHubClient(long installationId) throws Exception {
-        String jwt = createJWT(appId, privateKey);
-
+        String jwt = createJWT();
         GitHub gitHubApp = new GitHubBuilder().withJwtToken(jwt).build();
-        String token = gitHubApp.getApp()
+
+        String installationAccessToken = createInstallationAccessToken(installationId, gitHubApp);
+
+        return new GitHubBuilder()
+                .withAppInstallationToken(installationAccessToken)
+                .build();
+    }
+
+    private String createInstallationAccessToken(long installationId, GitHub gitHubApp) throws IOException {
+        return gitHubApp.getApp()
                 .getInstallationById(installationId)
                 .createToken()
                 .create()
                 .getToken();
-
-        return new GitHubBuilder()
-                .withAppInstallationToken(token)
-                .build();
     }
 
-    private String createJWT(String appId, String privateKeyPem) throws Exception {
-        privateKeyPem = privateKeyPem.replace("\\n", "\n");
-
-        String privateKeyContent = privateKeyPem
-                .replaceAll("-----BEGIN PRIVATE KEY-----", "")
-                .replaceAll("-----END PRIVATE KEY-----", "")
-                .replaceAll("\\s+", "");
-
-        byte[] keyBytes = Base64.getDecoder().decode(privateKeyContent);
-        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
-        KeyFactory kf = KeyFactory.getInstance("RSA");
-        PrivateKey privateKey = kf.generatePrivate(spec);
-
+    private String createJWT() throws Exception {
+        PrivateKey privateKey = loadPrivateKey();
         Instant now = Instant.now();
 
         return Jwts.builder()
@@ -59,5 +55,23 @@ public class GitHubClientFactory {
                 .setExpiration(Date.from(now.plusSeconds(600)))
                 .signWith(privateKey, SignatureAlgorithm.RS256)
                 .compact();
+    }
+
+    private PrivateKey loadPrivateKey() throws NoSuchAlgorithmException, InvalidKeySpecException {
+        String normalizedPem = normalizePrivateKey(privateKey);
+        byte[] keyBytes = Base64.getDecoder().decode(normalizedPem);
+
+        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        return keyFactory.generatePrivate(spec);
+    }
+
+    private String normalizePrivateKey(String privateKeyPem) {
+        privateKeyPem = privateKeyPem.replace("\\n", "\n");
+
+        return privateKeyPem
+                .replaceAll("-----BEGIN PRIVATE KEY-----", "")
+                .replaceAll("-----END PRIVATE KEY-----", "")
+                .replaceAll("\\s+", "");
     }
 }
