@@ -22,13 +22,7 @@ public class GitHubPatchService {
         List<ParsedFilePatch> parsedFilePatches = new ArrayList<>();
 
         for (GHPullRequestFileDetail file : pullRequest.listFiles()) {
-            String patch = file.getPatch();
-            if (patch == null || patch.isBlank()) {
-                continue;
-            }
-
-            ParsedFilePatch parsedFilePatch = gitHubPatchParser.parse(file.getFilename(), patch);
-            parsedFilePatches.add(parsedFilePatch);
+            handlePatch(file, parsedFilePatches);
         }
 
         return parsedFilePatches;
@@ -42,5 +36,22 @@ public class GitHubPatchService {
         }
 
         return pathToParsedFilePatches;
+    }
+
+    private void handlePatch(GHPullRequestFileDetail file, List<ParsedFilePatch> parsedFilePatches) {
+        String patch = file.getPatch();
+        if (isEmptyPatch(patch)) {
+            return;
+        }
+
+        parsedFilePatches.add(getParsedFilePatch(file, patch));
+    }
+
+    private boolean isEmptyPatch(String patch) {
+        return patch == null || patch.isBlank();
+    }
+
+    private ParsedFilePatch getParsedFilePatch(GHPullRequestFileDetail file, String patch) {
+        return gitHubPatchParser.parse(file.getFilename(), patch);
     }
 }
