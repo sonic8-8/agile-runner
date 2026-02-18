@@ -9,7 +9,8 @@ spring:
     openai:
       api-key: ${OPENAI_API_KEY}
       chat:
-        model: gpt-5-mini
+        options:
+          model: gpt-5-mini
 
   github:
     app-id: ${GITHUB_APP_ID}
