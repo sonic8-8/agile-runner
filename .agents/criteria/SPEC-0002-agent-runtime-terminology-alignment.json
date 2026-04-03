@@ -1,0 +1,35 @@
+{
+  "spec_id": "SPEC-0002",
+  "spec_name": "agent-runtime 용어 및 스키마 정렬",
+  "spec_version": 1,
+  "criteria": [
+    {
+      "key": "webhook-contract-preserved-after-rename",
+      "target": "이름 정리 후 외부 webhook 계약 유지",
+      "test_view": "controller/service integration 관점",
+      "pass_condition": "리팩터링 전 고정한 webhook 계약 회귀 테스트가 이름 정리 이후에도 그대로 통과하고, successful comment 응답, duplicate delivery 조기 종료, non-pull_request 조기 종료 등 기존 외부 계약이 유지된다.",
+      "fail_condition": "이름 정리 때문에 webhook 응답 status나 body, 조기 종료 동작이 바뀌거나 회귀 테스트가 깨진다."
+    },
+    {
+      "key": "renamed-runtime-terms-consistent",
+      "target": "agent-runtime 코드 용어 일관성",
+      "test_view": "구현 정합성 관점",
+      "pass_condition": "ReviewRun, TaskState, EvaluationCriteria 계열 이름이 WebhookExecution, TaskRuntimeState, ValidationCriteria 계열 이름으로 일관되게 정렬되고, 관련 생성자와 메서드 시그니처도 같은 용어를 사용한다.",
+      "fail_condition": "도메인, service, repository, 테스트 중 일부가 이전 이름을 계속 사용하거나 새 이름과 옛 이름이 혼재한다."
+    },
+    {
+      "key": "renamed-schema-query-roundtrip-preserved",
+      "target": "repository API와 H2 스키마 이름 정렬",
+      "test_view": "repository/schema 관점",
+      "pass_condition": "TASK_STATE, EVALUATION_CRITERIA, REVIEW_RUN, run_key가 새 용어에 맞춰 정렬되고, repository 저장/조회 API와 round-trip 테스트도 같은 이름 기준으로 통과한다.",
+      "fail_condition": "repository API와 H2 스키마 중 일부만 바뀌거나, 테이블/컬럼 이름과 코드 이름이 다시 어긋나거나 round-trip이 깨진다."
+    },
+    {
+      "key": "runtime-evidence-recorded-under-renamed-schema",
+      "target": "새 스키마 이름 기준 runtime evidence 적재",
+      "test_view": "실제 앱/H2 검증 관점",
+      "pass_condition": "local profile 실제 앱 기동 후 representative webhook 처리 결과가 새 테이블과 컬럼 이름 기준으로 H2 file DB에 적재된다.",
+      "fail_condition": "이름 정리 후 실제 앱 실행에서 H2 적재가 깨지거나 이전 테이블/컬럼 이름에만 의존한다."
+    }
+  ]
+}
