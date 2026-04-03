@@ -30,6 +30,14 @@
     {
       "proposal_id": "WORKFLOW-PROP-0004",
       "path": ".agents/outer-loop/proposals/WORKFLOW/WORKFLOW-PROP-0004-from-SPEC-0002-TASK-0003.md"
+    },
+    {
+      "proposal_id": "WORKFLOW-PROP-0005",
+      "path": ".agents/outer-loop/proposals/WORKFLOW/WORKFLOW-PROP-0005-from-SPEC-0002-SUMMARY.md"
+    },
+    {
+      "proposal_id": "WORKFLOW-PROP-0006",
+      "path": ".agents/outer-loop/proposals/WORKFLOW/WORKFLOW-PROP-0006-from-SPEC-0002-SUMMARY.md"
     }
   ]
 }

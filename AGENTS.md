@@ -31,7 +31,11 @@
 
 ## 베이스라인 하네스
 - `Orchestrator`는 현재 활성 `Spec`과 `Task`를 읽고, 이번에 수행할 `Task` 하나를 선택해 task packet을 고정한다.
+- 리팩터링 또는 이름 정리 중심 `Spec`을 시작할 때는 첫 `Task`를 만들기 전에 기존 회귀 안전망 목록 확인 절차를 우선 검토한다.
+- 기존 컨트롤러/서비스 통합 테스트와 유지 계약 대응 관계가 이미 충분하면, 별도 안전망 `Task`를 새로 만들기보다 현재 `Spec` 또는 `Task` 문서에 그 근거만 기록하는 방식을 우선 검토한다.
 - task packet에는 최소한 task 목표, 연결된 `ValidationCriteria`, 관련 파일 후보, 비대상, AGENTS 체크 항목이 포함돼야 한다.
+- 코드 용어 정리와 물리 스키마 정리가 함께 필요한 `Spec`은 두 단계를 나눌 필요가 있는지 먼저 검토한다.
+- 먼저 코드 이름 정리와 외부 공개 시그니처 정합성을 닫고, 그다음 물리 스키마 이름 정리와 실제 앱/H2 검증을 수행하는 구성을 우선 검토한다.
 - `Tester`는 연결된 `ValidationCriteria`를 테스트와 체크리스트로 고정하고, AGENTS.md 컨벤션 위반 여부를 함께 검증한다.
 - `Tester`는 production code를 수정하지 않고, controller/service integration 중심의 black-box 테스트 코드를 먼저 작성해 기대 동작을 고정한다.
 - task 완료 조건이 `write 이전 준비 완료` 또는 `side effect 미발생`이면, `Tester`는 black-box 테스트에서 모든 외부 write 경로가 미발생인지 함께 검증한다.

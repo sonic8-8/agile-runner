@@ -20,10 +20,14 @@ description: Use when executing a meaningful Agile Runner task under this reposi
 ## 핵심 규칙
 - 모든 단계의 서브에이전트 리뷰는 `AGENTS.md`를 기준으로 수행한다.
 - 각 단계마다 3개 서브에이전트 리뷰를 돌리고, 하나라도 `NEEDS_CHANGES`가 나오면 수정 후 같은 3개 리뷰를 다시 돌린다.
+- 리팩터링 또는 이름 정리 중심 spec을 시작할 때는 첫 task를 만들기 전에 기존 회귀 안전망 목록 확인 절차를 우선 검토한다.
+- 기존 컨트롤러/서비스 통합 테스트와 유지 계약 대응 관계가 이미 충분하면, 별도 안전망 task를 새로 만들기보다 현재 spec 또는 task 문서에 그 근거만 기록하는 방식을 우선 검토한다.
 - `Tester`는 production code를 수정하지 않는다.
 - `Tester`는 controller/service integration 중심의 black-box 테스트 코드를 먼저 작성해 기대 동작을 고정한다.
 - 외부 라이브러리 타입이 오버로드, 브리지, final 메서드 때문에 Mockito stubbing이 애매하면 fake object 또는 override 기반 test double을 우선 검토한다.
 - `Constructor`는 tester가 만든 black-box 테스트를 green으로 만들기 위해 production code를 수정하고, 필요 시 작은 unit test를 추가한다.
+- 코드 용어 정리와 물리 스키마 정리가 함께 필요한 spec은 두 단계를 나눌 필요가 있는지 먼저 검토한다.
+- 먼저 코드 이름 정리와 외부 공개 시그니처 정합성을 닫고, 그다음 물리 스키마 이름 정리와 실제 앱/H2 검증을 수행하는 구성을 우선 검토한다.
 - 현재 구조에서는 `inner-loop/TASK-xxxx/` 같은 새 디렉토리를 만들지 않는다. task 수행 중 필요한 최소 보완은 `.agents/active/tasks.md`에 반영한다.
 - task 종료 후에는 반드시 개발 피드백 루프를 실행하고 retrospective를 남긴다.
 - 개발 피드백 루프 문서가 준비되면 바로 다음 task로 넘어가지 않는다.
