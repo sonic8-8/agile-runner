@@ -112,7 +112,7 @@ repository API, H2 스키마 정렬과 runtime 검증
 - `REVIEW_RUN` -> `WEBHOOK_EXECUTION`
 - `run_key` -> `execution_key`
 - `AGENT_EXECUTION_LOG.run_key` -> `AGENT_EXECUTION_LOG.execution_key`
-- repository SQL, row mapper, parameter binding, 조회 메서드 이름을 새 스키마 이름과 맞춘다.
+- repository SQL, row mapper, parameter binding, schema에 종속된 조회 메서드 이름을 새 스키마 이름과 맞춘다.
 - local profile 실제 앱 기동 후 representative webhook 처리 결과를 새 테이블과 컬럼 이름으로 조회해 검증한다.
 
 ### 비대상
@@ -135,7 +135,7 @@ repository API, H2 스키마 정렬과 runtime 검증
 - repository/schema round-trip 테스트
 - controller/service 회귀 테스트
 - 저장소 표준 전체 테스트
-- local profile 실제 앱 기동 후 H2 file DB 생성과 renamed schema 적재 확인
+- local profile 실제 앱 기동 후 H2 file DB 생성과 `WEBHOOK_EXECUTION`, `TASK_RUNTIME_STATE`, `VALIDATION_CRITERIA`, `AGENT_EXECUTION_LOG.execution_key` 기준 renamed schema 적재 확인
 
 ### GitHub Issue
 - 새 Issue 생성

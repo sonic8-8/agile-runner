@@ -27,7 +27,7 @@ import java.util.Optional;
 @ConditionalOnProperty(prefix = "agile-runner.agent-runtime", name = "enabled", havingValue = "true")
 public class AgentRuntimeRepository {
     private static final String UPSERT_TASK_RUNTIME_STATE_SQL = """
-            MERGE INTO TASK_STATE (
+            MERGE INTO TASK_RUNTIME_STATE (
                 task_key,
                 issue_number,
                 title,
@@ -52,15 +52,15 @@ public class AgentRuntimeRepository {
             """;
     private static final String FIND_TASK_RUNTIME_STATE_SQL = """
             SELECT task_key, issue_number, title, status, retry_count, owner_role, started_at, finished_at
-            FROM TASK_STATE
+            FROM TASK_RUNTIME_STATE
             WHERE task_key = :taskKey
             """;
     private static final String DELETE_VALIDATION_CRITERIA_SQL = """
-            DELETE FROM EVALUATION_CRITERIA
+            DELETE FROM VALIDATION_CRITERIA
             WHERE task_key = :taskKey
             """;
     private static final String INSERT_VALIDATION_CRITERIA_SQL = """
-            INSERT INTO EVALUATION_CRITERIA (
+            INSERT INTO VALIDATION_CRITERIA (
                 task_key,
                 criteria_key,
                 category,
@@ -80,13 +80,13 @@ public class AgentRuntimeRepository {
             """;
     private static final String FIND_VALIDATION_CRITERIA_SQL = """
             SELECT task_key, criteria_key, category, description, status, evidence
-            FROM EVALUATION_CRITERIA
+            FROM VALIDATION_CRITERIA
             WHERE task_key = :taskKey
             ORDER BY id ASC
             """;
     private static final String UPSERT_WEBHOOK_EXECUTION_SQL = """
-            MERGE INTO REVIEW_RUN (
-                run_key,
+            MERGE INTO WEBHOOK_EXECUTION (
+                execution_key,
                 task_key,
                 delivery_id,
                 repository_name,
@@ -98,7 +98,7 @@ public class AgentRuntimeRepository {
                 started_at,
                 finished_at,
                 updated_at
-            ) KEY (run_key)
+            ) KEY (execution_key)
             VALUES (
                 :executionKey,
                 :taskKey,
@@ -115,15 +115,15 @@ public class AgentRuntimeRepository {
             )
             """;
     private static final String FIND_WEBHOOK_EXECUTION_SQL = """
-            SELECT run_key, task_key, delivery_id, repository_name, pull_request_number, event_type, action, status, error_message, started_at, finished_at
-            FROM REVIEW_RUN
-            WHERE run_key = :executionKey
+            SELECT execution_key, task_key, delivery_id, repository_name, pull_request_number, event_type, action, status, error_message, started_at, finished_at
+            FROM WEBHOOK_EXECUTION
+            WHERE execution_key = :executionKey
             """;
     private static final String INSERT_AGENT_EXECUTION_LOG_SQL = """
             INSERT INTO AGENT_EXECUTION_LOG (
                 task_key,
                 issue_number,
-                run_key,
+                execution_key,
                 agent_role,
                 step_name,
                 status,
@@ -149,7 +149,7 @@ public class AgentRuntimeRepository {
             )
             """;
     private static final String FIND_AGENT_EXECUTION_LOGS_SQL = """
-            SELECT task_key, issue_number, run_key, agent_role, step_name, status, input_summary, output_summary, error_message, payload_json, started_at, ended_at
+            SELECT task_key, issue_number, execution_key, agent_role, step_name, status, input_summary, output_summary, error_message, payload_json, started_at, ended_at
             FROM AGENT_EXECUTION_LOG
             WHERE task_key = :taskKey
             ORDER BY id ASC
@@ -309,7 +309,7 @@ public class AgentRuntimeRepository {
 
     private WebhookExecution mapWebhookExecution(ResultSet resultSet, int rowNum) throws SQLException {
         return WebhookExecution.start(
-                resultSet.getString("run_key"),
+                resultSet.getString("execution_key"),
                 resultSet.getString("task_key"),
                 resultSet.getString("delivery_id"),
                 resultSet.getString("repository_name"),
@@ -328,7 +328,7 @@ public class AgentRuntimeRepository {
         return AgentExecutionLog.of(
                 resultSet.getString("task_key"),
                 getLong(resultSet, "issue_number"),
-                resultSet.getString("run_key"),
+                resultSet.getString("execution_key"),
                 AgentRole.valueOf(resultSet.getString("agent_role")),
                 resultSet.getString("step_name"),
                 AgentExecutionStatus.valueOf(resultSet.getString("status")),

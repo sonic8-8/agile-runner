@@ -14,6 +14,7 @@ import com.agilerunner.domain.agentruntime.TaskRuntimeStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -38,6 +39,7 @@ class AgentRuntimeRepositoryTest {
         contextRunner.run(context -> {
             // given
             AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
+            NamedParameterJdbcTemplate jdbcTemplate = context.getBean(NamedParameterJdbcTemplate.class);
             TaskRuntimeState taskRuntimeState = TaskRuntimeState.of(
                     "TASK-101",
                     101L,
@@ -52,12 +54,18 @@ class AgentRuntimeRepositoryTest {
             // when
             repository.upsertTaskRuntimeState(taskRuntimeState);
             Optional<TaskRuntimeState> found = repository.findTaskRuntimeState("TASK-101");
+            Integer storedRows = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT COUNT(*) FROM TASK_RUNTIME_STATE WHERE task_key = 'TASK-101'",
+                            Integer.class
+                    );
 
             // then
             assertThat(found).isPresent();
             assertThat(found.get().getIssueNumber()).isEqualTo(101L);
             assertThat(found.get().getStatus()).isEqualTo(TaskRuntimeStatus.IN_PROGRESS);
             assertThat(found.get().getOwnerRole()).isEqualTo(AgentRole.ORCHESTRATOR);
+            assertThat(storedRows).isEqualTo(1);
         });
     }
 
@@ -67,6 +75,7 @@ class AgentRuntimeRepositoryTest {
         contextRunner.run(context -> {
             // given
             AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
+            NamedParameterJdbcTemplate jdbcTemplate = context.getBean(NamedParameterJdbcTemplate.class);
             List<ValidationCriteria> criteria = List.of(
                     ValidationCriteria.of(
                             "TASK-102",
@@ -89,11 +98,17 @@ class AgentRuntimeRepositoryTest {
             // when
             repository.replaceValidationCriteria("TASK-102", criteria);
             List<ValidationCriteria> found = repository.findValidationCriteria("TASK-102");
+            Integer storedRows = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT COUNT(*) FROM VALIDATION_CRITERIA WHERE task_key = 'TASK-102'",
+                            Integer.class
+                    );
 
             // then
             assertThat(found).hasSize(2);
             assertThat(found.getFirst().getCriteriaKey()).isEqualTo("C1");
             assertThat(found.getFirst().getCategory()).isEqualTo(CriteriaCategory.REQUIRED);
+            assertThat(storedRows).isEqualTo(2);
         });
     }
 
@@ -103,6 +118,7 @@ class AgentRuntimeRepositoryTest {
         contextRunner.run(context -> {
             // given
             AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
+            NamedParameterJdbcTemplate jdbcTemplate = context.getBean(NamedParameterJdbcTemplate.class);
             AgentExecutionLog executionLog = AgentExecutionLog.of(
                     "TASK-103",
                     103L,
@@ -121,6 +137,11 @@ class AgentRuntimeRepositoryTest {
             // when
             repository.appendExecutionLog(executionLog);
             List<AgentExecutionLog> found = repository.findExecutionLogs("TASK-103");
+            String storedExecutionKey = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT execution_key FROM AGENT_EXECUTION_LOG WHERE task_key = 'TASK-103'",
+                            String.class
+                    );
 
             // then
             assertThat(found).hasSize(1);
@@ -128,6 +149,7 @@ class AgentRuntimeRepositoryTest {
             assertThat(found.getFirst().getAgentRole()).isEqualTo(AgentRole.TESTER);
             assertThat(found.getFirst().getStatus()).isEqualTo(AgentExecutionStatus.FAILED);
             assertThat(found.getFirst().getPayloadJson()).isEqualTo("{\"failed\":2}");
+            assertThat(storedExecutionKey).isEqualTo("EXECUTION-103");
         });
     }
 
@@ -137,6 +159,7 @@ class AgentRuntimeRepositoryTest {
         contextRunner.run(context -> {
             // given
             AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
+            NamedParameterJdbcTemplate jdbcTemplate = context.getBean(NamedParameterJdbcTemplate.class);
             WebhookExecution webhookExecution = WebhookExecution.start(
                     "EXECUTION:201",
                     "TASK-201",
@@ -155,12 +178,18 @@ class AgentRuntimeRepositoryTest {
             // when
             repository.upsertWebhookExecution(webhookExecution);
             Optional<WebhookExecution> found = repository.findWebhookExecution("EXECUTION:201");
+            String storedStatus = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT status FROM WEBHOOK_EXECUTION WHERE execution_key = 'EXECUTION:201'",
+                            String.class
+                    );
 
             // then
             assertThat(found).isPresent();
             assertThat(found.get().getTaskKey()).isEqualTo("TASK-201");
             assertThat(found.get().getDeliveryId()).isEqualTo("delivery-201");
             assertThat(found.get().getStatus()).isEqualTo(WebhookExecutionStatus.SUCCEEDED);
+            assertThat(storedStatus).isEqualTo("SUCCEEDED");
         });
     }
 }

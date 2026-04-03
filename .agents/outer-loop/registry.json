@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0002",
-    "task_id": "TASK-0002",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0002/TASK-0002-runtime-terminology-alignment.md",
+    "task_id": "TASK-0003",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0002/TASK-0003-schema-rename-runtime-verification.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0001/SPEC-0001-summary.md"
   },
   "proposals": [
@@ -26,6 +26,10 @@
     {
       "proposal_id": "WORKFLOW-PROP-0003",
       "path": ".agents/outer-loop/proposals/WORKFLOW/WORKFLOW-PROP-0003-from-SPEC-0001-SUMMARY.md"
+    },
+    {
+      "proposal_id": "WORKFLOW-PROP-0004",
+      "path": ".agents/outer-loop/proposals/WORKFLOW/WORKFLOW-PROP-0004-from-SPEC-0002-TASK-0003.md"
     }
   ]
 }
