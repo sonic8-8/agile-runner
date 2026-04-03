@@ -27,12 +27,9 @@ public class GitHubCommentService {
 
     public GitHubCommentResponse comment(Review review, GitHubEventServiceRequest request) {
         try {
-            GHPullRequest pullRequest = loadPullRequest(review, request);
-            String headSha = pullRequest.getHead().getSha();
-            GHIssueComment mainComment = pullRequest.comment(review.getReviewBody());
-            Map<String, ParsedFilePatch> pathToParsedFilePatches = buildParsedFilePatches(pullRequest);
-            InlineCommentContext context = InlineCommentContext.of(pullRequest, headSha, pathToParsedFilePatches);
-            List<PostedInlineComment> postedInlineComments = postInlineComments(review, context);
+            CommentPreflight preflight = prepareCommentPreflight(review, request);
+            GHIssueComment mainComment = postMainComment(preflight.getPullRequest(), review.getReviewBody());
+            List<PostedInlineComment> postedInlineComments = postInlineComments(preflight);
 
             return buildResponse(mainComment, postedInlineComments);
         } catch (Exception e) {
@@ -42,56 +39,87 @@ public class GitHubCommentService {
         }
     }
 
+    private CommentPreflight prepareCommentPreflight(Review review, GitHubEventServiceRequest request) throws Exception {
+        GHPullRequest pullRequest = loadPullRequest(review, request);
+        String headSha = pullRequest.getHead().getSha();
+        Map<String, ParsedFilePatch> pathToParsedFilePatches = buildParsedFilePatches(pullRequest);
+        List<PreparedInlineComment> preparedInlineComments = prepareInlineComments(review, pathToParsedFilePatches);
+        return CommentPreflight.of(pullRequest, headSha, preparedInlineComments);
+    }
+
     private Map<String, ParsedFilePatch> buildParsedFilePatches(GHPullRequest pullRequest) {
         List<ParsedFilePatch> parsedFilePatches = gitHubPatchService.buildParsedFilePatches(pullRequest);
         return gitHubPatchService.buildPathToPatch(parsedFilePatches);
     }
 
     private GHPullRequest loadPullRequest(Review review, GitHubEventServiceRequest request) throws Exception {
-        GitHub gitHub = gitHubClientFactory.createGitHubClient(request.installationId());
+        GitHub gitHub = gitHubClientFactory.createGitHubClient(request.getInstallationId());
         GHRepository repository = gitHub.getRepository(review.getRepositoryName());
         return repository.getPullRequest(review.getPullRequestNumber());
     }
 
-    private List<PostedInlineComment> postInlineComments(Review review, InlineCommentContext context) {
-        List<PostedInlineComment> postedInlineComments = new ArrayList<>();
+    private GHIssueComment postMainComment(GHPullRequest pullRequest, String reviewBody) throws IOException {
+        return pullRequest.comment(reviewBody);
+    }
+
+    private List<PreparedInlineComment> prepareInlineComments(Review review,
+                                                              Map<String, ParsedFilePatch> pathToParsedFilePatches) {
+        List<PreparedInlineComment> preparedInlineComments = new ArrayList<>();
 
         for (InlineComment inlineComment : review.getInlineComments()) {
-            postInlineComment(inlineComment, context)
+            preparedInlineComments.add(prepareInlineComment(inlineComment, pathToParsedFilePatches));
+        }
+
+        return preparedInlineComments;
+    }
+
+    private PreparedInlineComment prepareInlineComment(InlineComment inlineComment,
+                                                       Map<String, ParsedFilePatch> pathToParsedFilePatches) {
+        String path = inlineComment.getPath();
+        int line = inlineComment.getLine();
+
+        ParsedFilePatch parsedFilePatch = pathToParsedFilePatches.get(path);
+        if (parsedFilePatch == null) {
+            throw new IllegalStateException("해당 path에 대한 patch가 없습니다. path=" + path);
+        }
+
+        OptionalInt optionalPosition = gitHubPositionConverter.toPosition(parsedFilePatch, line);
+        if (optionalPosition.isEmpty()) {
+            throw new IllegalStateException("position 계산 실패 path=" + path + ", line=" + line);
+        }
+
+        return PreparedInlineComment.of(
+                path,
+                optionalPosition.getAsInt(),
+                inlineComment.getBody()
+        );
+    }
+
+    private List<PostedInlineComment> postInlineComments(CommentPreflight preflight) {
+        List<PostedInlineComment> postedInlineComments = new ArrayList<>();
+
+        for (PreparedInlineComment preparedInlineComment : preflight.getPreparedInlineComments()) {
+            postInlineComment(preparedInlineComment, preflight)
                     .ifPresent(postedInlineComments::add);
         }
 
         return postedInlineComments;
     }
 
-    private Optional<PostedInlineComment> postInlineComment(InlineComment inlineComment, InlineCommentContext context) {
-        String path = inlineComment.getPath();
-        int line = inlineComment.getLine();
-
-        ParsedFilePatch parsedFilePatch = context.getPathToParsedFilePatches().get(path);
-        if (parsedFilePatch == null) {
-            log.warn("해당 path에 대한 patch가 없습니다. path={}", path);
-            return Optional.empty();
-        }
-
-        OptionalInt optionalPosition = gitHubPositionConverter.toPosition(parsedFilePatch, line);
-        if (optionalPosition.isEmpty()) {
-            log.warn("position 계산 실패 path={}, line={}", path, line);
-            return Optional.empty();
-        }
-
-        int position = optionalPosition.getAsInt();
-        return createReviewComment(inlineComment, context, path, position);
+    private Optional<PostedInlineComment> postInlineComment(PreparedInlineComment preparedInlineComment,
+                                                            CommentPreflight preflight) {
+        return createReviewComment(preparedInlineComment, preflight);
     }
 
-    private Optional<PostedInlineComment> createReviewComment(InlineComment inlineComment, InlineCommentContext context, String path, int position) {
+    private Optional<PostedInlineComment> createReviewComment(PreparedInlineComment preparedInlineComment,
+                                                              CommentPreflight preflight) {
         try {
             GHPullRequestReviewComment reviewComment =
-                    context.getPullRequest().createReviewComment(
-                            inlineComment.getBody(),
-                            context.getHeadSha(),
-                            path,
-                            position
+                    preflight.getPullRequest().createReviewComment(
+                            preparedInlineComment.getBody(),
+                            preflight.getHeadSha(),
+                            preparedInlineComment.getPath(),
+                            preparedInlineComment.getPosition()
                     );
 
             return Optional.of(
@@ -101,7 +129,10 @@ public class GitHubCommentService {
                     )
             );
         } catch (IOException e) {
-            log.error("인라인 코멘트 작성 실패 path={}, position={}", path, position, e);
+            log.error("인라인 코멘트 작성 실패 path={}, position={}",
+                    preparedInlineComment.getPath(),
+                    preparedInlineComment.getPosition(),
+                    e);
             return Optional.empty();
         }
     }
@@ -116,19 +147,19 @@ public class GitHubCommentService {
         );
     }
 
-    private static class InlineCommentContext {
-        private GHPullRequest pullRequest;
-        private String headSha;
-        private Map<String, ParsedFilePatch> pathToParsedFilePatches;
+    private static class CommentPreflight {
+        private final GHPullRequest pullRequest;
+        private final String headSha;
+        private final List<PreparedInlineComment> preparedInlineComments;
 
-        private InlineCommentContext(GHPullRequest pullRequest, String headSha, Map<String, ParsedFilePatch> pathToParsedFilePatches) {
+        private CommentPreflight(GHPullRequest pullRequest, String headSha, List<PreparedInlineComment> preparedInlineComments) {
             this.pullRequest = pullRequest;
             this.headSha = headSha;
-            this.pathToParsedFilePatches = pathToParsedFilePatches;
+            this.preparedInlineComments = preparedInlineComments;
         }
 
-        public static InlineCommentContext of(GHPullRequest pullRequest, String headSha, Map<String, ParsedFilePatch> pathToParsedFilePatches) {
-            return new InlineCommentContext(pullRequest, headSha, pathToParsedFilePatches);
+        public static CommentPreflight of(GHPullRequest pullRequest, String headSha, List<PreparedInlineComment> preparedInlineComments) {
+            return new CommentPreflight(pullRequest, headSha, preparedInlineComments);
         }
 
         public GHPullRequest getPullRequest() {
@@ -139,8 +170,36 @@ public class GitHubCommentService {
             return headSha;
         }
 
-        public Map<String, ParsedFilePatch> getPathToParsedFilePatches() {
-            return pathToParsedFilePatches;
+        public List<PreparedInlineComment> getPreparedInlineComments() {
+            return preparedInlineComments;
+        }
+    }
+
+    private static class PreparedInlineComment {
+        private final String path;
+        private final int position;
+        private final String body;
+
+        private PreparedInlineComment(String path, int position, String body) {
+            this.path = path;
+            this.position = position;
+            this.body = body;
+        }
+
+        public static PreparedInlineComment of(String path, int position, String body) {
+            return new PreparedInlineComment(path, position, body);
+        }
+
+        public String getPath() {
+            return path;
+        }
+
+        public int getPosition() {
+            return position;
+        }
+
+        public String getBody() {
+            return body;
         }
     }
 }
