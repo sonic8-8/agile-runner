@@ -1,15 +1,53 @@
 package com.agilerunner.api.service.dto;
 
 import com.agilerunner.GitHubEventType;
+import lombok.Getter;
 
 import java.util.Map;
 
-public record GitHubEventServiceRequest(
-        GitHubEventType gitHubEventType,
-        Map<String, Object> payload,
-        long installationId
-) {
+@Getter
+public class GitHubEventServiceRequest {
+    private static final String KEY_ACTION = "action";
+    private static final String KEY_REPOSITORY = "repository";
+    private static final String KEY_PULL_REQUEST = "pull_request";
+    private static final String KEY_FULL_NAME = "full_name";
+    private static final String KEY_NUMBER = "number";
+
+    private final GitHubEventType gitHubEventType;
+    private final Map<String, Object> payload;
+    private final long installationId;
+
+    private GitHubEventServiceRequest(GitHubEventType gitHubEventType, Map<String, Object> payload, long installationId) {
+        this.gitHubEventType = gitHubEventType;
+        this.payload = payload;
+        this.installationId = installationId;
+    }
+
     public static GitHubEventServiceRequest of(GitHubEventType gitHubEventType, Map<String, Object> payload, long installationId) {
         return new GitHubEventServiceRequest(gitHubEventType, payload, installationId);
+    }
+
+    public String getRepositoryName() {
+        Map<String, Object> repository = getMapValue(KEY_REPOSITORY);
+        return (String) repository.get(KEY_FULL_NAME);
+    }
+
+    public int getPullRequestNumber() {
+        Map<String, Object> pullRequest = getMapValue(KEY_PULL_REQUEST);
+        return ((Number) pullRequest.get(KEY_NUMBER)).intValue();
+    }
+
+    public String getAction() {
+        Object action = payload.get(KEY_ACTION);
+        if (action == null) {
+            return "";
+        }
+
+        return action.toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> getMapValue(String key) {
+        return (Map<String, Object>) payload.get(key);
     }
 }

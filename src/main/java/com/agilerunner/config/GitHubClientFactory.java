@@ -20,13 +20,15 @@ import java.util.Date;
 @Configuration
 public class GitHubClientFactory {
 
-    @Value("${GITHUB_APP_ID}")
+    @Value("${spring.github.app-id:}")
     private String appId;
 
-    @Value("${GITHUB_PRIVATE_KEY}")
+    @Value("${spring.github.private-key:}")
     private String privateKey;
 
     public GitHub createGitHubClient(long installationId) throws Exception {
+        validateConfiguration();
+
         String jwt = createJWT();
         GitHub gitHubApp = new GitHubBuilder().withJwtToken(jwt).build();
 
@@ -35,6 +37,15 @@ public class GitHubClientFactory {
         return new GitHubBuilder()
                 .withAppInstallationToken(installationAccessToken)
                 .build();
+    }
+
+    private void validateConfiguration() {
+        if (appId == null || appId.isBlank()) {
+            throw new IllegalStateException("GitHub App ID가 설정되지 않았습니다.");
+        }
+        if (privateKey == null || privateKey.isBlank()) {
+            throw new IllegalStateException("GitHub Private Key가 설정되지 않았습니다.");
+        }
     }
 
     private String createInstallationAccessToken(long installationId, GitHub gitHubApp) throws IOException {

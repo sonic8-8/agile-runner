@@ -13,5 +13,7 @@ services:
         sync: false
       - key: GITHUB_PRIVATE_KEY
         sync: false
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
       - key: PORT
         value: 8080

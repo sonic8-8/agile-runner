@@ -2,16 +2,38 @@ spring:
   application:
     name: agile-runner
 
+  profiles:
+    default: local
+
   config:
     import: optional:file:.env[.properties]
 
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.ai.autoconfigure.openai.OpenAiAutoConfiguration
+
   ai:
     openai:
-      api-key: ${OPENAI_API_KEY}
+      api-key: ${OPENAI_API_KEY:}
       chat:
+        enabled: false
         # model: gpt-5-mini
         model: gpt-4o-mini
+      embedding:
+        enabled: false
+      image:
+        enabled: false
+      audio:
+        transcription:
+          enabled: false
+        speech:
+          enabled: false
 
   github:
-    app-id: ${GITHUB_APP_ID}
-    private-key: ${GITHUB_PRIVATE_KEY}
+    app-id: ${GITHUB_APP_ID:}
+    private-key: ${GITHUB_PRIVATE_KEY:}
+
+agile-runner:
+  agent-runtime:
+    enabled: false

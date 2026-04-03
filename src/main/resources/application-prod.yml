@@ -1,0 +1,9 @@
+spring:
+  ai:
+    openai:
+      chat:
+        enabled: true
+
+agile-runner:
+  agent-runtime:
+    enabled: false

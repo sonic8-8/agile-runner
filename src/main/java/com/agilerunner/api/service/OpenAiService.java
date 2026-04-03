@@ -14,6 +14,7 @@ import org.kohsuke.github.GHPullRequest;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -21,20 +22,15 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class OpenAiService {
 
-    private static final String KEY_REPOSITORY = "repository";
-    private static final String KEY_PULL_REQUEST = "pull_request";
-    private static final String KEY_NUMBER = "number";
-    private static final String KEY_FULL_NAME = "full_name";
     private static final String DIFF_JSON_PLACEHOLDER = "{DIFF_JSON}";
 
-    private final ChatClient chatClient;
+    private final ObjectProvider<ChatClient> chatClientProvider;
     private final GitHubClientFactory gitHubClientFactory;
     private final GitHubPatchService gitHubPatchService;
     private final ObjectMapper objectMapper;
@@ -50,8 +46,8 @@ public class OpenAiService {
     }
 
     public Review generateReview(GitHubEventServiceRequest request) {
-        String repositoryName = extractRepositoryNameFrom(request);
-        int pullRequestNumber = extractPullRequestNumberFrom(request);
+        String repositoryName = request.getRepositoryName();
+        int pullRequestNumber = request.getPullRequestNumber();
 
         try {
             ReviewResponse reviewResponse = requestOpenAiReview(request, repositoryName, pullRequestNumber);
@@ -62,18 +58,6 @@ public class OpenAiService {
         }
     }
 
-    private String extractRepositoryNameFrom(GitHubEventServiceRequest request) {
-        Map<String, Object> payload = request.payload();
-        Map<String, Object> repository = (Map<String, Object>) payload.get(KEY_REPOSITORY);
-        return (String) repository.get(KEY_FULL_NAME);
-    }
-
-    private int extractPullRequestNumberFrom(GitHubEventServiceRequest request) {
-        Map<String, Object> payload = request.payload();
-        Map<String, Object> pullRequest = (Map<String, Object>) payload.get(KEY_PULL_REQUEST);
-        return ((Number) pullRequest.get(KEY_NUMBER)).intValue();
-    }
-
     private ReviewResponse requestOpenAiReview(GitHubEventServiceRequest request, String repositoryName, int pullRequestNumber) throws Exception {
         GHPullRequest pullRequest = loadPullRequest(request, repositoryName, pullRequestNumber);
         List<ParsedFilePatch> parsedFilePatches = gitHubPatchService.buildParsedFilePatches(pullRequest);
@@ -82,7 +66,7 @@ public class OpenAiService {
     }
 
     private GHPullRequest loadPullRequest(GitHubEventServiceRequest request, String repositoryName, int pullRequestNumber) throws Exception {
-        GitHub gitHub = gitHubClientFactory.createGitHubClient(request.installationId());
+        GitHub gitHub = gitHubClientFactory.createGitHubClient(request.getInstallationId());
         GHRepository repository = gitHub.getRepository(repositoryName);
         return repository.getPullRequest(pullRequestNumber);
     }
@@ -93,11 +77,22 @@ public class OpenAiService {
     }
 
     private ReviewResponse callOpenAiWith(String prompt) throws JsonProcessingException {
+        ChatClient chatClient = loadChatClient();
+
         String responseJson = chatClient.prompt()
                 .user(prompt)
                 .call()
                 .content();
 
         return objectMapper.readValue(responseJson, ReviewResponse.class);
+    }
+
+    private ChatClient loadChatClient() {
+        ChatClient chatClient = chatClientProvider.getIfAvailable();
+        if (chatClient == null) {
+            throw new IllegalStateException("OpenAI API Key가 설정되지 않았습니다.");
+        }
+
+        return chatClient;
     }
 }
