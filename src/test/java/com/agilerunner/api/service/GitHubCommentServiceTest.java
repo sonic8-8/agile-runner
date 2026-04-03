@@ -27,6 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -161,6 +163,66 @@ class GitHubCommentServiceTest {
         assertThat(response.postedInlineComments().get(0).id()).isEqualTo(202L);
         assertThat(response.postedInlineComments().get(0).htmlUrl()).isEqualTo("https://github.com/comment/202");
         assertThat(response.message()).isEqualTo("리뷰 코멘트가 성공적으로 등록되었습니다.");
+    }
+
+    @DisplayName("인라인 코멘트 일부 작성이 실패해도 나머지 코멘트는 유지한다.")
+    @Test
+    void comment_keepsSkipPolicyWhenSomeInlineCommentsFail() throws Exception {
+        // given
+        GitHubClientFactory gitHubClientFactory = mock(GitHubClientFactory.class);
+        GitHubPatchService gitHubPatchService = mock(GitHubPatchService.class);
+        GitHubPositionConverter gitHubPositionConverter = mock(GitHubPositionConverter.class);
+        GitHubCommentService service = new GitHubCommentService(gitHubClientFactory, gitHubPatchService, gitHubPositionConverter);
+
+        GitHub gitHub = mock(GitHub.class);
+        GHRepository repository = mock(GHRepository.class);
+        GHPullRequest pullRequest = mock(GHPullRequest.class);
+        GHCommitPointer head = mock(GHCommitPointer.class);
+        GHIssueComment mainComment = new GHIssueComment();
+        GHPullRequestReviewComment reviewComment = new GHPullRequestReviewComment();
+        ParsedFilePatch parsedFilePatch = ParsedFilePatch.of("src/Main.java", List.of());
+
+        Review review = Review.of(
+                "owner/repo",
+                12,
+                "리뷰 본문",
+                List.of(
+                        InlineComment.of("src/Main.java", 10, "라인 코멘트 1"),
+                        InlineComment.of("src/Main.java", 11, "라인 코멘트 2")
+                )
+        );
+        GitHubEventServiceRequest request = GitHubEventServiceRequest.of(PULL_REQUEST, Map.of("action", "opened"), 100L);
+
+        when(gitHubClientFactory.createGitHubClient(100L)).thenReturn(gitHub);
+        when(gitHub.getRepository("owner/repo")).thenReturn(repository);
+        when(repository.getPullRequest(12)).thenReturn(pullRequest);
+        when(pullRequest.getHead()).thenReturn(head);
+        when(head.getSha()).thenReturn("head-sha");
+        when(gitHubPatchService.buildParsedFilePatches(pullRequest)).thenReturn(List.of(parsedFilePatch));
+        when(gitHubPatchService.buildPathToPatch(List.of(parsedFilePatch))).thenReturn(Map.of("src/Main.java", parsedFilePatch));
+        when(gitHubPositionConverter.toPosition(parsedFilePatch, 10)).thenReturn(OptionalInt.of(7));
+        when(gitHubPositionConverter.toPosition(parsedFilePatch, 11)).thenReturn(OptionalInt.of(8));
+        doReturn(mainComment).when(pullRequest).comment("리뷰 본문");
+        setField(mainComment, "id", 101L);
+        setField(mainComment, "html_url", "https://github.com/comment/101");
+        doThrow(new java.io.IOException("inline failed"))
+                .doReturn(reviewComment)
+                .when(pullRequest)
+                .createReviewComment(anyString(), anyString(), anyString(), anyInt());
+        setField(reviewComment, "id", 202L);
+        setField(reviewComment, "html_url", "https://github.com/comment/202");
+
+        // when
+        GitHubCommentResponse response = service.comment(review, request);
+
+        // then
+        assertThat(response.reviewCommentId()).isEqualTo(101L);
+        assertThat(response.postedInlineComments()).hasSize(1);
+        assertThat(response.postedInlineComments().get(0).id()).isEqualTo(202L);
+        assertThat(response.message()).isEqualTo("리뷰 코멘트가 성공적으로 등록되었습니다.");
+        verify(pullRequest).comment("리뷰 본문");
+        verify(pullRequest).createReviewComment("라인 코멘트 1", "head-sha", "src/Main.java", 7);
+        verify(pullRequest).createReviewComment("라인 코멘트 2", "head-sha", "src/Main.java", 8);
     }
 
     private void setField(Object target, String fieldName, Object value) throws Exception {

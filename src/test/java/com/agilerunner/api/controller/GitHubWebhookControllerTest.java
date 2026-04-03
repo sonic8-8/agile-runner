@@ -33,6 +33,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -247,6 +248,50 @@ class GitHubWebhookControllerTest {
 
         verify(gitHubCommentService, times(1)).comment(eq(review), any(GitHubEventServiceRequest.class));
         verify(agentRuntimeService, times(1)).startReviewRun(eq(deliveryId), any(GitHubEventServiceRequest.class));
+    }
+
+    @DisplayName("duplicate delivery는 기존처럼 조기 종료한다.")
+    @Test
+    void handleGitHubEvent_returnsOkWhenDeliveryIsDuplicate() throws Exception {
+        // given
+        String deliveryId = "delivery-duplicate";
+
+        when(webhookDeliveryCache.isDuplicate(deliveryId)).thenReturn(true);
+
+        // when & then
+        mockMvc.perform(post("/webhook/github")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-GitHub-Event", "pull_request")
+                        .header("X-GitHub-Delivery", deliveryId)
+                        .content(objectMapper.writeValueAsString(buildPayload())))
+                .andExpect(status().isOk())
+                .andExpect(content().string(""));
+
+        verify(agentRuntimeService, never()).startReviewRun(anyString(), any(GitHubEventServiceRequest.class));
+        verify(openAiService, never()).generateReview(any(GitHubEventServiceRequest.class));
+        verify(gitHubCommentService, never()).comment(any(Review.class), any(GitHubEventServiceRequest.class));
+    }
+
+    @DisplayName("pull_request가 아닌 이벤트는 기존처럼 조기 종료한다.")
+    @Test
+    void handleGitHubEvent_returnsOkWhenEventIsNotPullRequest() throws Exception {
+        // given
+        String deliveryId = "delivery-non-pr";
+
+        when(webhookDeliveryCache.isDuplicate(deliveryId)).thenReturn(false);
+
+        // when & then
+        mockMvc.perform(post("/webhook/github")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-GitHub-Event", "push")
+                        .header("X-GitHub-Delivery", deliveryId)
+                        .content(objectMapper.writeValueAsString(buildPayload())))
+                .andExpect(status().isOk())
+                .andExpect(content().string(""));
+
+        verify(agentRuntimeService, never()).startReviewRun(anyString(), any(GitHubEventServiceRequest.class));
+        verify(openAiService, never()).generateReview(any(GitHubEventServiceRequest.class));
+        verify(gitHubCommentService, never()).comment(any(Review.class), any(GitHubEventServiceRequest.class));
     }
 
     private Map<String, Object> buildPayload() {
