@@ -71,7 +71,9 @@ description: Use when executing a meaningful Agile Runner task under this reposi
 - 테스트 통과
 - Issue 연결 상태
 - 필요한 artifact 존재 여부
-- `/webhook/github` 흐름, controller orchestration, `agent-runtime` 저장 또는 runtime failure handling을 변경한 task면 실제 애플리케이션 기동, H2 file DB 생성, representative runtime 적재 확인
+- `/webhook/github` 흐름, controller orchestration, `agent-runtime` 저장 또는 runtime failure handling을 변경한 task면 실제 애플리케이션 기동, H2 file DB 생성, 실제 앱/H2 대표 검증 확인
+- 실제 앱/H2 대표 검증에 사용하는 `delivery_id`는 이전 검증과 겹치지 않는 새 값으로 정하고, 기존 local H2 row와 충돌하지 않게 관리
+- 실제 앱/H2 대표 검증이 실패하면 schema 또는 runtime failure로 단정하기 전에 `delivery_id` 재사용 충돌 여부를 먼저 확인
 - 실제 애플리케이션 검증이 불가하면 retrospective에 사유와 남은 위험 기록
 - 위 항목이 모두 맞으면 task 완료로 본다.
 
@@ -80,6 +82,7 @@ description: Use when executing a meaningful Agile Runner task under this reposi
 - 필요하면 `AGENTS` 또는 `WORKFLOW` 수정 제안서를 만든다.
 - retrospective와 수정 제안서도 3개 서브에이전트 리뷰를 돌리고 모두 `PASS`가 될 때까지 반복한다.
 - 그 다음에는 구현을 이어가지 말고, 수집된 메타 데이터와 proposal 후보를 사용자에게 먼저 보고한다.
+- 실제 앱/H2 대표 검증을 수행한 retrospective에는 실제 사용한 `delivery_id`와 `execution_key`를 함께 남긴다.
 - 사용자가 proposal 처리 방향을 정하면 그때 승인 반영 또는 보류 상태 정리를 수행한다.
 - 현재 spec의 마지막 task라면 task retrospective 이후 `SPEC-xxxx-summary.md`까지 작성하고 `registry.json`을 갱신한다.
 - outer loop 처리까지 끝난 뒤에만 다음 task로 넘어간다.

@@ -40,7 +40,9 @@
 - `Tester` 2차 단계에서는 task 관련 targeted test를 확인한 뒤, 가능하면 저장소 표준 전체 테스트 실행 명령까지 확인한다.
 - 저장소 표준 전체 테스트 실행을 생략하면 생략 사유를 retrospective에 남긴다.
 - 실패 시 작업은 `Constructor`로 되돌리고, 수정 후 다시 검증한다.
-- `/webhook/github` 흐름, controller orchestration, `agent-runtime` 저장 또는 runtime failure handling을 변경한 task는 `Orchestrator` 종료 판정 전 실제 애플리케이션 기동과 H2 file DB 생성, representative runtime 적재를 확인한다.
+- `/webhook/github` 흐름, controller orchestration, `agent-runtime` 저장 또는 runtime failure handling을 변경한 task는 `Orchestrator` 종료 판정 전 실제 애플리케이션 기동과 H2 file DB 생성, 실제 앱/H2 대표 검증을 확인한다.
+- 실제 앱/H2 대표 검증에 사용하는 `delivery_id`는 이전 검증과 겹치지 않는 새 값으로 정하고, 기존 local H2 row와 충돌하지 않게 관리한다.
+- 실제 앱/H2 대표 검증이 실패하면 schema 또는 runtime failure로 단정하기 전에 `delivery_id` 재사용 충돌 여부를 먼저 확인한다.
 - 실제 애플리케이션 검증이 불가하면 사유와 남은 위험을 retrospective에 남긴다.
 - `Orchestrator`는 테스트 근거, AGENTS 체크 결과, artifact 연결이 모두 충족될 때만 task 완료를 선언한다.
 
@@ -51,6 +53,7 @@
 - 현재 활성 `Spec`의 마지막 `Task`가 끝나면, 다음 `Spec`으로 넘어가기 전에 `SPEC-xxxx-summary.md`를 작성하고 `registry.json`의 `latest.spec_summary_path`를 갱신한다.
 - 개발 피드백 루프 초안이 만들어지면, 다음 `Task`를 제안하기 전에 지금이 개발 피드백 루프 차례라는 점을 명시하고 수집된 메타 데이터를 먼저 보고한다.
 - 메타 데이터 보고에는 최소한 linked Issue 상태, retrospective 경로, proposal 경로, targeted/full test 결과, 실제 앱/H2/runtime 검증 결과, representative delivery 또는 execution 근거가 포함돼야 한다.
+- 실제 앱/H2 대표 검증을 수행한 retrospective에는 실제 사용한 `delivery_id`와 `execution_key`를 함께 남긴다.
 - proposal이 생기면 사용자에게 채택/보류/반려 판단을 먼저 받고, 그 결정이 끝나기 전까지 다음 `Task`를 제안하지 않는다.
 - retrospective에는 task 요약, 실패 요약, root cause, 근거 artifact, AGENTS 위반/보완점, 다음 task 경고사항이 포함돼야 한다.
 - 수정 제안서는 `AGENTS.md` 또는 workflow 수정 제안을 문서로 남기고, 상태는 `proposed | accepted | rejected | superseded` 중 하나로 관리한다.
