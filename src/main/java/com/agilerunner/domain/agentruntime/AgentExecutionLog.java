@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 public class AgentExecutionLog {
     private final String taskKey;
     private final Long issueNumber;
-    private final String runKey;
+    private final String executionKey;
     private final AgentRole agentRole;
     private final String stepName;
     private final AgentExecutionStatus status;
@@ -21,7 +21,7 @@ public class AgentExecutionLog {
 
     private AgentExecutionLog(String taskKey,
                               Long issueNumber,
-                              String runKey,
+                              String executionKey,
                               AgentRole agentRole,
                               String stepName,
                               AgentExecutionStatus status,
@@ -33,7 +33,7 @@ public class AgentExecutionLog {
                               LocalDateTime endedAt) {
         this.taskKey = taskKey;
         this.issueNumber = issueNumber;
-        this.runKey = runKey;
+        this.executionKey = executionKey;
         this.agentRole = agentRole;
         this.stepName = stepName;
         this.status = status;
@@ -47,7 +47,7 @@ public class AgentExecutionLog {
 
     public static AgentExecutionLog of(String taskKey,
                                        Long issueNumber,
-                                       String runKey,
+                                       String executionKey,
                                        AgentRole agentRole,
                                        String stepName,
                                        AgentExecutionStatus status,
@@ -60,7 +60,7 @@ public class AgentExecutionLog {
         return new AgentExecutionLog(
                 taskKey,
                 issueNumber,
-                runKey,
+                executionKey,
                 agentRole,
                 stepName,
                 status,

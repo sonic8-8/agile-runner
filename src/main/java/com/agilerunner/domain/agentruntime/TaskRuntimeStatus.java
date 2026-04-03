@@ -1,6 +1,6 @@
 package com.agilerunner.domain.agentruntime;
 
-public enum TaskStateStatus {
+public enum TaskRuntimeStatus {
     TODO,
     IN_PROGRESS,
     DONE,

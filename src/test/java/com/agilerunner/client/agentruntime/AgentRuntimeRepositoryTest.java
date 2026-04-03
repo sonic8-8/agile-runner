@@ -6,11 +6,11 @@ import com.agilerunner.domain.agentruntime.AgentExecutionStatus;
 import com.agilerunner.domain.agentruntime.AgentRole;
 import com.agilerunner.domain.agentruntime.CriteriaCategory;
 import com.agilerunner.domain.agentruntime.CriteriaStatus;
-import com.agilerunner.domain.agentruntime.EvaluationCriteria;
-import com.agilerunner.domain.agentruntime.ReviewRun;
-import com.agilerunner.domain.agentruntime.ReviewRunStatus;
-import com.agilerunner.domain.agentruntime.TaskState;
-import com.agilerunner.domain.agentruntime.TaskStateStatus;
+import com.agilerunner.domain.agentruntime.ValidationCriteria;
+import com.agilerunner.domain.agentruntime.WebhookExecution;
+import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
+import com.agilerunner.domain.agentruntime.TaskRuntimeState;
+import com.agilerunner.domain.agentruntime.TaskRuntimeStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -32,17 +32,17 @@ class AgentRuntimeRepositoryTest {
                     "agile-runner.agent-runtime.datasource.password="
             );
 
-    @DisplayName("task state를 저장하고 다시 조회할 수 있다.")
+    @DisplayName("task runtime state를 저장하고 다시 조회할 수 있다.")
     @Test
-    void upsertTaskState_andFind() {
+    void upsertTaskRuntimeState_andFind() {
         contextRunner.run(context -> {
             // given
             AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
-            TaskState taskState = TaskState.of(
+            TaskRuntimeState taskRuntimeState = TaskRuntimeState.of(
                     "TASK-101",
                     101L,
                     "agent runtime schema bootstrap",
-                    TaskStateStatus.IN_PROGRESS,
+                    TaskRuntimeStatus.IN_PROGRESS,
                     1,
                     AgentRole.ORCHESTRATOR,
                     LocalDateTime.of(2026, 4, 2, 12, 0),
@@ -50,33 +50,33 @@ class AgentRuntimeRepositoryTest {
             );
 
             // when
-            repository.upsertTaskState(taskState);
-            Optional<TaskState> found = repository.findTaskState("TASK-101");
+            repository.upsertTaskRuntimeState(taskRuntimeState);
+            Optional<TaskRuntimeState> found = repository.findTaskRuntimeState("TASK-101");
 
             // then
             assertThat(found).isPresent();
             assertThat(found.get().getIssueNumber()).isEqualTo(101L);
-            assertThat(found.get().getStatus()).isEqualTo(TaskStateStatus.IN_PROGRESS);
+            assertThat(found.get().getStatus()).isEqualTo(TaskRuntimeStatus.IN_PROGRESS);
             assertThat(found.get().getOwnerRole()).isEqualTo(AgentRole.ORCHESTRATOR);
         });
     }
 
-    @DisplayName("evaluation criteria를 교체 저장하고 다시 조회할 수 있다.")
+    @DisplayName("validation criteria를 교체 저장하고 다시 조회할 수 있다.")
     @Test
-    void replaceEvaluationCriteria_andFind() {
+    void replaceValidationCriteria_andFind() {
         contextRunner.run(context -> {
             // given
             AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
-            List<EvaluationCriteria> criteria = List.of(
-                    EvaluationCriteria.of(
+            List<ValidationCriteria> criteria = List.of(
+                    ValidationCriteria.of(
                             "TASK-102",
                             "C1",
                             CriteriaCategory.REQUIRED,
-                            "task state가 저장된다.",
+                            "task runtime state가 저장된다.",
                             CriteriaStatus.PENDING,
                             null
                     ),
-                    EvaluationCriteria.of(
+                    ValidationCriteria.of(
                             "TASK-102",
                             "O1",
                             CriteriaCategory.OPTIONAL,
@@ -87,8 +87,8 @@ class AgentRuntimeRepositoryTest {
             );
 
             // when
-            repository.replaceEvaluationCriteria("TASK-102", criteria);
-            List<EvaluationCriteria> found = repository.findEvaluationCriteria("TASK-102");
+            repository.replaceValidationCriteria("TASK-102", criteria);
+            List<ValidationCriteria> found = repository.findValidationCriteria("TASK-102");
 
             // then
             assertThat(found).hasSize(2);
@@ -106,7 +106,7 @@ class AgentRuntimeRepositoryTest {
             AgentExecutionLog executionLog = AgentExecutionLog.of(
                     "TASK-103",
                     103L,
-                    "RUN-103",
+                    "EXECUTION-103",
                     AgentRole.TESTER,
                     "acceptance-test",
                     AgentExecutionStatus.FAILED,
@@ -124,21 +124,21 @@ class AgentRuntimeRepositoryTest {
 
             // then
             assertThat(found).hasSize(1);
-            assertThat(found.getFirst().getRunKey()).isEqualTo("RUN-103");
+            assertThat(found.getFirst().getExecutionKey()).isEqualTo("EXECUTION-103");
             assertThat(found.getFirst().getAgentRole()).isEqualTo(AgentRole.TESTER);
             assertThat(found.getFirst().getStatus()).isEqualTo(AgentExecutionStatus.FAILED);
             assertThat(found.getFirst().getPayloadJson()).isEqualTo("{\"failed\":2}");
         });
     }
 
-    @DisplayName("review run을 저장하고 다시 조회할 수 있다.")
+    @DisplayName("webhook execution을 저장하고 다시 조회할 수 있다.")
     @Test
-    void upsertReviewRun_andFind() {
+    void upsertWebhookExecution_andFind() {
         contextRunner.run(context -> {
             // given
             AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
-            ReviewRun reviewRun = ReviewRun.start(
-                    "RUN-201",
+            WebhookExecution webhookExecution = WebhookExecution.start(
+                    "EXECUTION:201",
                     "TASK-201",
                     "delivery-201",
                     "sonic8-8/agile-runner",
@@ -147,20 +147,20 @@ class AgentRuntimeRepositoryTest {
                     "synchronize",
                     LocalDateTime.of(2026, 4, 2, 14, 0)
             ).complete(
-                    ReviewRunStatus.SUCCEEDED,
+                    WebhookExecutionStatus.SUCCEEDED,
                     null,
                     LocalDateTime.of(2026, 4, 2, 14, 3)
             );
 
             // when
-            repository.upsertReviewRun(reviewRun);
-            Optional<ReviewRun> found = repository.findReviewRun("RUN-201");
+            repository.upsertWebhookExecution(webhookExecution);
+            Optional<WebhookExecution> found = repository.findWebhookExecution("EXECUTION:201");
 
             // then
             assertThat(found).isPresent();
             assertThat(found.get().getTaskKey()).isEqualTo("TASK-201");
             assertThat(found.get().getDeliveryId()).isEqualTo("delivery-201");
-            assertThat(found.get().getStatus()).isEqualTo(ReviewRunStatus.SUCCEEDED);
+            assertThat(found.get().getStatus()).isEqualTo(WebhookExecutionStatus.SUCCEEDED);
         });
     }
 }

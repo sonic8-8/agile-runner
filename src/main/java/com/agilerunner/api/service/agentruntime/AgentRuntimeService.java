@@ -9,11 +9,11 @@ import com.agilerunner.domain.agentruntime.AgentExecutionStatus;
 import com.agilerunner.domain.agentruntime.AgentRole;
 import com.agilerunner.domain.agentruntime.CriteriaCategory;
 import com.agilerunner.domain.agentruntime.CriteriaStatus;
-import com.agilerunner.domain.agentruntime.EvaluationCriteria;
-import com.agilerunner.domain.agentruntime.ReviewRun;
-import com.agilerunner.domain.agentruntime.ReviewRunStatus;
-import com.agilerunner.domain.agentruntime.TaskState;
-import com.agilerunner.domain.agentruntime.TaskStateStatus;
+import com.agilerunner.domain.agentruntime.ValidationCriteria;
+import com.agilerunner.domain.agentruntime.WebhookExecution;
+import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
+import com.agilerunner.domain.agentruntime.TaskRuntimeState;
+import com.agilerunner.domain.agentruntime.TaskRuntimeStatus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,16 +46,16 @@ public class AgentRuntimeService {
         this.objectMapper = objectMapper;
     }
 
-    public ReviewRun startReviewRun(String deliveryId, GitHubEventServiceRequest request) {
+    public WebhookExecution startWebhookExecution(String deliveryId, GitHubEventServiceRequest request) {
         LocalDateTime now = LocalDateTime.now();
         String repositoryName = request.getRepositoryName();
         int pullRequestNumber = request.getPullRequestNumber();
         long issueNumber = pullRequestNumber;
         String taskKey = buildTaskKey(repositoryName, pullRequestNumber);
-        String runKey = buildRunKey(deliveryId);
+        String executionKey = buildExecutionKey(deliveryId);
 
-        ReviewRun reviewRun = ReviewRun.start(
-                runKey,
+        WebhookExecution webhookExecution = WebhookExecution.start(
+                executionKey,
                 taskKey,
                 deliveryId,
                 repositoryName,
@@ -66,23 +66,23 @@ public class AgentRuntimeService {
         );
 
         if (!isEnabled()) {
-            return reviewRun;
+            return webhookExecution;
         }
 
-        TaskState existingTaskState = agentRuntimeRepository.findTaskState(taskKey).orElse(null);
-        TaskState taskState = TaskState.of(
+        TaskRuntimeState existingTaskRuntimeState = agentRuntimeRepository.findTaskRuntimeState(taskKey).orElse(null);
+        TaskRuntimeState taskRuntimeState = TaskRuntimeState.of(
                 taskKey,
                 issueNumber,
                 buildTaskTitle(repositoryName, pullRequestNumber),
-                TaskStateStatus.IN_PROGRESS,
-                getNextRetryCount(existingTaskState),
+                TaskRuntimeStatus.IN_PROGRESS,
+                getNextRetryCount(existingTaskRuntimeState),
                 AgentRole.ORCHESTRATOR,
-                getStartedAt(existingTaskState, now),
+                getStartedAt(existingTaskRuntimeState, now),
                 null
         );
 
-        agentRuntimeRepository.upsertTaskState(taskState);
-        agentRuntimeRepository.replaceEvaluationCriteria(
+        agentRuntimeRepository.upsertTaskRuntimeState(taskRuntimeState);
+        agentRuntimeRepository.replaceValidationCriteria(
                 taskKey,
                 buildCriteria(
                         taskKey,
@@ -94,17 +94,17 @@ public class AgentRuntimeService {
                         null
                 )
         );
-        agentRuntimeRepository.upsertReviewRun(reviewRun);
+        agentRuntimeRepository.upsertWebhookExecution(webhookExecution);
         agentRuntimeRepository.appendExecutionLog(
                 AgentExecutionLog.of(
                         taskKey,
                         issueNumber,
-                        runKey,
+                        executionKey,
                         AgentRole.ORCHESTRATOR,
                         STEP_WEBHOOK_ACCEPTED,
                         AgentExecutionStatus.SUCCEEDED,
                         "GitHub pull_request webhook accepted",
-                        "task and review run initialized",
+                        "task and webhook execution initialized",
                         null,
                         toJson(buildWebhookSnapshot(deliveryId, request)),
                         now,
@@ -112,21 +112,21 @@ public class AgentRuntimeService {
                 )
         );
 
-        return reviewRun;
+        return webhookExecution;
     }
 
-    public void recordReviewGenerated(ReviewRun reviewRun, Review review) {
+    public void recordReviewGenerated(WebhookExecution webhookExecution, Review review) {
         if (!isEnabled()) {
             return;
         }
 
         LocalDateTime now = LocalDateTime.now();
-        long issueNumber = reviewRun.getPullRequestNumber();
+        long issueNumber = webhookExecution.getPullRequestNumber();
 
-        agentRuntimeRepository.replaceEvaluationCriteria(
-                reviewRun.getTaskKey(),
+        agentRuntimeRepository.replaceValidationCriteria(
+                webhookExecution.getTaskKey(),
                 buildCriteria(
-                        reviewRun.getTaskKey(),
+                        webhookExecution.getTaskKey(),
                         CriteriaStatus.PASSED,
                         CriteriaStatus.PASSED,
                         CriteriaStatus.PENDING,
@@ -137,9 +137,9 @@ public class AgentRuntimeService {
         );
         agentRuntimeRepository.appendExecutionLog(
                 AgentExecutionLog.of(
-                        reviewRun.getTaskKey(),
+                        webhookExecution.getTaskKey(),
                         issueNumber,
-                        reviewRun.getRunKey(),
+                        webhookExecution.getExecutionKey(),
                         AgentRole.ORCHESTRATOR,
                         STEP_REVIEW_GENERATED,
                         AgentExecutionStatus.SUCCEEDED,
@@ -153,20 +153,20 @@ public class AgentRuntimeService {
         );
     }
 
-    public void recordCommentPosted(ReviewRun reviewRun, GitHubCommentResponse response) {
+    public void recordCommentPosted(WebhookExecution webhookExecution, GitHubCommentResponse response) {
         if (!isEnabled()) {
             return;
         }
 
         LocalDateTime now = LocalDateTime.now();
-        long issueNumber = reviewRun.getPullRequestNumber();
-        TaskState existingTaskState = agentRuntimeRepository.findTaskState(reviewRun.getTaskKey()).orElse(null);
-        ReviewRun completedRun = reviewRun.complete(ReviewRunStatus.SUCCEEDED, null, now);
+        long issueNumber = webhookExecution.getPullRequestNumber();
+        TaskRuntimeState existingTaskRuntimeState = agentRuntimeRepository.findTaskRuntimeState(webhookExecution.getTaskKey()).orElse(null);
+        WebhookExecution completedWebhookExecution = webhookExecution.complete(WebhookExecutionStatus.SUCCEEDED, null, now);
 
-        agentRuntimeRepository.replaceEvaluationCriteria(
-                reviewRun.getTaskKey(),
+        agentRuntimeRepository.replaceValidationCriteria(
+                webhookExecution.getTaskKey(),
                 buildCriteria(
-                        reviewRun.getTaskKey(),
+                        webhookExecution.getTaskKey(),
                         CriteriaStatus.PASSED,
                         CriteriaStatus.PASSED,
                         CriteriaStatus.PASSED,
@@ -175,24 +175,24 @@ public class AgentRuntimeService {
                         buildCommentEvidence(response)
                 )
         );
-        agentRuntimeRepository.upsertReviewRun(completedRun);
-        agentRuntimeRepository.upsertTaskState(
-                TaskState.of(
-                        reviewRun.getTaskKey(),
+        agentRuntimeRepository.upsertWebhookExecution(completedWebhookExecution);
+        agentRuntimeRepository.upsertTaskRuntimeState(
+                TaskRuntimeState.of(
+                        webhookExecution.getTaskKey(),
                         issueNumber,
-                        buildTaskTitle(reviewRun.getRepositoryName(), reviewRun.getPullRequestNumber()),
-                        TaskStateStatus.DONE,
-                        getCurrentRetryCount(existingTaskState),
+                        buildTaskTitle(webhookExecution.getRepositoryName(), webhookExecution.getPullRequestNumber()),
+                        TaskRuntimeStatus.DONE,
+                        getCurrentRetryCount(existingTaskRuntimeState),
                         AgentRole.ORCHESTRATOR,
-                        getStartedAt(existingTaskState, reviewRun.getStartedAt()),
+                        getStartedAt(existingTaskRuntimeState, webhookExecution.getStartedAt()),
                         now
                 )
         );
         agentRuntimeRepository.appendExecutionLog(
                 AgentExecutionLog.of(
-                        reviewRun.getTaskKey(),
+                        webhookExecution.getTaskKey(),
                         issueNumber,
-                        reviewRun.getRunKey(),
+                        webhookExecution.getExecutionKey(),
                         AgentRole.ORCHESTRATOR,
                         STEP_COMMENT_POSTED,
                         AgentExecutionStatus.SUCCEEDED,
@@ -206,20 +206,20 @@ public class AgentRuntimeService {
         );
     }
 
-    public void recordFailure(ReviewRun reviewRun, String stepName, Exception exception) {
+    public void recordFailure(WebhookExecution webhookExecution, String stepName, Exception exception) {
         if (!isEnabled()) {
             return;
         }
 
         LocalDateTime now = LocalDateTime.now();
-        long issueNumber = reviewRun.getPullRequestNumber();
-        TaskState existingTaskState = agentRuntimeRepository.findTaskState(reviewRun.getTaskKey()).orElse(null);
-        ReviewRun failedRun = reviewRun.complete(ReviewRunStatus.FAILED, exception.getMessage(), now);
+        long issueNumber = webhookExecution.getPullRequestNumber();
+        TaskRuntimeState existingTaskRuntimeState = agentRuntimeRepository.findTaskRuntimeState(webhookExecution.getTaskKey()).orElse(null);
+        WebhookExecution failedWebhookExecution = webhookExecution.complete(WebhookExecutionStatus.FAILED, exception.getMessage(), now);
 
-        agentRuntimeRepository.replaceEvaluationCriteria(
-                reviewRun.getTaskKey(),
+        agentRuntimeRepository.replaceValidationCriteria(
+                webhookExecution.getTaskKey(),
                 buildCriteria(
-                        reviewRun.getTaskKey(),
+                        webhookExecution.getTaskKey(),
                         CriteriaStatus.PASSED,
                         resolveReviewCriteriaStatus(stepName),
                         resolveCommentCriteriaStatus(stepName),
@@ -228,24 +228,24 @@ public class AgentRuntimeService {
                         resolveCommentEvidence(stepName, exception)
                 )
         );
-        agentRuntimeRepository.upsertReviewRun(failedRun);
-        agentRuntimeRepository.upsertTaskState(
-                TaskState.of(
-                        reviewRun.getTaskKey(),
+        agentRuntimeRepository.upsertWebhookExecution(failedWebhookExecution);
+        agentRuntimeRepository.upsertTaskRuntimeState(
+                TaskRuntimeState.of(
+                        webhookExecution.getTaskKey(),
                         issueNumber,
-                        buildTaskTitle(reviewRun.getRepositoryName(), reviewRun.getPullRequestNumber()),
-                        TaskStateStatus.FAILED,
-                        getCurrentRetryCount(existingTaskState),
+                        buildTaskTitle(webhookExecution.getRepositoryName(), webhookExecution.getPullRequestNumber()),
+                        TaskRuntimeStatus.FAILED,
+                        getCurrentRetryCount(existingTaskRuntimeState),
                         AgentRole.ORCHESTRATOR,
-                        getStartedAt(existingTaskState, reviewRun.getStartedAt()),
+                        getStartedAt(existingTaskRuntimeState, webhookExecution.getStartedAt()),
                         now
                 )
         );
         agentRuntimeRepository.appendExecutionLog(
                 AgentExecutionLog.of(
-                        reviewRun.getTaskKey(),
+                        webhookExecution.getTaskKey(),
                         issueNumber,
-                        reviewRun.getRunKey(),
+                        webhookExecution.getExecutionKey(),
                         AgentRole.ORCHESTRATOR,
                         stepName,
                         AgentExecutionStatus.FAILED,
@@ -263,39 +263,39 @@ public class AgentRuntimeService {
         return agentRuntimeRepository != null;
     }
 
-    private int getNextRetryCount(@Nullable TaskState existingTaskState) {
-        if (existingTaskState == null) {
+    private int getNextRetryCount(@Nullable TaskRuntimeState existingTaskRuntimeState) {
+        if (existingTaskRuntimeState == null) {
             return 0;
         }
 
-        return existingTaskState.getRetryCount() + 1;
+        return existingTaskRuntimeState.getRetryCount() + 1;
     }
 
-    private int getCurrentRetryCount(@Nullable TaskState existingTaskState) {
-        if (existingTaskState == null) {
+    private int getCurrentRetryCount(@Nullable TaskRuntimeState existingTaskRuntimeState) {
+        if (existingTaskRuntimeState == null) {
             return 0;
         }
 
-        return existingTaskState.getRetryCount();
+        return existingTaskRuntimeState.getRetryCount();
     }
 
-    private LocalDateTime getStartedAt(@Nullable TaskState existingTaskState, LocalDateTime fallback) {
-        if (existingTaskState == null || existingTaskState.getStartedAt() == null) {
+    private LocalDateTime getStartedAt(@Nullable TaskRuntimeState existingTaskRuntimeState, LocalDateTime fallback) {
+        if (existingTaskRuntimeState == null || existingTaskRuntimeState.getStartedAt() == null) {
             return fallback;
         }
 
-        return existingTaskState.getStartedAt();
+        return existingTaskRuntimeState.getStartedAt();
     }
 
-    private List<EvaluationCriteria> buildCriteria(String taskKey,
+    private List<ValidationCriteria> buildCriteria(String taskKey,
                                                    CriteriaStatus payloadAcceptedStatus,
                                                    CriteriaStatus reviewGeneratedStatus,
                                                    CriteriaStatus commentPostedStatus,
                                                    String payloadEvidence,
                                                    String reviewEvidence,
                                                    String commentEvidence) {
-        List<EvaluationCriteria> criteria = new ArrayList<>();
-        criteria.add(EvaluationCriteria.of(
+        List<ValidationCriteria> validationCriteria = new ArrayList<>();
+        validationCriteria.add(ValidationCriteria.of(
                 taskKey,
                 CRITERIA_PAYLOAD_ACCEPTED,
                 CriteriaCategory.REQUIRED,
@@ -303,7 +303,7 @@ public class AgentRuntimeService {
                 payloadAcceptedStatus,
                 payloadEvidence
         ));
-        criteria.add(EvaluationCriteria.of(
+        validationCriteria.add(ValidationCriteria.of(
                 taskKey,
                 CRITERIA_REVIEW_GENERATED,
                 CriteriaCategory.REQUIRED,
@@ -311,7 +311,7 @@ public class AgentRuntimeService {
                 reviewGeneratedStatus,
                 reviewEvidence
         ));
-        criteria.add(EvaluationCriteria.of(
+        validationCriteria.add(ValidationCriteria.of(
                 taskKey,
                 CRITERIA_COMMENT_POSTED,
                 CriteriaCategory.REQUIRED,
@@ -319,7 +319,7 @@ public class AgentRuntimeService {
                 commentPostedStatus,
                 commentEvidence
         ));
-        return criteria;
+        return validationCriteria;
     }
 
     private CriteriaStatus resolveReviewCriteriaStatus(String stepName) {
@@ -358,8 +358,8 @@ public class AgentRuntimeService {
         return "PR_REVIEW:" + repositoryName.replace("/", ":") + "#" + pullRequestNumber;
     }
 
-    private String buildRunKey(String deliveryId) {
-        return "RUN:" + deliveryId;
+    private String buildExecutionKey(String deliveryId) {
+        return "EXECUTION:" + deliveryId;
     }
 
     private String buildTaskTitle(String repositoryName, int pullRequestNumber) {

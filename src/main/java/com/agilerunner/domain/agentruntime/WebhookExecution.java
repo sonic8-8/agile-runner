@@ -5,31 +5,31 @@ import lombok.Getter;
 import java.time.LocalDateTime;
 
 @Getter
-public class ReviewRun {
-    private final String runKey;
+public class WebhookExecution {
+    private final String executionKey;
     private final String taskKey;
     private final String deliveryId;
     private final String repositoryName;
     private final int pullRequestNumber;
     private final String eventType;
     private final String action;
-    private final ReviewRunStatus status;
+    private final WebhookExecutionStatus status;
     private final String errorMessage;
     private final LocalDateTime startedAt;
     private final LocalDateTime finishedAt;
 
-    private ReviewRun(String runKey,
+    private WebhookExecution(String executionKey,
                       String taskKey,
                       String deliveryId,
                       String repositoryName,
                       int pullRequestNumber,
                       String eventType,
                       String action,
-                      ReviewRunStatus status,
+                      WebhookExecutionStatus status,
                       String errorMessage,
                       LocalDateTime startedAt,
                       LocalDateTime finishedAt) {
-        this.runKey = runKey;
+        this.executionKey = executionKey;
         this.taskKey = taskKey;
         this.deliveryId = deliveryId;
         this.repositoryName = repositoryName;
@@ -42,7 +42,7 @@ public class ReviewRun {
         this.finishedAt = finishedAt;
     }
 
-    public static ReviewRun start(String runKey,
+    public static WebhookExecution start(String executionKey,
                                   String taskKey,
                                   String deliveryId,
                                   String repositoryName,
@@ -50,24 +50,24 @@ public class ReviewRun {
                                   String eventType,
                                   String action,
                                   LocalDateTime startedAt) {
-        return new ReviewRun(
-                runKey,
+        return new WebhookExecution(
+                executionKey,
                 taskKey,
                 deliveryId,
                 repositoryName,
                 pullRequestNumber,
                 eventType,
                 action,
-                ReviewRunStatus.STARTED,
+                WebhookExecutionStatus.STARTED,
                 null,
                 startedAt,
                 null
         );
     }
 
-    public ReviewRun complete(ReviewRunStatus status, String errorMessage, LocalDateTime finishedAt) {
-        return new ReviewRun(
-                runKey,
+    public WebhookExecution complete(WebhookExecutionStatus status, String errorMessage, LocalDateTime finishedAt) {
+        return new WebhookExecution(
+                executionKey,
                 taskKey,
                 deliveryId,
                 repositoryName,

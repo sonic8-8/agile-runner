@@ -1,6 +1,6 @@
 package com.agilerunner.domain.agentruntime;
 
-public enum ReviewRunStatus {
+public enum WebhookExecutionStatus {
     STARTED,
     SUCCEEDED,
     FAILED

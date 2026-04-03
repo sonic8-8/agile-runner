@@ -5,11 +5,11 @@ import com.agilerunner.domain.agentruntime.AgentExecutionStatus;
 import com.agilerunner.domain.agentruntime.AgentRole;
 import com.agilerunner.domain.agentruntime.CriteriaCategory;
 import com.agilerunner.domain.agentruntime.CriteriaStatus;
-import com.agilerunner.domain.agentruntime.EvaluationCriteria;
-import com.agilerunner.domain.agentruntime.ReviewRun;
-import com.agilerunner.domain.agentruntime.ReviewRunStatus;
-import com.agilerunner.domain.agentruntime.TaskState;
-import com.agilerunner.domain.agentruntime.TaskStateStatus;
+import com.agilerunner.domain.agentruntime.ValidationCriteria;
+import com.agilerunner.domain.agentruntime.WebhookExecution;
+import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
+import com.agilerunner.domain.agentruntime.TaskRuntimeState;
+import com.agilerunner.domain.agentruntime.TaskRuntimeStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -26,7 +26,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "agile-runner.agent-runtime", name = "enabled", havingValue = "true")
 public class AgentRuntimeRepository {
-    private static final String UPSERT_TASK_STATE = """
+    private static final String UPSERT_TASK_RUNTIME_STATE_SQL = """
             MERGE INTO TASK_STATE (
                 task_key,
                 issue_number,
@@ -50,16 +50,16 @@ public class AgentRuntimeRepository {
                 CURRENT_TIMESTAMP
             )
             """;
-    private static final String FIND_TASK_STATE = """
+    private static final String FIND_TASK_RUNTIME_STATE_SQL = """
             SELECT task_key, issue_number, title, status, retry_count, owner_role, started_at, finished_at
             FROM TASK_STATE
             WHERE task_key = :taskKey
             """;
-    private static final String DELETE_EVALUATION_CRITERIA = """
+    private static final String DELETE_VALIDATION_CRITERIA_SQL = """
             DELETE FROM EVALUATION_CRITERIA
             WHERE task_key = :taskKey
             """;
-    private static final String INSERT_EVALUATION_CRITERIA = """
+    private static final String INSERT_VALIDATION_CRITERIA_SQL = """
             INSERT INTO EVALUATION_CRITERIA (
                 task_key,
                 criteria_key,
@@ -78,13 +78,13 @@ public class AgentRuntimeRepository {
                 CURRENT_TIMESTAMP
             )
             """;
-    private static final String FIND_EVALUATION_CRITERIA = """
+    private static final String FIND_VALIDATION_CRITERIA_SQL = """
             SELECT task_key, criteria_key, category, description, status, evidence
             FROM EVALUATION_CRITERIA
             WHERE task_key = :taskKey
             ORDER BY id ASC
             """;
-    private static final String UPSERT_REVIEW_RUN = """
+    private static final String UPSERT_WEBHOOK_EXECUTION_SQL = """
             MERGE INTO REVIEW_RUN (
                 run_key,
                 task_key,
@@ -100,7 +100,7 @@ public class AgentRuntimeRepository {
                 updated_at
             ) KEY (run_key)
             VALUES (
-                :runKey,
+                :executionKey,
                 :taskKey,
                 :deliveryId,
                 :repositoryName,
@@ -114,12 +114,12 @@ public class AgentRuntimeRepository {
                 CURRENT_TIMESTAMP
             )
             """;
-    private static final String FIND_REVIEW_RUN = """
+    private static final String FIND_WEBHOOK_EXECUTION_SQL = """
             SELECT run_key, task_key, delivery_id, repository_name, pull_request_number, event_type, action, status, error_message, started_at, finished_at
             FROM REVIEW_RUN
-            WHERE run_key = :runKey
+            WHERE run_key = :executionKey
             """;
-    private static final String INSERT_AGENT_EXECUTION_LOG = """
+    private static final String INSERT_AGENT_EXECUTION_LOG_SQL = """
             INSERT INTO AGENT_EXECUTION_LOG (
                 task_key,
                 issue_number,
@@ -136,7 +136,7 @@ public class AgentRuntimeRepository {
             ) VALUES (
                 :taskKey,
                 :issueNumber,
-                :runKey,
+                :executionKey,
                 :agentRole,
                 :stepName,
                 :status,
@@ -148,7 +148,7 @@ public class AgentRuntimeRepository {
                 :endedAt
             )
             """;
-    private static final String FIND_AGENT_EXECUTION_LOGS = """
+    private static final String FIND_AGENT_EXECUTION_LOGS_SQL = """
             SELECT task_key, issue_number, run_key, agent_role, step_name, status, input_summary, output_summary, error_message, payload_json, started_at, ended_at
             FROM AGENT_EXECUTION_LOG
             WHERE task_key = :taskKey
@@ -157,121 +157,121 @@ public class AgentRuntimeRepository {
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-    public void upsertTaskState(TaskState taskState) {
-        namedParameterJdbcTemplate.update(UPSERT_TASK_STATE, toTaskStateParameters(taskState));
+    public void upsertTaskRuntimeState(TaskRuntimeState taskRuntimeState) {
+        namedParameterJdbcTemplate.update(UPSERT_TASK_RUNTIME_STATE_SQL, toTaskRuntimeStateParameters(taskRuntimeState));
     }
 
-    public Optional<TaskState> findTaskState(String taskKey) {
-        List<TaskState> taskStates = namedParameterJdbcTemplate.query(
-                FIND_TASK_STATE,
+    public Optional<TaskRuntimeState> findTaskRuntimeState(String taskKey) {
+        List<TaskRuntimeState> taskRuntimeStates = namedParameterJdbcTemplate.query(
+                FIND_TASK_RUNTIME_STATE_SQL,
                 new MapSqlParameterSource("taskKey", taskKey),
-                this::mapTaskState
+                this::mapTaskRuntimeState
         );
 
-        if (taskStates.isEmpty()) {
+        if (taskRuntimeStates.isEmpty()) {
             return Optional.empty();
         }
 
-        return Optional.of(taskStates.getFirst());
+        return Optional.of(taskRuntimeStates.getFirst());
     }
 
-    public void replaceEvaluationCriteria(String taskKey, List<EvaluationCriteria> evaluationCriteria) {
+    public void replaceValidationCriteria(String taskKey, List<ValidationCriteria> validationCriteria) {
         namedParameterJdbcTemplate.update(
-                DELETE_EVALUATION_CRITERIA,
+                DELETE_VALIDATION_CRITERIA_SQL,
                 new MapSqlParameterSource("taskKey", taskKey)
         );
 
-        if (evaluationCriteria.isEmpty()) {
+        if (validationCriteria.isEmpty()) {
             return;
         }
 
-        MapSqlParameterSource[] batchParameters = evaluationCriteria.stream()
-                .map(this::toEvaluationCriteriaParameters)
+        MapSqlParameterSource[] batchParameters = validationCriteria.stream()
+                .map(this::toValidationCriteriaParameters)
                 .toArray(MapSqlParameterSource[]::new);
 
-        namedParameterJdbcTemplate.batchUpdate(INSERT_EVALUATION_CRITERIA, batchParameters);
+        namedParameterJdbcTemplate.batchUpdate(INSERT_VALIDATION_CRITERIA_SQL, batchParameters);
     }
 
-    public List<EvaluationCriteria> findEvaluationCriteria(String taskKey) {
+    public List<ValidationCriteria> findValidationCriteria(String taskKey) {
         return namedParameterJdbcTemplate.query(
-                FIND_EVALUATION_CRITERIA,
+                FIND_VALIDATION_CRITERIA_SQL,
                 new MapSqlParameterSource("taskKey", taskKey),
-                this::mapEvaluationCriteria
+                this::mapValidationCriteria
         );
     }
 
-    public void upsertReviewRun(ReviewRun reviewRun) {
-        namedParameterJdbcTemplate.update(UPSERT_REVIEW_RUN, toReviewRunParameters(reviewRun));
+    public void upsertWebhookExecution(WebhookExecution webhookExecution) {
+        namedParameterJdbcTemplate.update(UPSERT_WEBHOOK_EXECUTION_SQL, toWebhookExecutionParameters(webhookExecution));
     }
 
-    public Optional<ReviewRun> findReviewRun(String runKey) {
-        List<ReviewRun> reviewRuns = namedParameterJdbcTemplate.query(
-                FIND_REVIEW_RUN,
-                new MapSqlParameterSource("runKey", runKey),
-                this::mapReviewRun
+    public Optional<WebhookExecution> findWebhookExecution(String executionKey) {
+        List<WebhookExecution> webhookExecutions = namedParameterJdbcTemplate.query(
+                FIND_WEBHOOK_EXECUTION_SQL,
+                new MapSqlParameterSource("executionKey", executionKey),
+                this::mapWebhookExecution
         );
 
-        if (reviewRuns.isEmpty()) {
+        if (webhookExecutions.isEmpty()) {
             return Optional.empty();
         }
 
-        return Optional.of(reviewRuns.getFirst());
+        return Optional.of(webhookExecutions.getFirst());
     }
 
     public void appendExecutionLog(AgentExecutionLog executionLog) {
-        namedParameterJdbcTemplate.update(INSERT_AGENT_EXECUTION_LOG, toExecutionLogParameters(executionLog));
+        namedParameterJdbcTemplate.update(INSERT_AGENT_EXECUTION_LOG_SQL, toExecutionLogParameters(executionLog));
     }
 
     public List<AgentExecutionLog> findExecutionLogs(String taskKey) {
         return namedParameterJdbcTemplate.query(
-                FIND_AGENT_EXECUTION_LOGS,
+                FIND_AGENT_EXECUTION_LOGS_SQL,
                 new MapSqlParameterSource("taskKey", taskKey),
                 this::mapExecutionLog
         );
     }
 
-    private MapSqlParameterSource toTaskStateParameters(TaskState taskState) {
+    private MapSqlParameterSource toTaskRuntimeStateParameters(TaskRuntimeState taskRuntimeState) {
         return new MapSqlParameterSource()
-                .addValue("taskKey", taskState.getTaskKey())
-                .addValue("issueNumber", taskState.getIssueNumber())
-                .addValue("title", taskState.getTitle())
-                .addValue("status", taskState.getStatus().name())
-                .addValue("retryCount", taskState.getRetryCount())
-                .addValue("ownerRole", getAgentRoleName(taskState.getOwnerRole()))
-                .addValue("startedAt", taskState.getStartedAt())
-                .addValue("finishedAt", taskState.getFinishedAt());
+                .addValue("taskKey", taskRuntimeState.getTaskKey())
+                .addValue("issueNumber", taskRuntimeState.getIssueNumber())
+                .addValue("title", taskRuntimeState.getTitle())
+                .addValue("status", taskRuntimeState.getStatus().name())
+                .addValue("retryCount", taskRuntimeState.getRetryCount())
+                .addValue("ownerRole", getAgentRoleName(taskRuntimeState.getOwnerRole()))
+                .addValue("startedAt", taskRuntimeState.getStartedAt())
+                .addValue("finishedAt", taskRuntimeState.getFinishedAt());
     }
 
-    private MapSqlParameterSource toEvaluationCriteriaParameters(EvaluationCriteria evaluationCriteria) {
+    private MapSqlParameterSource toValidationCriteriaParameters(ValidationCriteria validationCriteria) {
         return new MapSqlParameterSource()
-                .addValue("taskKey", evaluationCriteria.getTaskKey())
-                .addValue("criteriaKey", evaluationCriteria.getCriteriaKey())
-                .addValue("category", evaluationCriteria.getCategory().name())
-                .addValue("description", evaluationCriteria.getDescription())
-                .addValue("status", evaluationCriteria.getStatus().name())
-                .addValue("evidence", evaluationCriteria.getEvidence());
+                .addValue("taskKey", validationCriteria.getTaskKey())
+                .addValue("criteriaKey", validationCriteria.getCriteriaKey())
+                .addValue("category", validationCriteria.getCategory().name())
+                .addValue("description", validationCriteria.getDescription())
+                .addValue("status", validationCriteria.getStatus().name())
+                .addValue("evidence", validationCriteria.getEvidence());
     }
 
-    private MapSqlParameterSource toReviewRunParameters(ReviewRun reviewRun) {
+    private MapSqlParameterSource toWebhookExecutionParameters(WebhookExecution webhookExecution) {
         return new MapSqlParameterSource()
-                .addValue("runKey", reviewRun.getRunKey())
-                .addValue("taskKey", reviewRun.getTaskKey())
-                .addValue("deliveryId", reviewRun.getDeliveryId())
-                .addValue("repositoryName", reviewRun.getRepositoryName())
-                .addValue("pullRequestNumber", reviewRun.getPullRequestNumber())
-                .addValue("eventType", reviewRun.getEventType())
-                .addValue("action", reviewRun.getAction())
-                .addValue("status", reviewRun.getStatus().name())
-                .addValue("errorMessage", reviewRun.getErrorMessage())
-                .addValue("startedAt", reviewRun.getStartedAt())
-                .addValue("finishedAt", reviewRun.getFinishedAt());
+                .addValue("executionKey", webhookExecution.getExecutionKey())
+                .addValue("taskKey", webhookExecution.getTaskKey())
+                .addValue("deliveryId", webhookExecution.getDeliveryId())
+                .addValue("repositoryName", webhookExecution.getRepositoryName())
+                .addValue("pullRequestNumber", webhookExecution.getPullRequestNumber())
+                .addValue("eventType", webhookExecution.getEventType())
+                .addValue("action", webhookExecution.getAction())
+                .addValue("status", webhookExecution.getStatus().name())
+                .addValue("errorMessage", webhookExecution.getErrorMessage())
+                .addValue("startedAt", webhookExecution.getStartedAt())
+                .addValue("finishedAt", webhookExecution.getFinishedAt());
     }
 
     private MapSqlParameterSource toExecutionLogParameters(AgentExecutionLog executionLog) {
         return new MapSqlParameterSource()
                 .addValue("taskKey", executionLog.getTaskKey())
                 .addValue("issueNumber", executionLog.getIssueNumber())
-                .addValue("runKey", executionLog.getRunKey())
+                .addValue("executionKey", executionLog.getExecutionKey())
                 .addValue("agentRole", executionLog.getAgentRole().name())
                 .addValue("stepName", executionLog.getStepName())
                 .addValue("status", executionLog.getStatus().name())
@@ -283,12 +283,12 @@ public class AgentRuntimeRepository {
                 .addValue("endedAt", executionLog.getEndedAt());
     }
 
-    private TaskState mapTaskState(ResultSet resultSet, int rowNum) throws SQLException {
-        return TaskState.of(
+    private TaskRuntimeState mapTaskRuntimeState(ResultSet resultSet, int rowNum) throws SQLException {
+        return TaskRuntimeState.of(
                 resultSet.getString("task_key"),
                 getLong(resultSet, "issue_number"),
                 resultSet.getString("title"),
-                TaskStateStatus.valueOf(resultSet.getString("status")),
+                TaskRuntimeStatus.valueOf(resultSet.getString("status")),
                 resultSet.getInt("retry_count"),
                 getAgentRole(resultSet.getString("owner_role")),
                 getLocalDateTime(resultSet, "started_at"),
@@ -296,8 +296,8 @@ public class AgentRuntimeRepository {
         );
     }
 
-    private EvaluationCriteria mapEvaluationCriteria(ResultSet resultSet, int rowNum) throws SQLException {
-        return EvaluationCriteria.of(
+    private ValidationCriteria mapValidationCriteria(ResultSet resultSet, int rowNum) throws SQLException {
+        return ValidationCriteria.of(
                 resultSet.getString("task_key"),
                 resultSet.getString("criteria_key"),
                 CriteriaCategory.valueOf(resultSet.getString("category")),
@@ -307,8 +307,8 @@ public class AgentRuntimeRepository {
         );
     }
 
-    private ReviewRun mapReviewRun(ResultSet resultSet, int rowNum) throws SQLException {
-        return ReviewRun.start(
+    private WebhookExecution mapWebhookExecution(ResultSet resultSet, int rowNum) throws SQLException {
+        return WebhookExecution.start(
                 resultSet.getString("run_key"),
                 resultSet.getString("task_key"),
                 resultSet.getString("delivery_id"),
@@ -318,7 +318,7 @@ public class AgentRuntimeRepository {
                 resultSet.getString("action"),
                 getLocalDateTime(resultSet, "started_at")
         ).complete(
-                ReviewRunStatus.valueOf(resultSet.getString("status")),
+                WebhookExecutionStatus.valueOf(resultSet.getString("status")),
                 resultSet.getString("error_message"),
                 getLocalDateTime(resultSet, "finished_at")
         );

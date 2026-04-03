@@ -7,7 +7,7 @@ import com.agilerunner.api.service.dto.GitHubCommentResponse;
 import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
 import com.agilerunner.api.service.dto.PostedInlineComment;
 import com.agilerunner.domain.Review;
-import com.agilerunner.domain.agentruntime.ReviewRun;
+import com.agilerunner.domain.agentruntime.WebhookExecution;
 import com.agilerunner.util.WebhookDeliveryCache;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -68,8 +68,8 @@ class GitHubWebhookControllerTest {
         // given
         String deliveryId = "delivery-1";
         Map<String, Object> payload = buildPayload();
-        ReviewRun reviewRun = ReviewRun.start(
-                "RUN:delivery-1",
+        WebhookExecution webhookExecution = WebhookExecution.start(
+                "EXECUTION:delivery-1",
                 "PR_REVIEW:owner/repo#12",
                 deliveryId,
                 "owner/repo",
@@ -82,7 +82,7 @@ class GitHubWebhookControllerTest {
         GitHubCommentResponse response = GitHubCommentResponse.of(11L, "https://github.com/comment/11", List.of(), "ok");
 
         when(webhookDeliveryCache.isDuplicate(deliveryId)).thenReturn(false);
-        when(agentRuntimeService.startReviewRun(eq(deliveryId), any(GitHubEventServiceRequest.class))).thenReturn(reviewRun);
+        when(agentRuntimeService.startWebhookExecution(eq(deliveryId), any(GitHubEventServiceRequest.class))).thenReturn(webhookExecution);
         when(openAiService.generateReview(any(GitHubEventServiceRequest.class))).thenReturn(review);
         when(gitHubCommentService.comment(eq(review), any(GitHubEventServiceRequest.class))).thenReturn(response);
 
@@ -96,7 +96,7 @@ class GitHubWebhookControllerTest {
 
         // then
         ArgumentCaptor<GitHubEventServiceRequest> requestCaptor = ArgumentCaptor.forClass(GitHubEventServiceRequest.class);
-        verify(agentRuntimeService).startReviewRun(eq(deliveryId), requestCaptor.capture());
+        verify(agentRuntimeService).startWebhookExecution(eq(deliveryId), requestCaptor.capture());
 
         GitHubEventServiceRequest serviceRequest = requestCaptor.getValue();
         assertThat(serviceRequest.getRepositoryName()).isEqualTo("owner/repo");
@@ -111,8 +111,8 @@ class GitHubWebhookControllerTest {
         // given
         String deliveryId = "delivery-2";
         Map<String, Object> payload = buildPayload();
-        ReviewRun reviewRun = ReviewRun.start(
-                "RUN:delivery-2",
+        WebhookExecution webhookExecution = WebhookExecution.start(
+                "EXECUTION:delivery-2",
                 "PR_REVIEW:owner/repo#12",
                 deliveryId,
                 "owner/repo",
@@ -130,7 +130,7 @@ class GitHubWebhookControllerTest {
         );
 
         when(webhookDeliveryCache.isDuplicate(deliveryId)).thenReturn(false);
-        when(agentRuntimeService.startReviewRun(eq(deliveryId), any(GitHubEventServiceRequest.class))).thenReturn(reviewRun);
+        when(agentRuntimeService.startWebhookExecution(eq(deliveryId), any(GitHubEventServiceRequest.class))).thenReturn(webhookExecution);
         when(openAiService.generateReview(any(GitHubEventServiceRequest.class))).thenReturn(review);
         when(gitHubCommentService.comment(eq(review), any(GitHubEventServiceRequest.class))).thenReturn(response);
 
@@ -154,8 +154,8 @@ class GitHubWebhookControllerTest {
         // given
         String deliveryId = "delivery-3";
         Map<String, Object> payload = buildPayload();
-        ReviewRun reviewRun = ReviewRun.start(
-                "RUN:delivery-3",
+        WebhookExecution webhookExecution = WebhookExecution.start(
+                "EXECUTION:delivery-3",
                 "PR_REVIEW:owner/repo#12",
                 deliveryId,
                 "owner/repo",
@@ -173,12 +173,12 @@ class GitHubWebhookControllerTest {
         );
 
         when(webhookDeliveryCache.isDuplicate(deliveryId)).thenReturn(false);
-        when(agentRuntimeService.startReviewRun(eq(deliveryId), any(GitHubEventServiceRequest.class))).thenReturn(reviewRun);
+        when(agentRuntimeService.startWebhookExecution(eq(deliveryId), any(GitHubEventServiceRequest.class))).thenReturn(webhookExecution);
         when(openAiService.generateReview(any(GitHubEventServiceRequest.class))).thenReturn(review);
         when(gitHubCommentService.comment(eq(review), any(GitHubEventServiceRequest.class))).thenReturn(response);
         doThrow(new RuntimeException("runtime write failed"))
                 .when(agentRuntimeService)
-                .recordCommentPosted(reviewRun, response);
+                .recordCommentPosted(webhookExecution, response);
 
         // when & then
         mockMvc.perform(post("/webhook/github")
@@ -203,8 +203,8 @@ class GitHubWebhookControllerTest {
         String deliveryId = "delivery-4";
         Set<String> recordedDeliveries = new HashSet<>();
         Map<String, Object> payload = buildPayload();
-        ReviewRun reviewRun = ReviewRun.start(
-                "RUN:delivery-4",
+        WebhookExecution webhookExecution = WebhookExecution.start(
+                "EXECUTION:delivery-4",
                 "PR_REVIEW:owner/repo#12",
                 deliveryId,
                 "owner/repo",
@@ -222,12 +222,12 @@ class GitHubWebhookControllerTest {
             recordedDeliveries.add(invocation.getArgument(0));
             return null;
         }).when(webhookDeliveryCache).record(anyString());
-        when(agentRuntimeService.startReviewRun(eq(deliveryId), any(GitHubEventServiceRequest.class))).thenReturn(reviewRun);
+        when(agentRuntimeService.startWebhookExecution(eq(deliveryId), any(GitHubEventServiceRequest.class))).thenReturn(webhookExecution);
         when(openAiService.generateReview(any(GitHubEventServiceRequest.class))).thenReturn(review);
         when(gitHubCommentService.comment(eq(review), any(GitHubEventServiceRequest.class))).thenReturn(response);
         doThrow(new RuntimeException("runtime write failed"))
                 .when(agentRuntimeService)
-                .recordCommentPosted(reviewRun, response);
+                .recordCommentPosted(webhookExecution, response);
 
         // when
         mockMvc.perform(post("/webhook/github")
@@ -247,7 +247,7 @@ class GitHubWebhookControllerTest {
                 .andExpect(content().string(""));
 
         verify(gitHubCommentService, times(1)).comment(eq(review), any(GitHubEventServiceRequest.class));
-        verify(agentRuntimeService, times(1)).startReviewRun(eq(deliveryId), any(GitHubEventServiceRequest.class));
+        verify(agentRuntimeService, times(1)).startWebhookExecution(eq(deliveryId), any(GitHubEventServiceRequest.class));
     }
 
     @DisplayName("duplicate delivery는 기존처럼 조기 종료한다.")
@@ -267,7 +267,7 @@ class GitHubWebhookControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(""));
 
-        verify(agentRuntimeService, never()).startReviewRun(anyString(), any(GitHubEventServiceRequest.class));
+        verify(agentRuntimeService, never()).startWebhookExecution(anyString(), any(GitHubEventServiceRequest.class));
         verify(openAiService, never()).generateReview(any(GitHubEventServiceRequest.class));
         verify(gitHubCommentService, never()).comment(any(Review.class), any(GitHubEventServiceRequest.class));
     }
@@ -289,7 +289,7 @@ class GitHubWebhookControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(""));
 
-        verify(agentRuntimeService, never()).startReviewRun(anyString(), any(GitHubEventServiceRequest.class));
+        verify(agentRuntimeService, never()).startWebhookExecution(anyString(), any(GitHubEventServiceRequest.class));
         verify(openAiService, never()).generateReview(any(GitHubEventServiceRequest.class));
         verify(gitHubCommentService, never()).comment(any(Review.class), any(GitHubEventServiceRequest.class));
     }

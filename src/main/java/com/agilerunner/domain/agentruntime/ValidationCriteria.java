@@ -3,7 +3,7 @@ package com.agilerunner.domain.agentruntime;
 import lombok.Getter;
 
 @Getter
-public class EvaluationCriteria {
+public class ValidationCriteria {
     private final String taskKey;
     private final String criteriaKey;
     private final CriteriaCategory category;
@@ -11,7 +11,7 @@ public class EvaluationCriteria {
     private final CriteriaStatus status;
     private final String evidence;
 
-    private EvaluationCriteria(String taskKey,
+    private ValidationCriteria(String taskKey,
                                String criteriaKey,
                                CriteriaCategory category,
                                String description,
@@ -25,12 +25,12 @@ public class EvaluationCriteria {
         this.evidence = evidence;
     }
 
-    public static EvaluationCriteria of(String taskKey,
+    public static ValidationCriteria of(String taskKey,
                                         String criteriaKey,
                                         CriteriaCategory category,
                                         String description,
                                         CriteriaStatus status,
                                         String evidence) {
-        return new EvaluationCriteria(taskKey, criteriaKey, category, description, status, evidence);
+        return new ValidationCriteria(taskKey, criteriaKey, category, description, status, evidence);
     }
 }

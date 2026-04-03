@@ -91,6 +91,7 @@ webhook 계약 안전망 고정
 - `TASK-0001`에서 고정한 회귀 테스트가 계속 통과한다.
 
 ### 검증
+- `TASK-0001`에서 확인한 `GitHubWebhookControllerTest`, `GitHubCommentServiceTest`를 rename safety net으로 그대로 재사용한다.
 - rename 이후 agent-runtime 관련 unit/integration 테스트 컴파일과 실행 통과
 - `ReviewRun`, `TaskState`, `EvaluationCriteria` 계열 이름 잔존 여부 점검
 
