@@ -1,21 +1,29 @@
 package com.agilerunner.api.service;
 
+import com.agilerunner.api.service.dto.GitHubCommentResponse;
 import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
 import com.agilerunner.config.GitHubClientFactory;
 import com.agilerunner.domain.InlineComment;
+import com.agilerunner.domain.ParsedFilePatch;
 import com.agilerunner.domain.Review;
 import com.agilerunner.util.GitHubPositionConverter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.kohsuke.github.GHCommitPointer;
+import org.kohsuke.github.GHIssueComment;
 import org.kohsuke.github.GHPullRequest;
+import org.kohsuke.github.GHPullRequestReviewComment;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 
 import static com.agilerunner.GitHubEventType.PULL_REQUEST;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -99,5 +107,110 @@ class GitHubCommentServiceTest {
 
         verify(pullRequest, never()).comment(anyString());
         verify(pullRequest, never()).createReviewComment(anyString(), anyString(), anyString(), anyInt());
+    }
+
+    @DisplayName("successful comment 경로에서는 본문 코멘트 후 인라인 코멘트를 등록하고 응답을 유지한다.")
+    @Test
+    void comment_postsMainCommentBeforeInlineCommentsAndBuildsResponse() throws Exception {
+        // given
+        GitHubClientFactory gitHubClientFactory = mock(GitHubClientFactory.class);
+        GitHubPatchService gitHubPatchService = mock(GitHubPatchService.class);
+        GitHubPositionConverter gitHubPositionConverter = mock(GitHubPositionConverter.class);
+        GitHubCommentService service = new GitHubCommentService(gitHubClientFactory, gitHubPatchService, gitHubPositionConverter);
+
+        GitHub gitHub = mock(GitHub.class);
+        GHRepository repository = mock(GHRepository.class);
+        GHCommitPointer head = mock(GHCommitPointer.class);
+        GHIssueComment mainComment = new GHIssueComment();
+        GHPullRequestReviewComment reviewComment = new GHPullRequestReviewComment();
+        ParsedFilePatch parsedFilePatch = ParsedFilePatch.of("src/Main.java", List.of());
+        List<String> commentCalls = new ArrayList<>();
+        GHPullRequest pullRequest = new StubPullRequest(head, mainComment, reviewComment, commentCalls);
+
+        Review review = Review.of(
+                "owner/repo",
+                12,
+                "리뷰 본문",
+                List.of(InlineComment.of("src/Main.java", 10, "라인 코멘트"))
+        );
+        GitHubEventServiceRequest request = GitHubEventServiceRequest.of(PULL_REQUEST, Map.of("action", "opened"), 100L);
+
+        when(gitHubClientFactory.createGitHubClient(100L)).thenReturn(gitHub);
+        when(gitHub.getRepository("owner/repo")).thenReturn(repository);
+        when(repository.getPullRequest(12)).thenReturn(pullRequest);
+        when(head.getSha()).thenReturn("head-sha");
+        when(gitHubPatchService.buildParsedFilePatches(pullRequest)).thenReturn(List.of(parsedFilePatch));
+        when(gitHubPatchService.buildPathToPatch(List.of(parsedFilePatch))).thenReturn(Map.of("src/Main.java", parsedFilePatch));
+        when(gitHubPositionConverter.toPosition(parsedFilePatch, 10)).thenReturn(OptionalInt.of(7));
+        setField(mainComment, "id", 101L);
+        setField(mainComment, "html_url", "https://github.com/comment/101");
+        setField(reviewComment, "id", 202L);
+        setField(reviewComment, "html_url", "https://github.com/comment/202");
+
+        // when
+        GitHubCommentResponse response = service.comment(review, request);
+
+        // then
+        assertThat(commentCalls).containsExactly(
+                "main:리뷰 본문",
+                "inline:라인 코멘트:head-sha:src/Main.java:7"
+        );
+        assertThat(response.reviewCommentId()).isEqualTo(101L);
+        assertThat(response.reviewCommentUrl()).isEqualTo("https://github.com/comment/101");
+        assertThat(response.postedInlineComments()).hasSize(1);
+        assertThat(response.postedInlineComments().get(0).id()).isEqualTo(202L);
+        assertThat(response.postedInlineComments().get(0).htmlUrl()).isEqualTo("https://github.com/comment/202");
+        assertThat(response.message()).isEqualTo("리뷰 코멘트가 성공적으로 등록되었습니다.");
+    }
+
+    private void setField(Object target, String fieldName, Object value) throws Exception {
+        Class<?> current = target.getClass();
+
+        while (current != null) {
+            try {
+                Field field = current.getDeclaredField(fieldName);
+                field.setAccessible(true);
+                field.set(target, value);
+                return;
+            } catch (NoSuchFieldException ignored) {
+                current = current.getSuperclass();
+            }
+        }
+
+        throw new NoSuchFieldException(fieldName);
+    }
+
+    private static class StubPullRequest extends GHPullRequest {
+        private final GHCommitPointer head;
+        private final GHIssueComment mainComment;
+        private final GHPullRequestReviewComment reviewComment;
+        private final List<String> commentCalls;
+
+        private StubPullRequest(GHCommitPointer head,
+                                GHIssueComment mainComment,
+                                GHPullRequestReviewComment reviewComment,
+                                List<String> commentCalls) {
+            this.head = head;
+            this.mainComment = mainComment;
+            this.reviewComment = reviewComment;
+            this.commentCalls = commentCalls;
+        }
+
+        @Override
+        public GHCommitPointer getHead() {
+            return head;
+        }
+
+        @Override
+        public GHIssueComment comment(String body) {
+            commentCalls.add("main:" + body);
+            return mainComment;
+        }
+
+        @Override
+        public GHPullRequestReviewComment createReviewComment(String body, String commitId, String path, int position) {
+            commentCalls.add("inline:" + body + ":" + commitId + ":" + path + ":" + position);
+            return reviewComment;
+        }
     }
 }

@@ -1,11 +1,13 @@
 package com.agilerunner.api.controller;
 
 import com.agilerunner.api.controller.dto.GitHubEventRequest;
+import com.agilerunner.api.service.agentruntime.AgentRuntimeService;
 import com.agilerunner.api.service.GitHubCommentService;
 import com.agilerunner.api.service.OpenAiService;
 import com.agilerunner.api.service.dto.GitHubCommentResponse;
 import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
 import com.agilerunner.domain.Review;
+import com.agilerunner.domain.agentruntime.ReviewRun;
 import com.agilerunner.util.WebhookDeliveryCache;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +22,7 @@ public class GitHubWebhookController {
 
     private static final String PULL_REQUEST_EVENT = "pull_request";
 
+    private final AgentRuntimeService agentRuntimeService;
     private final OpenAiService openAiService;
     private final GitHubCommentService gitHubCommentService;
     private final WebhookDeliveryCache deliveryCache;
@@ -47,15 +50,41 @@ public class GitHubWebhookController {
 
     private ResponseEntity<GitHubCommentResponse> handlePullRequestEvent(String deliveryId, GitHubEventRequest request) {
         GitHubEventServiceRequest serviceRequest = request.toService();
+        ReviewRun reviewRun = agentRuntimeService.startReviewRun(deliveryId, serviceRequest);
 
-        Review review = openAiService.generateReview(serviceRequest);
+        Review review;
+        try {
+            review = openAiService.generateReview(serviceRequest);
+        } catch (Exception exception) {
+            agentRuntimeService.recordFailure(reviewRun, AgentRuntimeService.STEP_REVIEW_GENERATED, exception);
+            throw exception;
+        }
+
         if (review == null) {
+            agentRuntimeService.recordFailure(
+                    reviewRun,
+                    AgentRuntimeService.STEP_REVIEW_GENERATED,
+                    new IllegalStateException("리뷰 생성 결과가 비어 있습니다.")
+            );
             return ResponseEntity.ok().build();
         }
 
-        GitHubCommentResponse response = gitHubCommentService.comment(review, serviceRequest);
-        deliveryCache.record(deliveryId);
+        agentRuntimeService.recordReviewGenerated(reviewRun, review);
+        return postComments(deliveryId, serviceRequest, reviewRun, review);
+    }
 
-        return ResponseEntity.ok(response);
+    private ResponseEntity<GitHubCommentResponse> postComments(String deliveryId,
+                                                               GitHubEventServiceRequest serviceRequest,
+                                                               ReviewRun reviewRun,
+                                                               Review review) {
+        try {
+            GitHubCommentResponse response = gitHubCommentService.comment(review, serviceRequest);
+            agentRuntimeService.recordCommentPosted(reviewRun, response);
+            deliveryCache.record(deliveryId);
+            return ResponseEntity.ok(response);
+        } catch (Exception exception) {
+            agentRuntimeService.recordFailure(reviewRun, AgentRuntimeService.STEP_COMMENT_POSTED, exception);
+            throw exception;
+        }
     }
 }
