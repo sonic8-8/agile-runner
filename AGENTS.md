@@ -48,6 +48,7 @@
 - 각 `Task` 종료 직후에는 반드시 개발 피드백 루프를 한 번 실행한다.
 - 자동 원시 로그는 H2 `agent-runtime`에 저장하고, 판단과 개선 제안은 `.agents/outer-loop/` 문서 저장소에 남긴다.
 - 개발 피드백 루프는 최소한 `task retrospective` 1개와 필요 시 `수정 제안서` 1개 이상을 생성한다.
+- 현재 활성 `Spec`의 마지막 `Task`가 끝나면, 다음 `Spec`으로 넘어가기 전에 `SPEC-xxxx-summary.md`를 작성하고 `registry.json`의 `latest.spec_summary_path`를 갱신한다.
 - 개발 피드백 루프 초안이 만들어지면, 다음 `Task`를 제안하기 전에 지금이 개발 피드백 루프 차례라는 점을 명시하고 수집된 메타 데이터를 먼저 보고한다.
 - 메타 데이터 보고에는 최소한 linked Issue 상태, retrospective 경로, proposal 경로, targeted/full test 결과, 실제 앱/H2/runtime 검증 결과, representative delivery 또는 execution 근거가 포함돼야 한다.
 - proposal이 생기면 사용자에게 채택/보류/반려 판단을 먼저 받고, 그 결정이 끝나기 전까지 다음 `Task`를 제안하지 않는다.
@@ -65,7 +66,13 @@
 - PR 본문에는 관련 Issue를 연결한다.
 - PR merge 시 자동 종료가 필요하면 `Closes #123`, 참조만 할 경우 `Refs #123`를 사용한다.
 - 커밋 메시지 형식은 `[BE] type(scope): 설명`을 우선 사용한다.
+- 커밋 제목은 `SPEC-0001`, `TASK-0001`, `spec`, `task` 같은 내부 식별자나 운영 용어보다 실제 변경 결과를 우선 드러낸다.
+- 커밋 제목은 git 히스토리만 봐도 대략 무슨 변화인지 읽히는 표현을 사용하고, 내부 추적 정보는 본문이나 문서에 둔다.
 - 커밋 메시지 본문 또는 PR 본문에 GitHub Issue 번호를 연결한다.
+- `Task`는 개발 피드백 루프 산출물까지 끝난 뒤 커밋한다.
+- 현재 활성 `Spec`이 끝나면 `SPEC-xxxx-summary.md` 작성과 proposal 처리까지 마친 뒤 push 여부를 확인한다.
+- 혼자 진행하는 개인 프로젝트는 PR을 필수로 두지 않고, direct push를 기본으로 검토한다.
+- 큰 단위 변경이나 추가 검토가 필요할 때만 선택적으로 PR을 사용한다.
 
 ## 핵심 규칙
 - 패키지는 계층을 먼저 나누고, 계층 안에서 도메인 또는 기능별로 나눈다.

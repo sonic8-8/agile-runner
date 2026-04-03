@@ -2,9 +2,9 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0001",
-    "task_id": "TASK-0004",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0001/TASK-0004-regression-suite.md",
-    "spec_summary_path": null
+    "task_id": "TASK-WF-0001",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0001/TASK-WF-0001-completion-verification-rule.md",
+    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0001/SPEC-0001-summary.md"
   },
   "proposals": [
     {
@@ -18,6 +18,14 @@
     {
       "proposal_id": "AGENTS-PROP-0002",
       "path": ".agents/outer-loop/proposals/AGENTS/AGENTS-PROP-0002-from-SPEC-0001-TASK-0003.md"
+    },
+    {
+      "proposal_id": "WORKFLOW-PROP-0002",
+      "path": ".agents/outer-loop/proposals/WORKFLOW/WORKFLOW-PROP-0002-from-SPEC-0001-SUMMARY.md"
+    },
+    {
+      "proposal_id": "WORKFLOW-PROP-0003",
+      "path": ".agents/outer-loop/proposals/WORKFLOW/WORKFLOW-PROP-0003-from-SPEC-0001-SUMMARY.md"
     }
   ]
 }

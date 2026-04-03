@@ -29,6 +29,11 @@ description: Use when executing a meaningful Agile Runner task under this reposi
 - 개발 피드백 루프 문서가 준비되면 바로 다음 task로 넘어가지 않는다.
 - 이 시점에는 먼저 "지금은 outer loop 차례"라고 명시하고, linked Issue 상태, retrospective 경로, proposal 경로, targeted/full test 결과, 실제 앱/H2/runtime 검증 결과를 사용자에게 보고한다.
 - proposal이 있으면 사용자에게 채택/보류/반려 판단을 먼저 묻고, 그 결정이 끝날 때까지 다음 task를 제안하지 않는다.
+- 현재 spec의 마지막 task가 끝나면 다음 spec으로 넘어가기 전에 `SPEC-xxxx-summary.md`를 작성하고 `registry.json`의 `latest.spec_summary_path`를 갱신한다.
+- 각 task는 retrospective와 proposal 처리가 끝난 뒤 커밋한다.
+- 현재 spec이 끝나면 spec summary와 proposal 처리까지 마친 뒤 push 여부를 확인한다.
+- 혼자 진행하는 개인 프로젝트는 PR 없이 direct push를 기본으로 검토하고, 큰 단위 변경이나 추가 검토가 필요할 때만 PR을 선택적으로 사용한다.
+- 커밋 제목은 내부 식별자나 내부 운영 용어보다 실제 변경 결과를 우선 드러내고, 내부 추적 정보는 본문이나 문서에 둔다.
 - GitHub Issue는 task와 1:1일 때만 닫는다. 하나의 Issue가 여러 task를 포함하면 닫지 않고 상태만 갱신한다.
 - Issue 생성이 깨지거나 같은 task에 잘못된 Issue가 중복 생성되면 canonical Issue 하나만 남기고 나머지는 즉시 정리한다.
 
@@ -76,6 +81,7 @@ description: Use when executing a meaningful Agile Runner task under this reposi
 - retrospective와 수정 제안서도 3개 서브에이전트 리뷰를 돌리고 모두 `PASS`가 될 때까지 반복한다.
 - 그 다음에는 구현을 이어가지 말고, 수집된 메타 데이터와 proposal 후보를 사용자에게 먼저 보고한다.
 - 사용자가 proposal 처리 방향을 정하면 그때 승인 반영 또는 보류 상태 정리를 수행한다.
+- 현재 spec의 마지막 task라면 task retrospective 이후 `SPEC-xxxx-summary.md`까지 작성하고 `registry.json`을 갱신한다.
 - outer loop 처리까지 끝난 뒤에만 다음 task로 넘어간다.
 
 ## Issue 종료 규칙
@@ -93,4 +99,5 @@ description: Use when executing a meaningful Agile Runner task under this reposi
 - black-box 테스트 코드
 - production code 수정
 - retrospective 1개 이상
+- spec 종료 시 spec summary 1개
 - 필요 시 수정 제안서

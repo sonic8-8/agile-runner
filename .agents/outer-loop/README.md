@@ -11,8 +11,9 @@
 | `registry.json` | 최근 회고와 수정 제안서 경로 진입점 | 상태는 저장하지 않음 |
 | `retrospectives/SPEC-xxxx/TASK-xxxx-<slug>.md` | task 단위 회고 | retrospective |
 | `retrospectives/SPEC-xxxx/SPEC-xxxx-summary.md` | spec 단위 요약 회고 | spec summary |
-| `proposals/AGENTS/AGENTS-PROP-xxxx-from-SPEC-xxxx-TASK-xxxx.md` | `AGENTS.md` 수정 제안서 | kind-aware id 사용 |
-| `proposals/WORKFLOW/WORKFLOW-PROP-xxxx-from-SPEC-xxxx-TASK-xxxx.md` | workflow 수정 제안서 | kind-aware id 사용 |
+| `proposals/AGENTS/AGENTS-PROP-xxxx-from-SPEC-xxxx-TASK-xxxx.md` | `AGENTS.md` 수정 제안서 | task 기반 proposal |
+| `proposals/WORKFLOW/WORKFLOW-PROP-xxxx-from-SPEC-xxxx-TASK-xxxx.md` | workflow 수정 제안서 | task 기반 proposal |
+| `proposals/WORKFLOW/WORKFLOW-PROP-xxxx-from-SPEC-xxxx-SUMMARY.md` | workflow 수정 제안서 | spec summary 기반 proposal |
 | `templates/task-retrospective-template.md` | 작업 회고 템플릿 | retrospective 작성 시작점 |
 | `templates/spec-summary-template.md` | spec 요약 템플릿 | spec summary 작성 시작점 |
 | `templates/agents-proposal-template.md` | `AGENTS.md` 수정 제안서 템플릿 | AGENTS proposal 작성 시작점 |
@@ -21,6 +22,7 @@
 ## 작성 규칙
 - `retrospective`는 task 종료 직후 작성한다.
 - `SPEC-xxxx-summary.md`는 해당 spec의 마지막 task retrospective 직후 또는 spec 중단 시점에만 작성한다.
+- spec summary 기반 proposal은 `SPEC-xxxx-summary.md` 작성 직후 만들고, 다음 spec 시작 전에 승인 또는 보류 상태를 정리한다.
 - 수정 제안서 파일은 이동하지 않는다. 상태는 파일 내부 YAML frontmatter로 관리한다.
 - 수정 제안서 상태는 `proposed`, `accepted`, `rejected`, `superseded`만 사용한다.
 - rejected 또는 superseded 제안도 삭제하지 않는다.
