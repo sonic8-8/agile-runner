@@ -1,0 +1,50 @@
+name: Harness Task
+description: agent runtime, 개발 피드백 루프, 개발 파이프라인 개선용 이슈
+title: "[BE] chore(harness): "
+labels:
+  - "⌨️ BE"
+  - "⚙️ Chore"
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 문제
+      description: 개선하려는 하네스, 로그, 자동화 문제와 배경을 작성해 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: 목표
+      description: 개선 후 만들고 싶은 개발 흐름이나 수집 상태를 작성해 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: 제약 조건
+      description: 로컬/운영 분리, 안전성, 성능 제약을 작성해 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: 제외 범위
+      description: 이번 작업에서 하지 않을 범위를 작성해 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: 완료 기준
+      description: 메타 데이터 수집, 설정, 자동화 완료 조건을 체크리스트로 작성해 주세요.
+      placeholder: |
+        - [ ] agent runtime 데이터가 저장된다.
+        - [ ] 운영 환경에는 영향이 없다.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: 참고
+      description: 추후 개발 피드백 루프 개선 포인트를 작성해 주세요.

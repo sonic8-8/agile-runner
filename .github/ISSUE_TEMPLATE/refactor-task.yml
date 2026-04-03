@@ -1,0 +1,50 @@
+name: Refactor Task
+description: 구조 개선, 패키지 이동, 책임 분리용 이슈
+title: "[BE] refactor: "
+labels:
+  - "⌨️ BE"
+  - "🔧 Refactor"
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 문제
+      description: 현재 구조의 문제점과 개선 배경을 작성해 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: 목표
+      description: 리팩터링 이후 만들고 싶은 구조와 책임 분리를 작성해 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: 제약 조건
+      description: 외부 동작을 유지해야 하는 조건을 작성해 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: 제외 범위
+      description: 이번 리팩터링에서 건드리지 않을 범위를 작성해 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: 완료 기준
+      description: 구조 개선 완료 조건을 체크리스트로 작성해 주세요.
+      placeholder: |
+        - [ ] 외부 동작이 바뀌지 않는다.
+        - [ ] 대상 책임이 더 명확한 패키지로 이동한다.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: 참고
+      description: 의존성, 패키지 구조, 추후 작업 메모를 작성해 주세요.

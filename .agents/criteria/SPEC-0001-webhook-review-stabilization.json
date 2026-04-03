@@ -1,0 +1,49 @@
+{
+  "spec_id": "SPEC-0001",
+  "spec_name": "웹훅 리뷰 흐름 안정화",
+  "spec_version": 2,
+  "criteria": [
+    {
+      "key": "payload-accepted",
+      "target": "유효한 pull_request webhook payload의 service request 변환",
+      "test_view": "controller/request parsing 관점",
+      "pass_condition": "유효한 pull_request webhook payload가 repositoryName, pullRequestNumber, installationId, action을 포함한 service request로 변환된다.",
+      "fail_condition": "유효한 pull_request webhook payload에서 처리에 필요한 필수 값을 추출하지 못하거나 service request 변환에 실패한다."
+    },
+    {
+      "key": "comment-write-preflight-completed",
+      "target": "preflight 완료 전 GitHub 쓰기 금지",
+      "test_view": "comment posting 준비 관점",
+      "pass_condition": "PR 로드, patch 조회/파싱, path 확인, line to position 변환, 게시 가능한 인라인 코멘트 후보 구성이 모두 끝나기 전에는 본문 코멘트와 인라인 코멘트를 등록하지 않는다.",
+      "fail_condition": "preflight 단계 일부가 실패했는데도 본문 코멘트 또는 인라인 코멘트를 먼저 등록한다."
+    },
+    {
+      "key": "comment-posting-sequence-fixed",
+      "target": "successful comment 경로의 본문 -> 인라인 시퀀스 고정",
+      "test_view": "comment posting 시퀀스 관점",
+      "pass_condition": "preflight 성공 후 본문 코멘트가 먼저 등록되고, 그 다음 게시 가능한 인라인 코멘트가 등록된다.",
+      "fail_condition": "successful comment 경로에서 인라인 코멘트가 본문 코멘트보다 먼저 등록되거나, 본문 -> 인라인 시퀀스가 보장되지 않는다."
+    },
+    {
+      "key": "successful-comment-response-preserved",
+      "target": "성공 응답 계약 유지",
+      "test_view": "webhook 외부 응답 계약 관점",
+      "pass_condition": "successful comment 경로는 기존과 같이 200 OK와 GitHubCommentResponse를 반환한다.",
+      "fail_condition": "successful comment 경로에서 HTTP status 또는 응답 body 형태가 기존 계약과 다르게 바뀐다."
+    },
+    {
+      "key": "same-delivery-comment-idempotent",
+      "target": "동일 delivery 재요청 시 추가 comment posting 방지",
+      "test_view": "same-delivery idempotency 관점",
+      "pass_condition": "successful comment 이후 동일 delivery를 다시 처리해도 추가 본문 코멘트나 추가 comment posting이 발생하지 않는다.",
+      "fail_condition": "동일 delivery 재요청 시 본문 코멘트 또는 추가 comment posting이 한 번 더 발생한다."
+    },
+    {
+      "key": "post-write-runtime-failure-tolerated",
+      "target": "GitHub 쓰기 후 runtime 기록 실패의 non-blocking 처리",
+      "test_view": "post-write failure handling 관점",
+      "pass_condition": "GitHub 코멘트 등록이 성공한 뒤 runtime 기록에 실패해도 요청은 실패로 번지지 않고, delivery cache 기록과 성공 응답 흐름이 유지된다.",
+      "fail_condition": "GitHub 코멘트 등록 이후 runtime 기록 실패가 예외를 전파해 요청 실패 또는 delivery cache 미기록으로 이어진다."
+    }
+  ]
+}

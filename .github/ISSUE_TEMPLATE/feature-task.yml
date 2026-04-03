@@ -1,0 +1,54 @@
+name: Feature Task
+description: 기능 추가용 개발 이슈
+title: "[BE] feat: "
+labels:
+  - "⌨️ BE"
+  - "✨ Feature"
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 문제
+      description: 해결하려는 문제와 배경을 작성해 주세요.
+      placeholder: 현재 어떤 문제가 있는지 작성해 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: 목표
+      description: 이번 이슈로 만들고 싶은 상태를 작성해 주세요.
+      placeholder: 구현 후 어떤 상태가 되어야 하는지 작성해 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: 제약 조건
+      description: 기술적 제약, 비즈니스 제약, 의존성을 작성해 주세요.
+      placeholder: 유지해야 할 제약을 작성해 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: 제외 범위
+      description: 이번 작업에 포함하지 않을 범위를 작성해 주세요.
+      placeholder: 이번 이슈에서 하지 않을 일을 작성해 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: 완료 기준
+      description: 검증 가능한 완료 조건을 체크리스트로 작성해 주세요.
+      placeholder: |
+        - [ ] 조건 1
+        - [ ] 조건 2
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: 참고
+      description: 관련 링크나 참고 메모를 작성해 주세요.
