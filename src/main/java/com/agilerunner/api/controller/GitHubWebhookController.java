@@ -10,6 +10,8 @@ import com.agilerunner.domain.Review;
 import com.agilerunner.domain.agentruntime.ReviewRun;
 import com.agilerunner.util.WebhookDeliveryCache;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +23,7 @@ import java.util.Map;
 public class GitHubWebhookController {
 
     private static final String PULL_REQUEST_EVENT = "pull_request";
+    private static final Logger log = LoggerFactory.getLogger(GitHubWebhookController.class);
 
     private final AgentRuntimeService agentRuntimeService;
     private final OpenAiService openAiService;
@@ -79,12 +82,23 @@ public class GitHubWebhookController {
                                                                Review review) {
         try {
             GitHubCommentResponse response = gitHubCommentService.comment(review, serviceRequest);
-            agentRuntimeService.recordCommentPosted(reviewRun, response);
             deliveryCache.record(deliveryId);
+            recordCommentPostedSafely(reviewRun, response);
             return ResponseEntity.ok(response);
         } catch (Exception exception) {
             agentRuntimeService.recordFailure(reviewRun, AgentRuntimeService.STEP_COMMENT_POSTED, exception);
             throw exception;
+        }
+    }
+
+    private void recordCommentPostedSafely(ReviewRun reviewRun, GitHubCommentResponse response) {
+        try {
+            agentRuntimeService.recordCommentPosted(reviewRun, response);
+        } catch (Exception exception) {
+            log.warn("GitHub 코멘트 등록 후 runtime 기록에 실패했습니다. deliveryId={}, runKey={}",
+                    reviewRun.getDeliveryId(),
+                    reviewRun.getRunKey(),
+                    exception);
         }
     }
 }
