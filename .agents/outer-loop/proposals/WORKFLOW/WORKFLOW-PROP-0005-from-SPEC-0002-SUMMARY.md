@@ -8,7 +8,7 @@ source_retrospectives:
 target_document: AGENTS.md, .agents/skills/agile-runner-task-loop/SKILL.md
 target_version:
 decision_date: 2026-04-03T17:45:00+09:00
-applied_commit:
+applied_commit: c56aeb2
 applied_pr:
 ---
 
