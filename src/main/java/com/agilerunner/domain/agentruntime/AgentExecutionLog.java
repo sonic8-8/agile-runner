@@ -1,5 +1,6 @@
 package com.agilerunner.domain.agentruntime;
 
+import com.agilerunner.domain.exception.ErrorCode;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -15,6 +16,7 @@ public class AgentExecutionLog {
     private final String inputSummary;
     private final String outputSummary;
     private final String errorMessage;
+    private final ErrorCode errorCode;
     private final String payloadJson;
     private final LocalDateTime startedAt;
     private final LocalDateTime endedAt;
@@ -28,6 +30,7 @@ public class AgentExecutionLog {
                               String inputSummary,
                               String outputSummary,
                               String errorMessage,
+                              ErrorCode errorCode,
                               String payloadJson,
                               LocalDateTime startedAt,
                               LocalDateTime endedAt) {
@@ -40,6 +43,7 @@ public class AgentExecutionLog {
         this.inputSummary = inputSummary;
         this.outputSummary = outputSummary;
         this.errorMessage = errorMessage;
+        this.errorCode = errorCode;
         this.payloadJson = payloadJson;
         this.startedAt = startedAt;
         this.endedAt = endedAt;
@@ -54,6 +58,7 @@ public class AgentExecutionLog {
                                        String inputSummary,
                                        String outputSummary,
                                        String errorMessage,
+                                       ErrorCode errorCode,
                                        String payloadJson,
                                        LocalDateTime startedAt,
                                        LocalDateTime endedAt) {
@@ -67,6 +72,7 @@ public class AgentExecutionLog {
                 inputSummary,
                 outputSummary,
                 errorMessage,
+                errorCode,
                 payloadJson,
                 startedAt,
                 endedAt

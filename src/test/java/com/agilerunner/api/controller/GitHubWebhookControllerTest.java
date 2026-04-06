@@ -35,9 +35,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -378,6 +378,49 @@ class GitHubWebhookControllerTest {
                     assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.OPENAI_REVIEW_FAILED);
                 });
 
+        verify(gitHubCommentService, never()).comment(any(Review.class), any(GitHubEventServiceRequest.class));
+    }
+
+    @DisplayName("리뷰 생성 결과가 null이면 오류 코드를 남기고 빈 응답으로 종료한다.")
+    @Test
+    void handleGitHubEvent_recordsErrorCodeWhenReviewIsNull() throws Exception {
+        // given
+        String deliveryId = "delivery-null-review";
+        Map<String, Object> payload = buildPayload();
+        WebhookExecution webhookExecution = WebhookExecution.start(
+                "EXECUTION:delivery-null-review",
+                "PR_REVIEW:owner/repo#12",
+                deliveryId,
+                "owner/repo",
+                12,
+                "PULL_REQUEST",
+                "opened",
+                LocalDateTime.of(2026, 4, 6, 12, 30)
+        );
+
+        when(webhookDeliveryCache.isDuplicate(deliveryId)).thenReturn(false);
+        when(agentRuntimeService.startWebhookExecution(eq(deliveryId), any(GitHubEventServiceRequest.class))).thenReturn(webhookExecution);
+        when(openAiService.generateReview(any(GitHubEventServiceRequest.class))).thenReturn(null);
+
+        // when & then
+        mockMvc.perform(post("/webhook/github")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-GitHub-Event", "pull_request")
+                        .header("X-GitHub-Delivery", deliveryId)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isOk())
+                .andExpect(content().string(""));
+
+        ArgumentCaptor<Exception> exceptionCaptor = ArgumentCaptor.forClass(Exception.class);
+        verify(agentRuntimeService).recordFailure(
+                eq(webhookExecution),
+                eq(AgentRuntimeService.STEP_REVIEW_GENERATED),
+                exceptionCaptor.capture()
+        );
+        assertThat(exceptionCaptor.getValue())
+                .isInstanceOfSatisfying(AgileRunnerException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.OPENAI_REVIEW_FAILED)
+                );
         verify(gitHubCommentService, never()).comment(any(Review.class), any(GitHubEventServiceRequest.class));
     }
 

@@ -8,6 +8,8 @@ import com.agilerunner.api.service.dto.GitHubCommentResponse;
 import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
 import com.agilerunner.domain.Review;
 import com.agilerunner.domain.agentruntime.WebhookExecution;
+import com.agilerunner.domain.exception.AgileRunnerException;
+import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.util.WebhookDeliveryCache;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -64,10 +66,14 @@ public class GitHubWebhookController {
         }
 
         if (review == null) {
+            AgileRunnerException exception = new AgileRunnerException(
+                    ErrorCode.OPENAI_REVIEW_FAILED,
+                    "리뷰 생성 결과가 비어 있습니다."
+            );
             agentRuntimeService.recordFailure(
                     webhookExecution,
                     AgentRuntimeService.STEP_REVIEW_GENERATED,
-                    new IllegalStateException("리뷰 생성 결과가 비어 있습니다.")
+                    exception
             );
             return ResponseEntity.ok().build();
         }

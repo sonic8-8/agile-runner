@@ -11,6 +11,8 @@ import com.agilerunner.domain.agentruntime.WebhookExecution;
 import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
 import com.agilerunner.domain.agentruntime.TaskRuntimeState;
 import com.agilerunner.domain.agentruntime.TaskRuntimeStatus;
+import com.agilerunner.domain.exception.AgileRunnerException;
+import com.agilerunner.domain.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -114,12 +116,14 @@ class AgentRuntimeServiceTest {
         // then
         ArgumentCaptor<TaskRuntimeState> taskCaptor = ArgumentCaptor.forClass(TaskRuntimeState.class);
         ArgumentCaptor<WebhookExecution> webhookExecutionCaptor = ArgumentCaptor.forClass(WebhookExecution.class);
+        ArgumentCaptor<AgentExecutionLog> logCaptor = ArgumentCaptor.forClass(AgentExecutionLog.class);
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<ValidationCriteria>> criteriaCaptor = ArgumentCaptor.forClass(List.class);
 
         verify(repository).replaceValidationCriteria(eq("PR_REVIEW:sonic8-8:agile-runner#12"), criteriaCaptor.capture());
         verify(repository).upsertWebhookExecution(webhookExecutionCaptor.capture());
         verify(repository).upsertTaskRuntimeState(taskCaptor.capture());
+        verify(repository).appendExecutionLog(logCaptor.capture());
 
         TaskRuntimeState savedTask = taskCaptor.getValue();
         assertThat(savedTask.getStatus()).isEqualTo(TaskRuntimeStatus.DONE);
@@ -130,14 +134,20 @@ class AgentRuntimeServiceTest {
         WebhookExecution savedRun = webhookExecutionCaptor.getValue();
         assertThat(savedRun.getStatus()).isEqualTo(WebhookExecutionStatus.SUCCEEDED);
         assertThat(savedRun.getFinishedAt()).isNotNull();
+        assertThat(savedRun.getErrorCode()).isNull();
+
+        AgentExecutionLog executionLog = logCaptor.getValue();
+        assertThat(executionLog.getStepName()).isEqualTo(AgentRuntimeService.STEP_COMMENT_POSTED);
+        assertThat(executionLog.getStatus()).isEqualTo(AgentExecutionStatus.SUCCEEDED);
+        assertThat(executionLog.getErrorCode()).isNull();
 
         List<ValidationCriteria> criteria = criteriaCaptor.getValue();
         assertThat(criteria).allMatch(criterion -> criterion.getStatus() == CriteriaStatus.PASSED);
     }
 
-    @DisplayName("review generation 실패 시 task runtime state와 webhook execution을 실패 상태로 기록한다.")
+    @DisplayName("review generation 실패 시 task runtime state와 webhook execution을 오류 코드와 함께 실패 상태로 기록한다.")
     @Test
-    void recordFailure_marksTaskAndRunAsFailed() {
+    void recordFailure_recordsErrorCodeOnFailedExecutionEvidence() {
         // given
         AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
         when(repository.findTaskRuntimeState("PR_REVIEW:sonic8-8:agile-runner#13"))
@@ -164,7 +174,11 @@ class AgentRuntimeServiceTest {
         );
 
         // when
-        service.recordFailure(webhookExecution, AgentRuntimeService.STEP_REVIEW_GENERATED, new RuntimeException("openai failed"));
+        service.recordFailure(
+                webhookExecution,
+                AgentRuntimeService.STEP_REVIEW_GENERATED,
+                new AgileRunnerException(ErrorCode.OPENAI_REVIEW_FAILED, "openai failed")
+        );
 
         // then
         ArgumentCaptor<TaskRuntimeState> taskCaptor = ArgumentCaptor.forClass(TaskRuntimeState.class);
@@ -185,6 +199,7 @@ class AgentRuntimeServiceTest {
         WebhookExecution savedRun = webhookExecutionCaptor.getValue();
         assertThat(savedRun.getStatus()).isEqualTo(WebhookExecutionStatus.FAILED);
         assertThat(savedRun.getErrorMessage()).isEqualTo("openai failed");
+        assertThat(savedRun.getErrorCode()).isEqualTo(ErrorCode.OPENAI_REVIEW_FAILED);
 
         List<ValidationCriteria> criteria = criteriaCaptor.getValue();
         assertThat(criteria.get(1).getStatus()).isEqualTo(CriteriaStatus.FAILED);
@@ -194,6 +209,7 @@ class AgentRuntimeServiceTest {
         assertThat(executionLog.getStepName()).isEqualTo(AgentRuntimeService.STEP_REVIEW_GENERATED);
         assertThat(executionLog.getStatus()).isEqualTo(AgentExecutionStatus.FAILED);
         assertThat(executionLog.getErrorMessage()).contains("openai failed");
+        assertThat(executionLog.getErrorCode()).isEqualTo(ErrorCode.OPENAI_REVIEW_FAILED);
     }
 
     private Map<String, Object> buildPayload(String repositoryName, int pullRequestNumber, String action) {

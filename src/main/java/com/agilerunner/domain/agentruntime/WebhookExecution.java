@@ -1,5 +1,6 @@
 package com.agilerunner.domain.agentruntime;
 
+import com.agilerunner.domain.exception.ErrorCode;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -15,6 +16,7 @@ public class WebhookExecution {
     private final String action;
     private final WebhookExecutionStatus status;
     private final String errorMessage;
+    private final ErrorCode errorCode;
     private final LocalDateTime startedAt;
     private final LocalDateTime finishedAt;
 
@@ -27,6 +29,7 @@ public class WebhookExecution {
                       String action,
                       WebhookExecutionStatus status,
                       String errorMessage,
+                      ErrorCode errorCode,
                       LocalDateTime startedAt,
                       LocalDateTime finishedAt) {
         this.executionKey = executionKey;
@@ -38,6 +41,7 @@ public class WebhookExecution {
         this.action = action;
         this.status = status;
         this.errorMessage = errorMessage;
+        this.errorCode = errorCode;
         this.startedAt = startedAt;
         this.finishedAt = finishedAt;
     }
@@ -60,12 +64,16 @@ public class WebhookExecution {
                 action,
                 WebhookExecutionStatus.STARTED,
                 null,
+                null,
                 startedAt,
                 null
         );
     }
 
-    public WebhookExecution complete(WebhookExecutionStatus status, String errorMessage, LocalDateTime finishedAt) {
+    public WebhookExecution complete(WebhookExecutionStatus status,
+                                     String errorMessage,
+                                     ErrorCode errorCode,
+                                     LocalDateTime finishedAt) {
         return new WebhookExecution(
                 executionKey,
                 taskKey,
@@ -76,6 +84,7 @@ public class WebhookExecution {
                 action,
                 status,
                 errorMessage,
+                errorCode,
                 startedAt,
                 finishedAt
         );

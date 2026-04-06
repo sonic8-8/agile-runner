@@ -2,9 +2,9 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0003",
-    "task_id": "TASK-0002",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0003/TASK-0002-common-exception-system.md",
-    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0002/SPEC-0002-summary.md"
+    "task_id": "TASK-0003",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0003/TASK-0003-runtime-error-code-evidence.md",
+    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0003/SPEC-0003-summary.md"
   },
   "proposals": [
     {

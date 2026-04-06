@@ -16,6 +16,8 @@ import com.agilerunner.domain.agentruntime.TaskRuntimeState;
 import com.agilerunner.domain.agentruntime.TaskRuntimeStatus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.agilerunner.domain.exception.AgileRunnerException;
+import com.agilerunner.domain.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
@@ -106,6 +108,7 @@ public class AgentRuntimeService {
                         "GitHub pull_request webhook accepted",
                         "task and webhook execution initialized",
                         null,
+                        null,
                         toJson(buildWebhookSnapshot(deliveryId, request)),
                         now,
                         now
@@ -146,6 +149,7 @@ public class AgentRuntimeService {
                         "Review prompt executed",
                         buildReviewOutputSummary(review),
                         null,
+                        null,
                         toJson(buildReviewSnapshot(review)),
                         now,
                         now
@@ -161,7 +165,7 @@ public class AgentRuntimeService {
         LocalDateTime now = LocalDateTime.now();
         long issueNumber = webhookExecution.getPullRequestNumber();
         TaskRuntimeState existingTaskRuntimeState = agentRuntimeRepository.findTaskRuntimeState(webhookExecution.getTaskKey()).orElse(null);
-        WebhookExecution completedWebhookExecution = webhookExecution.complete(WebhookExecutionStatus.SUCCEEDED, null, now);
+        WebhookExecution completedWebhookExecution = webhookExecution.complete(WebhookExecutionStatus.SUCCEEDED, null, null, now);
 
         agentRuntimeRepository.replaceValidationCriteria(
                 webhookExecution.getTaskKey(),
@@ -199,6 +203,7 @@ public class AgentRuntimeService {
                         "GitHub review comments posted",
                         buildCommentOutputSummary(response),
                         null,
+                        null,
                         toJson(buildCommentSnapshot(response)),
                         now,
                         now
@@ -214,7 +219,8 @@ public class AgentRuntimeService {
         LocalDateTime now = LocalDateTime.now();
         long issueNumber = webhookExecution.getPullRequestNumber();
         TaskRuntimeState existingTaskRuntimeState = agentRuntimeRepository.findTaskRuntimeState(webhookExecution.getTaskKey()).orElse(null);
-        WebhookExecution failedWebhookExecution = webhookExecution.complete(WebhookExecutionStatus.FAILED, exception.getMessage(), now);
+        ErrorCode errorCode = resolveErrorCode(exception);
+        WebhookExecution failedWebhookExecution = webhookExecution.complete(WebhookExecutionStatus.FAILED, exception.getMessage(), errorCode, now);
 
         agentRuntimeRepository.replaceValidationCriteria(
                 webhookExecution.getTaskKey(),
@@ -252,6 +258,7 @@ public class AgentRuntimeService {
                         "Runtime step failed",
                         null,
                         buildErrorSummary(exception),
+                        errorCode,
                         toJson(buildErrorSnapshot(exception)),
                         now,
                         now
@@ -356,6 +363,14 @@ public class AgentRuntimeService {
 
     private String buildTaskKey(String repositoryName, int pullRequestNumber) {
         return "PR_REVIEW:" + repositoryName.replace("/", ":") + "#" + pullRequestNumber;
+    }
+
+    private ErrorCode resolveErrorCode(Exception exception) {
+        if (!(exception instanceof AgileRunnerException agileRunnerException)) {
+            return null;
+        }
+
+        return agileRunnerException.getErrorCode();
     }
 
     private String buildExecutionKey(String deliveryId) {

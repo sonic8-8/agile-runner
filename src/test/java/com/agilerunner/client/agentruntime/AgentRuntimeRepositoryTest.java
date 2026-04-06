@@ -11,6 +11,7 @@ import com.agilerunner.domain.agentruntime.WebhookExecution;
 import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
 import com.agilerunner.domain.agentruntime.TaskRuntimeState;
 import com.agilerunner.domain.agentruntime.TaskRuntimeStatus;
+import com.agilerunner.domain.exception.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -112,7 +113,7 @@ class AgentRuntimeRepositoryTest {
         });
     }
 
-    @DisplayName("agent execution log를 누적 저장하고 다시 조회할 수 있다.")
+    @DisplayName("agent execution log를 오류 코드와 함께 누적 저장하고 다시 조회할 수 있다.")
     @Test
     void appendExecutionLog_andFind() {
         contextRunner.run(context -> {
@@ -129,6 +130,7 @@ class AgentRuntimeRepositoryTest {
                     "spec 기반 외부 테스트 실행",
                     "실패 테스트 2건",
                     "assertion mismatch",
+                    ErrorCode.OPENAI_REVIEW_FAILED,
                     "{\"failed\":2}",
                     LocalDateTime.of(2026, 4, 2, 13, 0),
                     LocalDateTime.of(2026, 4, 2, 13, 1)
@@ -148,12 +150,46 @@ class AgentRuntimeRepositoryTest {
             assertThat(found.getFirst().getExecutionKey()).isEqualTo("EXECUTION-103");
             assertThat(found.getFirst().getAgentRole()).isEqualTo(AgentRole.TESTER);
             assertThat(found.getFirst().getStatus()).isEqualTo(AgentExecutionStatus.FAILED);
+            assertThat(found.getFirst().getErrorCode()).isEqualTo(ErrorCode.OPENAI_REVIEW_FAILED);
             assertThat(found.getFirst().getPayloadJson()).isEqualTo("{\"failed\":2}");
             assertThat(storedExecutionKey).isEqualTo("EXECUTION-103");
         });
     }
 
-    @DisplayName("webhook execution을 저장하고 다시 조회할 수 있다.")
+    @DisplayName("성공한 agent execution log는 오류 코드 null 상태로 저장하고 다시 조회할 수 있다.")
+    @Test
+    void appendExecutionLog_withNullErrorCode_andFind() {
+        contextRunner.run(context -> {
+            // given
+            AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
+            AgentExecutionLog executionLog = AgentExecutionLog.of(
+                    "TASK-104",
+                    104L,
+                    "EXECUTION-104",
+                    AgentRole.ORCHESTRATOR,
+                    "comment-posted",
+                    AgentExecutionStatus.SUCCEEDED,
+                    "GitHub review comments posted",
+                    "success",
+                    null,
+                    null,
+                    "{\"posted\":true}",
+                    LocalDateTime.of(2026, 4, 2, 13, 30),
+                    LocalDateTime.of(2026, 4, 2, 13, 31)
+            );
+
+            // when
+            repository.appendExecutionLog(executionLog);
+            List<AgentExecutionLog> found = repository.findExecutionLogs("TASK-104");
+
+            // then
+            assertThat(found).hasSize(1);
+            assertThat(found.getFirst().getStatus()).isEqualTo(AgentExecutionStatus.SUCCEEDED);
+            assertThat(found.getFirst().getErrorCode()).isNull();
+        });
+    }
+
+    @DisplayName("webhook execution을 오류 코드와 함께 저장하고 다시 조회할 수 있다.")
     @Test
     void upsertWebhookExecution_andFind() {
         contextRunner.run(context -> {
@@ -170,8 +206,9 @@ class AgentRuntimeRepositoryTest {
                     "synchronize",
                     LocalDateTime.of(2026, 4, 2, 14, 0)
             ).complete(
-                    WebhookExecutionStatus.SUCCEEDED,
-                    null,
+                    WebhookExecutionStatus.FAILED,
+                    "GitHub App ID missing",
+                    ErrorCode.GITHUB_APP_CONFIGURATION_MISSING,
                     LocalDateTime.of(2026, 4, 2, 14, 3)
             );
 
@@ -183,13 +220,53 @@ class AgentRuntimeRepositoryTest {
                             "SELECT status FROM WEBHOOK_EXECUTION WHERE execution_key = 'EXECUTION:201'",
                             String.class
                     );
+            String storedErrorCode = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT error_code FROM WEBHOOK_EXECUTION WHERE execution_key = 'EXECUTION:201'",
+                            String.class
+                    );
 
             // then
             assertThat(found).isPresent();
             assertThat(found.get().getTaskKey()).isEqualTo("TASK-201");
             assertThat(found.get().getDeliveryId()).isEqualTo("delivery-201");
+            assertThat(found.get().getStatus()).isEqualTo(WebhookExecutionStatus.FAILED);
+            assertThat(found.get().getErrorCode()).isEqualTo(ErrorCode.GITHUB_APP_CONFIGURATION_MISSING);
+            assertThat(storedStatus).isEqualTo("FAILED");
+            assertThat(storedErrorCode).isEqualTo("GITHUB_APP_CONFIGURATION_MISSING");
+        });
+    }
+
+    @DisplayName("성공한 webhook execution은 오류 코드 null 상태로 저장하고 다시 조회할 수 있다.")
+    @Test
+    void upsertWebhookExecution_withNullErrorCode_andFind() {
+        contextRunner.run(context -> {
+            // given
+            AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
+            WebhookExecution webhookExecution = WebhookExecution.start(
+                    "EXECUTION:202",
+                    "TASK-202",
+                    "delivery-202",
+                    "sonic8-8/agile-runner",
+                    202,
+                    "PULL_REQUEST",
+                    "opened",
+                    LocalDateTime.of(2026, 4, 2, 14, 10)
+            ).complete(
+                    WebhookExecutionStatus.SUCCEEDED,
+                    null,
+                    null,
+                    LocalDateTime.of(2026, 4, 2, 14, 12)
+            );
+
+            // when
+            repository.upsertWebhookExecution(webhookExecution);
+            Optional<WebhookExecution> found = repository.findWebhookExecution("EXECUTION:202");
+
+            // then
+            assertThat(found).isPresent();
             assertThat(found.get().getStatus()).isEqualTo(WebhookExecutionStatus.SUCCEEDED);
-            assertThat(storedStatus).isEqualTo("SUCCEEDED");
+            assertThat(found.get().getErrorCode()).isNull();
         });
     }
 }

@@ -10,6 +10,7 @@ import com.agilerunner.domain.agentruntime.WebhookExecution;
 import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
 import com.agilerunner.domain.agentruntime.TaskRuntimeState;
 import com.agilerunner.domain.agentruntime.TaskRuntimeStatus;
+import com.agilerunner.domain.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -95,6 +96,7 @@ public class AgentRuntimeRepository {
                 action,
                 status,
                 error_message,
+                error_code,
                 started_at,
                 finished_at,
                 updated_at
@@ -109,13 +111,14 @@ public class AgentRuntimeRepository {
                 :action,
                 :status,
                 :errorMessage,
+                :errorCode,
                 :startedAt,
                 :finishedAt,
                 CURRENT_TIMESTAMP
             )
             """;
     private static final String FIND_WEBHOOK_EXECUTION_SQL = """
-            SELECT execution_key, task_key, delivery_id, repository_name, pull_request_number, event_type, action, status, error_message, started_at, finished_at
+            SELECT execution_key, task_key, delivery_id, repository_name, pull_request_number, event_type, action, status, error_message, error_code, started_at, finished_at
             FROM WEBHOOK_EXECUTION
             WHERE execution_key = :executionKey
             """;
@@ -130,6 +133,7 @@ public class AgentRuntimeRepository {
                 input_summary,
                 output_summary,
                 error_message,
+                error_code,
                 payload_json,
                 started_at,
                 ended_at
@@ -143,13 +147,14 @@ public class AgentRuntimeRepository {
                 :inputSummary,
                 :outputSummary,
                 :errorMessage,
+                :errorCode,
                 :payloadJson,
                 :startedAt,
                 :endedAt
             )
             """;
     private static final String FIND_AGENT_EXECUTION_LOGS_SQL = """
-            SELECT task_key, issue_number, execution_key, agent_role, step_name, status, input_summary, output_summary, error_message, payload_json, started_at, ended_at
+            SELECT task_key, issue_number, execution_key, agent_role, step_name, status, input_summary, output_summary, error_message, error_code, payload_json, started_at, ended_at
             FROM AGENT_EXECUTION_LOG
             WHERE task_key = :taskKey
             ORDER BY id ASC
@@ -263,6 +268,7 @@ public class AgentRuntimeRepository {
                 .addValue("action", webhookExecution.getAction())
                 .addValue("status", webhookExecution.getStatus().name())
                 .addValue("errorMessage", webhookExecution.getErrorMessage())
+                .addValue("errorCode", getErrorCodeName(webhookExecution.getErrorCode()))
                 .addValue("startedAt", webhookExecution.getStartedAt())
                 .addValue("finishedAt", webhookExecution.getFinishedAt());
     }
@@ -278,6 +284,7 @@ public class AgentRuntimeRepository {
                 .addValue("inputSummary", executionLog.getInputSummary())
                 .addValue("outputSummary", executionLog.getOutputSummary())
                 .addValue("errorMessage", executionLog.getErrorMessage())
+                .addValue("errorCode", getErrorCodeName(executionLog.getErrorCode()))
                 .addValue("payloadJson", executionLog.getPayloadJson())
                 .addValue("startedAt", executionLog.getStartedAt())
                 .addValue("endedAt", executionLog.getEndedAt());
@@ -320,6 +327,7 @@ public class AgentRuntimeRepository {
         ).complete(
                 WebhookExecutionStatus.valueOf(resultSet.getString("status")),
                 resultSet.getString("error_message"),
+                getErrorCode(resultSet.getString("error_code")),
                 getLocalDateTime(resultSet, "finished_at")
         );
     }
@@ -335,6 +343,7 @@ public class AgentRuntimeRepository {
                 resultSet.getString("input_summary"),
                 resultSet.getString("output_summary"),
                 resultSet.getString("error_message"),
+                getErrorCode(resultSet.getString("error_code")),
                 resultSet.getString("payload_json"),
                 getLocalDateTime(resultSet, "started_at"),
                 getLocalDateTime(resultSet, "ended_at")
@@ -372,5 +381,21 @@ public class AgentRuntimeRepository {
         }
 
         return ownerRole.name();
+    }
+
+    private ErrorCode getErrorCode(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return ErrorCode.valueOf(value);
+    }
+
+    private String getErrorCodeName(ErrorCode errorCode) {
+        if (errorCode == null) {
+            return null;
+        }
+
+        return errorCode.name();
     }
 }
