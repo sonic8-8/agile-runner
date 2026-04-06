@@ -1,5 +1,7 @@
 package com.agilerunner.config;
 
+import com.agilerunner.domain.exception.AgileRunnerException;
+import com.agilerunner.domain.exception.ErrorCode;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.model.SimpleApiKey;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -20,7 +22,10 @@ public class OpenAiConfig {
                                  @Value("${spring.ai.openai.base-url:https://api.openai.com}") String baseUrl,
                                  @Value("${spring.ai.openai.chat.model:gpt-4o-mini}") String model) {
         if (!StringUtils.hasText(apiKey)) {
-            throw new IllegalStateException("OpenAI API Key가 설정되지 않았습니다.");
+            throw new AgileRunnerException(
+                    ErrorCode.OPENAI_CLIENT_MISSING,
+                    "OpenAI API Key가 설정되지 않았습니다."
+            );
         }
 
         OpenAiApi openAiApi = OpenAiApi.builder()

@@ -8,6 +8,8 @@ import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
 import com.agilerunner.api.service.dto.PostedInlineComment;
 import com.agilerunner.domain.Review;
 import com.agilerunner.domain.agentruntime.WebhookExecution;
+import com.agilerunner.domain.exception.AgileRunnerException;
+import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.util.WebhookDeliveryCache;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -311,11 +313,36 @@ class GitHubWebhookControllerTest {
                         .header("X-GitHub-Event", "pull_request")
                         .header("X-GitHub-Delivery", deliveryId)
                         .content(objectMapper.writeValueAsString(payload))))
-                .hasRootCauseInstanceOf(IllegalStateException.class);
+                .rootCause()
+                .isInstanceOfSatisfying(AgileRunnerException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.GITHUB_INSTALLATION_ID_MISSING);
+                });
 
         verify(agentRuntimeService, never()).startWebhookExecution(anyString(), any(GitHubEventServiceRequest.class));
         verify(openAiService, never()).generateReview(any(GitHubEventServiceRequest.class));
         verify(gitHubCommentService, never()).comment(any(Review.class), any(GitHubEventServiceRequest.class));
+    }
+
+    @DisplayName("installation 정보가 없으면 공통 예외와 오류 코드로 분류한다.")
+    @Test
+    void handleGitHubEvent_mapsMissingInstallationToAgileRunnerException() throws Exception {
+        // given
+        String deliveryId = "delivery-missing-installation-error-code";
+        Map<String, Object> payload = buildPayload();
+        payload.remove("installation");
+
+        when(webhookDeliveryCache.isDuplicate(deliveryId)).thenReturn(false);
+
+        // when & then
+        assertThatThrownBy(() -> mockMvc.perform(post("/webhook/github")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-GitHub-Event", "pull_request")
+                        .header("X-GitHub-Delivery", deliveryId)
+                        .content(objectMapper.writeValueAsString(payload))))
+                .rootCause()
+                .isInstanceOfSatisfying(AgileRunnerException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.GITHUB_INSTALLATION_ID_MISSING);
+                });
     }
 
     @DisplayName("리뷰 생성에 실패하면 실패 응답으로 종료하고 코멘트 등록은 진행하지 않는다.")
@@ -338,7 +365,7 @@ class GitHubWebhookControllerTest {
         when(webhookDeliveryCache.isDuplicate(deliveryId)).thenReturn(false);
         when(agentRuntimeService.startWebhookExecution(eq(deliveryId), any(GitHubEventServiceRequest.class))).thenReturn(webhookExecution);
         when(openAiService.generateReview(any(GitHubEventServiceRequest.class)))
-                .thenThrow(new RuntimeException("리뷰 생성에 실패했습니다."));
+                .thenThrow(new AgileRunnerException(ErrorCode.OPENAI_REVIEW_FAILED, "리뷰 생성에 실패했습니다."));
 
         // when & then
         assertThatThrownBy(() -> mockMvc.perform(post("/webhook/github")
@@ -346,7 +373,10 @@ class GitHubWebhookControllerTest {
                         .header("X-GitHub-Event", "pull_request")
                         .header("X-GitHub-Delivery", deliveryId)
                         .content(objectMapper.writeValueAsString(payload))))
-                .hasRootCauseInstanceOf(RuntimeException.class);
+                .rootCause()
+                .isInstanceOfSatisfying(AgileRunnerException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.OPENAI_REVIEW_FAILED);
+                });
 
         verify(gitHubCommentService, never()).comment(any(Review.class), any(GitHubEventServiceRequest.class));
     }

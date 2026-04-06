@@ -1,11 +1,13 @@
-package com.agilerunner.config;
+package com.agilerunner.client.github.auth;
 
+import com.agilerunner.domain.exception.AgileRunnerException;
+import com.agilerunner.domain.exception.ErrorCode;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.kohsuke.github.GitHub;
 import org.kohsuke.github.GitHubBuilder;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.security.KeyFactory;
@@ -17,7 +19,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
 
-@Configuration
+@Component
 public class GitHubClientFactory {
 
     @Value("${spring.github.app-id:}")
@@ -41,10 +43,16 @@ public class GitHubClientFactory {
 
     private void validateConfiguration() {
         if (appId == null || appId.isBlank()) {
-            throw new IllegalStateException("GitHub App ID가 설정되지 않았습니다.");
+            throw new AgileRunnerException(
+                    ErrorCode.GITHUB_APP_CONFIGURATION_MISSING,
+                    "GitHub App ID가 설정되지 않았습니다."
+            );
         }
         if (privateKey == null || privateKey.isBlank()) {
-            throw new IllegalStateException("GitHub Private Key가 설정되지 않았습니다.");
+            throw new AgileRunnerException(
+                    ErrorCode.GITHUB_APP_CONFIGURATION_MISSING,
+                    "GitHub Private Key가 설정되지 않았습니다."
+            );
         }
     }
 
@@ -56,16 +64,24 @@ public class GitHubClientFactory {
                 .getToken();
     }
 
-    private String createJWT() throws Exception {
-        PrivateKey privateKey = loadPrivateKey();
-        Instant now = Instant.now();
+    private String createJWT() {
+        try {
+            PrivateKey privateKey = loadPrivateKey();
+            Instant now = Instant.now();
 
-        return Jwts.builder()
-                .setIssuer(appId)
-                .setIssuedAt(Date.from(now))
-                .setExpiration(Date.from(now.plusSeconds(600)))
-                .signWith(privateKey, SignatureAlgorithm.RS256)
-                .compact();
+            return Jwts.builder()
+                    .setIssuer(appId)
+                    .setIssuedAt(Date.from(now))
+                    .setExpiration(Date.from(now.plusSeconds(600)))
+                    .signWith(privateKey, SignatureAlgorithm.RS256)
+                    .compact();
+        } catch (Exception exception) {
+            throw new AgileRunnerException(
+                    ErrorCode.GITHUB_APP_CONFIGURATION_MISSING,
+                    "GitHub App 설정을 해석할 수 없습니다.",
+                    exception
+            );
+        }
     }
 
     private PrivateKey loadPrivateKey() throws NoSuchAlgorithmException, InvalidKeySpecException {

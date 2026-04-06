@@ -3,10 +3,12 @@ package com.agilerunner.api.service;
 import com.agilerunner.api.service.dto.GitHubCommentResponse;
 import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
 import com.agilerunner.api.service.dto.PostedInlineComment;
-import com.agilerunner.config.GitHubClientFactory;
+import com.agilerunner.client.github.auth.GitHubClientFactory;
 import com.agilerunner.domain.InlineComment;
 import com.agilerunner.domain.ParsedFilePatch;
 import com.agilerunner.domain.Review;
+import com.agilerunner.domain.exception.AgileRunnerException;
+import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.util.GitHubPositionConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,10 +34,18 @@ public class GitHubCommentService {
             List<PostedInlineComment> postedInlineComments = postInlineComments(preflight);
 
             return buildResponse(mainComment, postedInlineComments);
+        } catch (AgileRunnerException exception) {
+            log.error("GitHub 코멘트 등록 실패, repository={}, PR={}",
+                    review.getRepositoryName(), review.getPullRequestNumber(), exception);
+            throw exception;
         } catch (Exception e) {
             log.error("GitHub 코멘트 등록 실패, repository={}, PR={}",
                     review.getRepositoryName(), review.getPullRequestNumber(), e);
-            throw new RuntimeException("GitHub 코멘트 등록 실패", e);
+            throw new AgileRunnerException(
+                    ErrorCode.GITHUB_COMMENT_POST_FAILED,
+                    "GitHub 코멘트 등록 실패",
+                    e
+            );
         }
     }
 
@@ -48,8 +58,18 @@ public class GitHubCommentService {
     }
 
     private Map<String, ParsedFilePatch> buildParsedFilePatches(GHPullRequest pullRequest) {
-        List<ParsedFilePatch> parsedFilePatches = gitHubPatchService.buildParsedFilePatches(pullRequest);
-        return gitHubPatchService.buildPathToPatch(parsedFilePatches);
+        try {
+            List<ParsedFilePatch> parsedFilePatches = gitHubPatchService.buildParsedFilePatches(pullRequest);
+            return gitHubPatchService.buildPathToPatch(parsedFilePatches);
+        } catch (AgileRunnerException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw new AgileRunnerException(
+                    ErrorCode.GITHUB_COMMENT_PREPARATION_FAILED,
+                    "GitHub 코멘트 사전 준비에 실패했습니다.",
+                    exception
+            );
+        }
     }
 
     private GHPullRequest loadPullRequest(Review review, GitHubEventServiceRequest request) throws Exception {
@@ -80,12 +100,18 @@ public class GitHubCommentService {
 
         ParsedFilePatch parsedFilePatch = pathToParsedFilePatches.get(path);
         if (parsedFilePatch == null) {
-            throw new IllegalStateException("해당 path에 대한 patch가 없습니다. path=" + path);
+            throw new AgileRunnerException(
+                    ErrorCode.GITHUB_COMMENT_PREPARATION_FAILED,
+                    "해당 path에 대한 patch가 없습니다. path=" + path
+            );
         }
 
         OptionalInt optionalPosition = gitHubPositionConverter.toPosition(parsedFilePatch, line);
         if (optionalPosition.isEmpty()) {
-            throw new IllegalStateException("position 계산 실패 path=" + path + ", line=" + line);
+            throw new AgileRunnerException(
+                    ErrorCode.GITHUB_COMMENT_PREPARATION_FAILED,
+                    "position 계산 실패 path=" + path + ", line=" + line
+            );
         }
 
         return PreparedInlineComment.of(

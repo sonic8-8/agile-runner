@@ -1,8 +1,10 @@
 package com.agilerunner.api.service;
 
 import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
-import com.agilerunner.config.GitHubClientFactory;
+import com.agilerunner.client.github.auth.GitHubClientFactory;
 import com.agilerunner.domain.ParsedFilePatch;
+import com.agilerunner.domain.exception.AgileRunnerException;
+import com.agilerunner.domain.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.agilerunner.GitHubEventType.PULL_REQUEST;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -49,8 +52,9 @@ class OpenAiServiceTest {
 
         // when & then
         assertThatThrownBy(() -> service.generateReview(request))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("리뷰 생성에 실패했습니다.");
+                .isInstanceOfSatisfying(AgileRunnerException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.OPENAI_CLIENT_MISSING);
+                });
     }
 
     private Map<String, Object> buildPayload() {

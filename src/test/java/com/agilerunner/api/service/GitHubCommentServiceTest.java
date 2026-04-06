@@ -2,10 +2,12 @@ package com.agilerunner.api.service;
 
 import com.agilerunner.api.service.dto.GitHubCommentResponse;
 import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
-import com.agilerunner.config.GitHubClientFactory;
+import com.agilerunner.client.github.auth.GitHubClientFactory;
 import com.agilerunner.domain.InlineComment;
 import com.agilerunner.domain.ParsedFilePatch;
 import com.agilerunner.domain.Review;
+import com.agilerunner.domain.exception.AgileRunnerException;
+import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.util.GitHubPositionConverter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -66,8 +68,9 @@ class GitHubCommentServiceTest {
 
         // when & then
         assertThatThrownBy(() -> service.comment(review, request))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("GitHub 코멘트 등록 실패");
+                .isInstanceOfSatisfying(AgileRunnerException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.GITHUB_COMMENT_PREPARATION_FAILED);
+                });
 
         verify(pullRequest, never()).comment(anyString());
         verify(pullRequest, never()).createReviewComment(anyString(), anyString(), anyString(), anyInt());
@@ -104,8 +107,9 @@ class GitHubCommentServiceTest {
 
         // when & then
         assertThatThrownBy(() -> service.comment(review, request))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("GitHub 코멘트 등록 실패");
+                .isInstanceOfSatisfying(AgileRunnerException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.GITHUB_COMMENT_PREPARATION_FAILED);
+                });
 
         verify(pullRequest, never()).comment(anyString());
         verify(pullRequest, never()).createReviewComment(anyString(), anyString(), anyString(), anyInt());
@@ -129,12 +133,16 @@ class GitHubCommentServiceTest {
         GitHubEventServiceRequest request = GitHubEventServiceRequest.of(PULL_REQUEST, Map.of("action", "opened"), 100L);
 
         when(gitHubClientFactory.createGitHubClient(100L))
-                .thenThrow(new IllegalStateException("GitHub App ID가 설정되지 않았습니다."));
+                .thenThrow(new AgileRunnerException(
+                        ErrorCode.GITHUB_APP_CONFIGURATION_MISSING,
+                        "GitHub App ID가 설정되지 않았습니다."
+                ));
 
         // when & then
         assertThatThrownBy(() -> service.comment(review, request))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("GitHub 코멘트 등록 실패");
+                .isInstanceOfSatisfying(AgileRunnerException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.GITHUB_APP_CONFIGURATION_MISSING);
+                });
     }
 
     @DisplayName("successful comment 경로에서는 본문 코멘트 후 인라인 코멘트를 등록하고 응답을 유지한다.")
@@ -225,8 +233,9 @@ class GitHubCommentServiceTest {
 
         // when & then
         assertThatThrownBy(() -> service.comment(review, request))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("GitHub 코멘트 등록 실패");
+                .isInstanceOfSatisfying(AgileRunnerException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.GITHUB_COMMENT_POST_FAILED);
+                });
 
         verify(pullRequest, never()).createReviewComment(anyString(), anyString(), anyString(), anyInt());
     }

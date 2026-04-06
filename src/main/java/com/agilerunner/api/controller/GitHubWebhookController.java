@@ -1,6 +1,6 @@
 package com.agilerunner.api.controller;
 
-import com.agilerunner.api.controller.dto.GitHubEventRequest;
+import com.agilerunner.api.controller.github.request.GitHubEventRequest;
 import com.agilerunner.api.service.agentruntime.AgentRuntimeService;
 import com.agilerunner.api.service.GitHubCommentService;
 import com.agilerunner.api.service.OpenAiService;

@@ -3,8 +3,10 @@ package com.agilerunner.api.service;
 import com.agilerunner.domain.ParsedFilePatch;
 import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
 import com.agilerunner.api.service.dto.ReviewResponse;
-import com.agilerunner.config.GitHubClientFactory;
+import com.agilerunner.client.github.auth.GitHubClientFactory;
 import com.agilerunner.domain.Review;
+import com.agilerunner.domain.exception.AgileRunnerException;
+import com.agilerunner.domain.exception.ErrorCode;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
@@ -52,9 +54,16 @@ public class OpenAiService {
         try {
             ReviewResponse reviewResponse = requestOpenAiReview(request, repositoryName, pullRequestNumber);
             return Review.from(repositoryName, pullRequestNumber, reviewResponse);
+        } catch (AgileRunnerException exception) {
+            log.error("리뷰 생성 실패, repository={}, PR={}", repositoryName, pullRequestNumber, exception);
+            throw exception;
         } catch (Exception e) {
             log.error("리뷰 생성 실패, repository={}, PR={}", repositoryName, pullRequestNumber, e);
-            throw new RuntimeException("리뷰 생성에 실패했습니다.");
+            throw new AgileRunnerException(
+                    ErrorCode.OPENAI_REVIEW_FAILED,
+                    "리뷰 생성에 실패했습니다.",
+                    e
+            );
         }
     }
 
@@ -90,7 +99,10 @@ public class OpenAiService {
     private ChatClient loadChatClient() {
         ChatClient chatClient = chatClientProvider.getIfAvailable();
         if (chatClient == null) {
-            throw new IllegalStateException("OpenAI API Key가 설정되지 않았습니다.");
+            throw new AgileRunnerException(
+                    ErrorCode.OPENAI_CLIENT_MISSING,
+                    "OpenAI API Key가 설정되지 않았습니다."
+            );
         }
 
         return chatClient;
