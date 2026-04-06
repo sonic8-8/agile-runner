@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -291,6 +292,62 @@ class GitHubWebhookControllerTest {
 
         verify(agentRuntimeService, never()).startWebhookExecution(anyString(), any(GitHubEventServiceRequest.class));
         verify(openAiService, never()).generateReview(any(GitHubEventServiceRequest.class));
+        verify(gitHubCommentService, never()).comment(any(Review.class), any(GitHubEventServiceRequest.class));
+    }
+
+    @DisplayName("installation 정보가 없으면 실패 응답으로 종료하고 다음 흐름으로 진행하지 않는다.")
+    @Test
+    void handleGitHubEvent_failsWhenInstallationIsMissing() throws Exception {
+        // given
+        String deliveryId = "delivery-missing-installation";
+        Map<String, Object> payload = buildPayload();
+        payload.remove("installation");
+
+        when(webhookDeliveryCache.isDuplicate(deliveryId)).thenReturn(false);
+
+        // when & then
+        assertThatThrownBy(() -> mockMvc.perform(post("/webhook/github")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-GitHub-Event", "pull_request")
+                        .header("X-GitHub-Delivery", deliveryId)
+                        .content(objectMapper.writeValueAsString(payload))))
+                .hasRootCauseInstanceOf(IllegalStateException.class);
+
+        verify(agentRuntimeService, never()).startWebhookExecution(anyString(), any(GitHubEventServiceRequest.class));
+        verify(openAiService, never()).generateReview(any(GitHubEventServiceRequest.class));
+        verify(gitHubCommentService, never()).comment(any(Review.class), any(GitHubEventServiceRequest.class));
+    }
+
+    @DisplayName("리뷰 생성에 실패하면 실패 응답으로 종료하고 코멘트 등록은 진행하지 않는다.")
+    @Test
+    void handleGitHubEvent_failsWhenReviewGenerationFails() throws Exception {
+        // given
+        String deliveryId = "delivery-review-failure";
+        Map<String, Object> payload = buildPayload();
+        WebhookExecution webhookExecution = WebhookExecution.start(
+                "EXECUTION:delivery-review-failure",
+                "PR_REVIEW:owner/repo#12",
+                deliveryId,
+                "owner/repo",
+                12,
+                "PULL_REQUEST",
+                "opened",
+                LocalDateTime.of(2026, 4, 6, 12, 0)
+        );
+
+        when(webhookDeliveryCache.isDuplicate(deliveryId)).thenReturn(false);
+        when(agentRuntimeService.startWebhookExecution(eq(deliveryId), any(GitHubEventServiceRequest.class))).thenReturn(webhookExecution);
+        when(openAiService.generateReview(any(GitHubEventServiceRequest.class)))
+                .thenThrow(new RuntimeException("리뷰 생성에 실패했습니다."));
+
+        // when & then
+        assertThatThrownBy(() -> mockMvc.perform(post("/webhook/github")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-GitHub-Event", "pull_request")
+                        .header("X-GitHub-Delivery", deliveryId)
+                        .content(objectMapper.writeValueAsString(payload))))
+                .hasRootCauseInstanceOf(RuntimeException.class);
+
         verify(gitHubCommentService, never()).comment(any(Review.class), any(GitHubEventServiceRequest.class));
     }
 

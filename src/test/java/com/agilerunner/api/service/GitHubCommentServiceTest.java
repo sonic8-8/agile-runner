@@ -111,6 +111,32 @@ class GitHubCommentServiceTest {
         verify(pullRequest, never()).createReviewComment(anyString(), anyString(), anyString(), anyInt());
     }
 
+    @DisplayName("GitHub App 설정 문제로 클라이언트를 만들지 못하면 코멘트 등록에 실패한다.")
+    @Test
+    void comment_failsWhenGitHubClientCreationFails() throws Exception {
+        // given
+        GitHubClientFactory gitHubClientFactory = mock(GitHubClientFactory.class);
+        GitHubPatchService gitHubPatchService = mock(GitHubPatchService.class);
+        GitHubPositionConverter gitHubPositionConverter = mock(GitHubPositionConverter.class);
+        GitHubCommentService service = new GitHubCommentService(gitHubClientFactory, gitHubPatchService, gitHubPositionConverter);
+
+        Review review = Review.of(
+                "owner/repo",
+                12,
+                "리뷰 본문",
+                List.of(InlineComment.of("src/Main.java", 10, "라인 코멘트"))
+        );
+        GitHubEventServiceRequest request = GitHubEventServiceRequest.of(PULL_REQUEST, Map.of("action", "opened"), 100L);
+
+        when(gitHubClientFactory.createGitHubClient(100L))
+                .thenThrow(new IllegalStateException("GitHub App ID가 설정되지 않았습니다."));
+
+        // when & then
+        assertThatThrownBy(() -> service.comment(review, request))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("GitHub 코멘트 등록 실패");
+    }
+
     @DisplayName("successful comment 경로에서는 본문 코멘트 후 인라인 코멘트를 등록하고 응답을 유지한다.")
     @Test
     void comment_postsMainCommentBeforeInlineCommentsAndBuildsResponse() throws Exception {
@@ -163,6 +189,46 @@ class GitHubCommentServiceTest {
         assertThat(response.postedInlineComments().get(0).id()).isEqualTo(202L);
         assertThat(response.postedInlineComments().get(0).htmlUrl()).isEqualTo("https://github.com/comment/202");
         assertThat(response.message()).isEqualTo("리뷰 코멘트가 성공적으로 등록되었습니다.");
+    }
+
+    @DisplayName("메인 코멘트 등록에 실패하면 예외를 던지고 인라인 코멘트는 등록하지 않는다.")
+    @Test
+    void comment_failsWhenMainCommentPostingFails() throws Exception {
+        // given
+        GitHubClientFactory gitHubClientFactory = mock(GitHubClientFactory.class);
+        GitHubPatchService gitHubPatchService = mock(GitHubPatchService.class);
+        GitHubPositionConverter gitHubPositionConverter = mock(GitHubPositionConverter.class);
+        GitHubCommentService service = new GitHubCommentService(gitHubClientFactory, gitHubPatchService, gitHubPositionConverter);
+
+        GitHub gitHub = mock(GitHub.class);
+        GHRepository repository = mock(GHRepository.class);
+        GHPullRequest pullRequest = mock(GHPullRequest.class);
+        GHCommitPointer head = mock(GHCommitPointer.class);
+        ParsedFilePatch parsedFilePatch = ParsedFilePatch.of("src/Main.java", List.of());
+        Review review = Review.of(
+                "owner/repo",
+                12,
+                "리뷰 본문",
+                List.of(InlineComment.of("src/Main.java", 10, "라인 코멘트"))
+        );
+        GitHubEventServiceRequest request = GitHubEventServiceRequest.of(PULL_REQUEST, Map.of("action", "opened"), 100L);
+
+        when(gitHubClientFactory.createGitHubClient(100L)).thenReturn(gitHub);
+        when(gitHub.getRepository("owner/repo")).thenReturn(repository);
+        when(repository.getPullRequest(12)).thenReturn(pullRequest);
+        when(pullRequest.getHead()).thenReturn(head);
+        when(head.getSha()).thenReturn("head-sha");
+        when(gitHubPatchService.buildParsedFilePatches(pullRequest)).thenReturn(List.of(parsedFilePatch));
+        when(gitHubPatchService.buildPathToPatch(List.of(parsedFilePatch))).thenReturn(Map.of("src/Main.java", parsedFilePatch));
+        when(gitHubPositionConverter.toPosition(parsedFilePatch, 10)).thenReturn(OptionalInt.of(7));
+        doThrow(new java.io.IOException("main comment failed")).when(pullRequest).comment("리뷰 본문");
+
+        // when & then
+        assertThatThrownBy(() -> service.comment(review, request))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("GitHub 코멘트 등록 실패");
+
+        verify(pullRequest, never()).createReviewComment(anyString(), anyString(), anyString(), anyInt());
     }
 
     @DisplayName("인라인 코멘트 일부 작성이 실패해도 나머지 코멘트는 유지한다.")

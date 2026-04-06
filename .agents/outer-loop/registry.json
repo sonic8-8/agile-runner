@@ -1,9 +1,9 @@
 {
   "version": 1,
   "latest": {
-    "spec_id": "SPEC-0002",
-    "task_id": "TASK-0003",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0002/TASK-0003-schema-rename-runtime-verification.md",
+    "spec_id": "SPEC-0003",
+    "task_id": "TASK-0001",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0003/TASK-0001-exception-safety-net.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0002/SPEC-0002-summary.md"
   },
   "proposals": [

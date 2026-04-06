@@ -1,0 +1,28 @@
+{
+  "spec_id": "SPEC-0003",
+  "spec_name": "예외 체계 정리",
+  "spec_version": 1,
+  "criteria": [
+    {
+      "key": "webhook-contract-preserved-after-exception-refactor",
+      "target": "예외 체계 정리 후 웹훅 성공 계약 유지",
+      "test_view": "컨트롤러/서비스 통합 관점",
+      "pass_condition": "예외 체계 정리 이후에도 성공 코멘트 응답, 같은 delivery_id 조기 종료, `pull_request` 외 이벤트 조기 종료 등 기존 웹훅 성공/조기 종료 계약이 그대로 유지된다.",
+      "fail_condition": "예외 체계 정리 때문에 응답 본문이나 상태, 조기 종료 동작이 바뀌거나 기존 회귀 테스트가 깨진다."
+    },
+    {
+      "key": "core-failure-paths-mapped-to-error-codes",
+      "target": "핵심 실패 경로의 공통 예외 분류",
+      "test_view": "설정/요청 해석/서비스 경계 관점",
+      "pass_condition": "설정 누락, 요청 정보 해석 실패, OpenAI 리뷰 생성 실패, GitHub 코멘트 준비/등록 실패가 `AgileRunnerException + ErrorCode` 기준으로 일관되게 분류된다.",
+      "fail_condition": "핵심 실패 경로 중 일부가 여전히 일반 `RuntimeException`, `IllegalStateException`에 머물거나, 예외 타입과 오류 코드 기준이 서로 다르게 섞인다."
+    },
+    {
+      "key": "runtime-evidence-records-error-code",
+      "target": "실패 실행 근거의 오류 코드 적재",
+      "test_view": "저장소/H2 실제 검증 관점",
+      "pass_condition": "로컬 프로필 실제 앱 기동 후 실패한 `WebhookExecution`과 `AgentExecutionLog`에 오류 코드가 적재되고, H2 파일 DB에서 이를 확인할 수 있다.",
+      "fail_condition": "예외 체계는 도입됐지만 실행 근거에는 오류 코드가 남지 않거나, 실제 앱/H2 기준 적재가 깨진다."
+    }
+  ]
+}
