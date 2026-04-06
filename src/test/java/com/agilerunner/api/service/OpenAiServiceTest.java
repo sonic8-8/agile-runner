@@ -5,6 +5,8 @@ import com.agilerunner.client.github.auth.GitHubClientFactory;
 import com.agilerunner.domain.ParsedFilePatch;
 import com.agilerunner.domain.exception.AgileRunnerException;
 import com.agilerunner.domain.exception.ErrorCode;
+import com.agilerunner.domain.exception.FailureDisposition;
+import com.agilerunner.domain.exception.FailureDispositionPolicy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -54,6 +56,37 @@ class OpenAiServiceTest {
         assertThatThrownBy(() -> service.generateReview(request))
                 .isInstanceOfSatisfying(AgileRunnerException.class, exception -> {
                     assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.OPENAI_CLIENT_MISSING);
+                });
+    }
+
+    @DisplayName("OpenAI 설정 누락 실패는 같은 대응 기준으로 분류된다.")
+    @Test
+    void generateReview_missingChatClient_isClassifiedConsistently() throws Exception {
+        // given
+        @SuppressWarnings("unchecked")
+        ObjectProvider<ChatClient> chatClientProvider = mock(ObjectProvider.class);
+        GitHubClientFactory gitHubClientFactory = mock(GitHubClientFactory.class);
+        GitHubPatchService gitHubPatchService = mock(GitHubPatchService.class);
+        ObjectMapper objectMapper = new ObjectMapper();
+        OpenAiService service = new OpenAiService(chatClientProvider, gitHubClientFactory, gitHubPatchService, objectMapper);
+        FailureDispositionPolicy policy = new FailureDispositionPolicy();
+
+        GitHub gitHub = mock(GitHub.class);
+        GHRepository repository = mock(GHRepository.class);
+        GHPullRequest pullRequest = mock(GHPullRequest.class);
+        GitHubEventServiceRequest request = GitHubEventServiceRequest.of(PULL_REQUEST, buildPayload(), 100L);
+
+        ReflectionTestUtils.setField(service, "basePrompt", "{DIFF_JSON}");
+        when(chatClientProvider.getIfAvailable()).thenReturn(null);
+        when(gitHubClientFactory.createGitHubClient(100L)).thenReturn(gitHub);
+        when(gitHub.getRepository("owner/repo")).thenReturn(repository);
+        when(repository.getPullRequest(12)).thenReturn(pullRequest);
+        when(gitHubPatchService.buildParsedFilePatches(pullRequest)).thenReturn(List.of(ParsedFilePatch.of("src/Main.java", List.of())));
+
+        // when & then
+        assertThatThrownBy(() -> service.generateReview(request))
+                .isInstanceOfSatisfying(AgileRunnerException.class, exception -> {
+                    assertThat(policy.classify(exception)).isEqualTo(FailureDisposition.MANUAL_ACTION_REQUIRED);
                 });
     }
 
