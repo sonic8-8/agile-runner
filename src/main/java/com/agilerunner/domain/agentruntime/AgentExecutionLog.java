@@ -1,6 +1,7 @@
 package com.agilerunner.domain.agentruntime;
 
 import com.agilerunner.domain.exception.ErrorCode;
+import com.agilerunner.domain.exception.FailureDisposition;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -17,6 +18,7 @@ public class AgentExecutionLog {
     private final String outputSummary;
     private final String errorMessage;
     private final ErrorCode errorCode;
+    private final FailureDisposition failureDisposition;
     private final String payloadJson;
     private final LocalDateTime startedAt;
     private final LocalDateTime endedAt;
@@ -31,6 +33,7 @@ public class AgentExecutionLog {
                               String outputSummary,
                               String errorMessage,
                               ErrorCode errorCode,
+                              FailureDisposition failureDisposition,
                               String payloadJson,
                               LocalDateTime startedAt,
                               LocalDateTime endedAt) {
@@ -44,6 +47,7 @@ public class AgentExecutionLog {
         this.outputSummary = outputSummary;
         this.errorMessage = errorMessage;
         this.errorCode = errorCode;
+        this.failureDisposition = failureDisposition;
         this.payloadJson = payloadJson;
         this.startedAt = startedAt;
         this.endedAt = endedAt;
@@ -62,6 +66,38 @@ public class AgentExecutionLog {
                                        String payloadJson,
                                        LocalDateTime startedAt,
                                        LocalDateTime endedAt) {
+        return of(
+                taskKey,
+                issueNumber,
+                executionKey,
+                agentRole,
+                stepName,
+                status,
+                inputSummary,
+                outputSummary,
+                errorMessage,
+                errorCode,
+                null,
+                payloadJson,
+                startedAt,
+                endedAt
+        );
+    }
+
+    public static AgentExecutionLog of(String taskKey,
+                                       Long issueNumber,
+                                       String executionKey,
+                                       AgentRole agentRole,
+                                       String stepName,
+                                       AgentExecutionStatus status,
+                                       String inputSummary,
+                                       String outputSummary,
+                                       String errorMessage,
+                                       ErrorCode errorCode,
+                                       FailureDisposition failureDisposition,
+                                       String payloadJson,
+                                       LocalDateTime startedAt,
+                                       LocalDateTime endedAt) {
         return new AgentExecutionLog(
                 taskKey,
                 issueNumber,
@@ -73,6 +109,7 @@ public class AgentExecutionLog {
                 outputSummary,
                 errorMessage,
                 errorCode,
+                failureDisposition,
                 payloadJson,
                 startedAt,
                 endedAt

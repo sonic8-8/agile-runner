@@ -18,6 +18,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.agilerunner.domain.exception.AgileRunnerException;
 import com.agilerunner.domain.exception.ErrorCode;
+import com.agilerunner.domain.exception.FailureDisposition;
+import com.agilerunner.domain.exception.FailureDispositionPolicy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
@@ -41,11 +43,13 @@ public class AgentRuntimeService {
     @Nullable
     private final AgentRuntimeRepository agentRuntimeRepository;
     private final ObjectMapper objectMapper;
+    private final FailureDispositionPolicy failureDispositionPolicy;
 
     public AgentRuntimeService(@Autowired(required = false) @Nullable AgentRuntimeRepository agentRuntimeRepository,
                                ObjectMapper objectMapper) {
         this.agentRuntimeRepository = agentRuntimeRepository;
         this.objectMapper = objectMapper;
+        this.failureDispositionPolicy = new FailureDispositionPolicy();
     }
 
     public WebhookExecution startWebhookExecution(String deliveryId, GitHubEventServiceRequest request) {
@@ -220,7 +224,14 @@ public class AgentRuntimeService {
         long issueNumber = webhookExecution.getPullRequestNumber();
         TaskRuntimeState existingTaskRuntimeState = agentRuntimeRepository.findTaskRuntimeState(webhookExecution.getTaskKey()).orElse(null);
         ErrorCode errorCode = resolveErrorCode(exception);
-        WebhookExecution failedWebhookExecution = webhookExecution.complete(WebhookExecutionStatus.FAILED, exception.getMessage(), errorCode, now);
+        FailureDisposition failureDisposition = resolveFailureDisposition(errorCode);
+        WebhookExecution failedWebhookExecution = webhookExecution.complete(
+                WebhookExecutionStatus.FAILED,
+                exception.getMessage(),
+                errorCode,
+                failureDisposition,
+                now
+        );
 
         agentRuntimeRepository.replaceValidationCriteria(
                 webhookExecution.getTaskKey(),
@@ -259,6 +270,7 @@ public class AgentRuntimeService {
                         null,
                         buildErrorSummary(exception),
                         errorCode,
+                        failureDisposition,
                         toJson(buildErrorSnapshot(exception)),
                         now,
                         now
@@ -371,6 +383,14 @@ public class AgentRuntimeService {
         }
 
         return agileRunnerException.getErrorCode();
+    }
+
+    private FailureDisposition resolveFailureDisposition(@Nullable ErrorCode errorCode) {
+        if (errorCode == null) {
+            return null;
+        }
+
+        return failureDispositionPolicy.classify(errorCode);
     }
 
     private String buildExecutionKey(String deliveryId) {

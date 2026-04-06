@@ -12,6 +12,7 @@ import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
 import com.agilerunner.domain.agentruntime.TaskRuntimeState;
 import com.agilerunner.domain.agentruntime.TaskRuntimeStatus;
 import com.agilerunner.domain.exception.ErrorCode;
+import com.agilerunner.domain.exception.FailureDisposition;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -113,7 +114,7 @@ class AgentRuntimeRepositoryTest {
         });
     }
 
-    @DisplayName("agent execution log를 오류 코드와 함께 누적 저장하고 다시 조회할 수 있다.")
+    @DisplayName("agent execution log를 오류 코드와 대응 분류와 함께 누적 저장하고 다시 조회할 수 있다.")
     @Test
     void appendExecutionLog_andFind() {
         contextRunner.run(context -> {
@@ -131,6 +132,7 @@ class AgentRuntimeRepositoryTest {
                     "실패 테스트 2건",
                     "assertion mismatch",
                     ErrorCode.OPENAI_REVIEW_FAILED,
+                    FailureDisposition.RETRYABLE,
                     "{\"failed\":2}",
                     LocalDateTime.of(2026, 4, 2, 13, 0),
                     LocalDateTime.of(2026, 4, 2, 13, 1)
@@ -144,6 +146,11 @@ class AgentRuntimeRepositoryTest {
                             "SELECT execution_key FROM AGENT_EXECUTION_LOG WHERE task_key = 'TASK-103'",
                             String.class
                     );
+            String storedFailureDisposition = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT failure_disposition FROM AGENT_EXECUTION_LOG WHERE task_key = 'TASK-103'",
+                            String.class
+                    );
 
             // then
             assertThat(found).hasSize(1);
@@ -151,8 +158,10 @@ class AgentRuntimeRepositoryTest {
             assertThat(found.getFirst().getAgentRole()).isEqualTo(AgentRole.TESTER);
             assertThat(found.getFirst().getStatus()).isEqualTo(AgentExecutionStatus.FAILED);
             assertThat(found.getFirst().getErrorCode()).isEqualTo(ErrorCode.OPENAI_REVIEW_FAILED);
+            assertThat(found.getFirst().getFailureDisposition()).isEqualTo(FailureDisposition.RETRYABLE);
             assertThat(found.getFirst().getPayloadJson()).isEqualTo("{\"failed\":2}");
             assertThat(storedExecutionKey).isEqualTo("EXECUTION-103");
+            assertThat(storedFailureDisposition).isEqualTo("RETRYABLE");
         });
     }
 
@@ -189,7 +198,7 @@ class AgentRuntimeRepositoryTest {
         });
     }
 
-    @DisplayName("webhook execution을 오류 코드와 함께 저장하고 다시 조회할 수 있다.")
+    @DisplayName("webhook execution을 오류 코드와 대응 분류와 함께 저장하고 다시 조회할 수 있다.")
     @Test
     void upsertWebhookExecution_andFind() {
         contextRunner.run(context -> {
@@ -209,6 +218,7 @@ class AgentRuntimeRepositoryTest {
                     WebhookExecutionStatus.FAILED,
                     "GitHub App ID missing",
                     ErrorCode.GITHUB_APP_CONFIGURATION_MISSING,
+                    FailureDisposition.MANUAL_ACTION_REQUIRED,
                     LocalDateTime.of(2026, 4, 2, 14, 3)
             );
 
@@ -225,6 +235,11 @@ class AgentRuntimeRepositoryTest {
                             "SELECT error_code FROM WEBHOOK_EXECUTION WHERE execution_key = 'EXECUTION:201'",
                             String.class
                     );
+            String storedFailureDisposition = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT failure_disposition FROM WEBHOOK_EXECUTION WHERE execution_key = 'EXECUTION:201'",
+                            String.class
+                    );
 
             // then
             assertThat(found).isPresent();
@@ -232,8 +247,10 @@ class AgentRuntimeRepositoryTest {
             assertThat(found.get().getDeliveryId()).isEqualTo("delivery-201");
             assertThat(found.get().getStatus()).isEqualTo(WebhookExecutionStatus.FAILED);
             assertThat(found.get().getErrorCode()).isEqualTo(ErrorCode.GITHUB_APP_CONFIGURATION_MISSING);
+            assertThat(found.get().getFailureDisposition()).isEqualTo(FailureDisposition.MANUAL_ACTION_REQUIRED);
             assertThat(storedStatus).isEqualTo("FAILED");
             assertThat(storedErrorCode).isEqualTo("GITHUB_APP_CONFIGURATION_MISSING");
+            assertThat(storedFailureDisposition).isEqualTo("MANUAL_ACTION_REQUIRED");
         });
     }
 

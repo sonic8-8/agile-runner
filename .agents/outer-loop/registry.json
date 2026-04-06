@@ -2,9 +2,9 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0004",
-    "task_id": "TASK-0002",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0004/TASK-0002-failure-disposition-policy.md",
-    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0003/SPEC-0003-summary.md"
+    "task_id": "TASK-0003",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0004/TASK-0003-runtime-failure-disposition-evidence.md",
+    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0004/SPEC-0004-summary.md"
   },
   "proposals": [
     {

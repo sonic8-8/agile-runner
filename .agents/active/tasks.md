@@ -125,7 +125,18 @@
 - `AgentExecutionLog`에 실패 대응 분류 저장
 - 저장소 SQL, 행 매퍼, 스키마를 새 필드에 맞춰 정리
 - `AgentRuntimeService.recordFailure(...)`에서 대응 분류를 실행 근거에 남기도록 정리
+- representative failure 검증은 `GITHUB_APP_CONFIGURATION_MISSING` 시나리오를 기본값으로 사용한다.
 - 로컬 프로필 실제 앱 기동 후 대표 웹훅 실패 결과를 H2에서 대응 분류 기준으로 확인
+
+### 관련 파일 후보
+- `src/main/java/com/agilerunner/domain/agentruntime/WebhookExecution.java`
+- `src/main/java/com/agilerunner/domain/agentruntime/AgentExecutionLog.java`
+- `src/main/java/com/agilerunner/api/service/agentruntime/AgentRuntimeService.java`
+- `src/main/java/com/agilerunner/client/agentruntime/AgentRuntimeRepository.java`
+- `src/main/resources/agent-runtime/schema.sql`
+- `src/test/java/com/agilerunner/api/service/agentruntime/AgentRuntimeServiceTest.java`
+- `src/test/java/com/agilerunner/client/agentruntime/AgentRuntimeRepositoryTest.java`
+- `src/test/java/com/agilerunner/api/controller/GitHubWebhookControllerTest.java`
 
 ### 비대상
 - 실제 재시도 실행
@@ -144,7 +155,7 @@
 - 실행 근거 저장소/서비스 왕복 테스트
 - 컨트롤러/서비스 회귀 테스트
 - 전체 테스트 실행
-- 로컬 프로필 실제 앱 기동 후 H2 파일 DB 조회로 실패 실행 기록의 대응 분류 확인
+- 로컬 프로필 실제 앱 기동 후 H2 파일 DB 조회로 같은 `execution_key` 기준의 `WebhookExecution`과 `AgentExecutionLog`에 대응 분류가 함께 적재되는지 확인
 
 ### GitHub Issue
 - 새 Issue 생성

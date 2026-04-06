@@ -13,6 +13,7 @@ import com.agilerunner.domain.agentruntime.TaskRuntimeState;
 import com.agilerunner.domain.agentruntime.TaskRuntimeStatus;
 import com.agilerunner.domain.exception.AgileRunnerException;
 import com.agilerunner.domain.exception.ErrorCode;
+import com.agilerunner.domain.exception.FailureDisposition;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -145,9 +146,9 @@ class AgentRuntimeServiceTest {
         assertThat(criteria).allMatch(criterion -> criterion.getStatus() == CriteriaStatus.PASSED);
     }
 
-    @DisplayName("review generation 실패 시 task runtime state와 webhook execution을 오류 코드와 함께 실패 상태로 기록한다.")
+    @DisplayName("review generation 실패 시 task runtime state와 webhook execution을 오류 코드와 대응 분류와 함께 실패 상태로 기록한다.")
     @Test
-    void recordFailure_recordsErrorCodeOnFailedExecutionEvidence() {
+    void recordFailure_recordsFailureDispositionOnFailedExecutionEvidence() {
         // given
         AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
         when(repository.findTaskRuntimeState("PR_REVIEW:sonic8-8:agile-runner#13"))
@@ -200,6 +201,7 @@ class AgentRuntimeServiceTest {
         assertThat(savedRun.getStatus()).isEqualTo(WebhookExecutionStatus.FAILED);
         assertThat(savedRun.getErrorMessage()).isEqualTo("openai failed");
         assertThat(savedRun.getErrorCode()).isEqualTo(ErrorCode.OPENAI_REVIEW_FAILED);
+        assertThat(savedRun.getFailureDisposition()).isEqualTo(FailureDisposition.RETRYABLE);
 
         List<ValidationCriteria> criteria = criteriaCaptor.getValue();
         assertThat(criteria.get(1).getStatus()).isEqualTo(CriteriaStatus.FAILED);
@@ -210,6 +212,7 @@ class AgentRuntimeServiceTest {
         assertThat(executionLog.getStatus()).isEqualTo(AgentExecutionStatus.FAILED);
         assertThat(executionLog.getErrorMessage()).contains("openai failed");
         assertThat(executionLog.getErrorCode()).isEqualTo(ErrorCode.OPENAI_REVIEW_FAILED);
+        assertThat(executionLog.getFailureDisposition()).isEqualTo(FailureDisposition.RETRYABLE);
     }
 
     private Map<String, Object> buildPayload(String repositoryName, int pullRequestNumber, String action) {

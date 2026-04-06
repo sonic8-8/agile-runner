@@ -1,6 +1,7 @@
 package com.agilerunner.domain.agentruntime;
 
 import com.agilerunner.domain.exception.ErrorCode;
+import com.agilerunner.domain.exception.FailureDisposition;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -17,6 +18,7 @@ public class WebhookExecution {
     private final WebhookExecutionStatus status;
     private final String errorMessage;
     private final ErrorCode errorCode;
+    private final FailureDisposition failureDisposition;
     private final LocalDateTime startedAt;
     private final LocalDateTime finishedAt;
 
@@ -30,6 +32,7 @@ public class WebhookExecution {
                       WebhookExecutionStatus status,
                       String errorMessage,
                       ErrorCode errorCode,
+                      FailureDisposition failureDisposition,
                       LocalDateTime startedAt,
                       LocalDateTime finishedAt) {
         this.executionKey = executionKey;
@@ -42,6 +45,7 @@ public class WebhookExecution {
         this.status = status;
         this.errorMessage = errorMessage;
         this.errorCode = errorCode;
+        this.failureDisposition = failureDisposition;
         this.startedAt = startedAt;
         this.finishedAt = finishedAt;
     }
@@ -65,6 +69,7 @@ public class WebhookExecution {
                 WebhookExecutionStatus.STARTED,
                 null,
                 null,
+                null,
                 startedAt,
                 null
         );
@@ -73,6 +78,14 @@ public class WebhookExecution {
     public WebhookExecution complete(WebhookExecutionStatus status,
                                      String errorMessage,
                                      ErrorCode errorCode,
+                                     LocalDateTime finishedAt) {
+        return complete(status, errorMessage, errorCode, null, finishedAt);
+    }
+
+    public WebhookExecution complete(WebhookExecutionStatus status,
+                                     String errorMessage,
+                                     ErrorCode errorCode,
+                                     FailureDisposition failureDisposition,
                                      LocalDateTime finishedAt) {
         return new WebhookExecution(
                 executionKey,
@@ -85,6 +98,7 @@ public class WebhookExecution {
                 status,
                 errorMessage,
                 errorCode,
+                failureDisposition,
                 startedAt,
                 finishedAt
         );
