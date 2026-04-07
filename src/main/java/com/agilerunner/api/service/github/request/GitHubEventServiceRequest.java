@@ -5,6 +5,7 @@ import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
 import lombok.Getter;
 
 import java.util.Map;
+import java.util.Objects;
 
 @Getter
 public class GitHubEventServiceRequest {
@@ -30,7 +31,19 @@ public class GitHubEventServiceRequest {
     }
 
     public static GitHubEventServiceRequest of(GitHubEventType gitHubEventType, Map<String, Object> payload, long installationId) {
-        return new GitHubEventServiceRequest(gitHubEventType, payload, installationId, ExecutionControlMode.NORMAL);
+        return of(gitHubEventType, payload, installationId, ExecutionControlMode.NORMAL);
+    }
+
+    public static GitHubEventServiceRequest of(GitHubEventType gitHubEventType,
+                                               Map<String, Object> payload,
+                                               long installationId,
+                                               ExecutionControlMode executionControlMode) {
+        return new GitHubEventServiceRequest(
+                gitHubEventType,
+                payload,
+                installationId,
+                Objects.requireNonNull(executionControlMode)
+        );
     }
 
     public String getRepositoryName() {

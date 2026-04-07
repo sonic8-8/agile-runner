@@ -79,7 +79,20 @@
 - 실행 제어 모드 타입 정의
 - 서비스 입력 모델 또는 경계 DTO에 실행 제어 모드 반영
 - 현재 webhook 요청은 별도 제어 입력이 없으면 `NORMAL` 모드로 해석
+- `DRY_RUN` 값은 서비스 경계까지 명시적으로 전달할 수 있게 열어두되, 실제 no-write 분기와 write 차단은 아직 구현하지 않는다.
 - 기존 오류 코드, 메시지, 성공 응답 계약은 그대로 유지
+
+### 관련 파일 후보
+- `src/main/java/com/agilerunner/api/controller/github/request/GitHubEventRequest.java`
+- `src/main/java/com/agilerunner/api/service/github/request/GitHubEventServiceRequest.java`
+- `src/main/java/com/agilerunner/domain/executioncontrol/ExecutionControlMode.java`
+- `src/main/java/com/agilerunner/api/controller/GitHubWebhookController.java`
+- `src/main/java/com/agilerunner/api/service/OpenAiService.java`
+- `src/main/java/com/agilerunner/api/service/GitHubCommentService.java`
+- `src/test/java/com/agilerunner/api/controller/github/request/GitHubEventRequestTest.java`
+- `src/test/java/com/agilerunner/api/controller/GitHubWebhookControllerTest.java`
+- `src/test/java/com/agilerunner/api/service/OpenAiServiceTest.java`
+- `src/test/java/com/agilerunner/api/service/GitHubCommentServiceTest.java`
 
 ### 비대상
 - dry-run 실제 no-write 분기 구현
@@ -96,6 +109,7 @@
 
 ### 검증
 - 실행 제어 입력 모델 테스트
+- 명시적 `DRY_RUN` 입력이 서비스 경계까지 그대로 유지되는지 확인
 - 웹훅 성공/조기 종료 회귀 테스트
 - 관련 단위/통합 테스트 컴파일과 실행 통과
 
