@@ -5,6 +5,7 @@ import com.agilerunner.api.service.agentruntime.AgentRuntimeService;
 import com.agilerunner.api.service.GitHubCommentService;
 import com.agilerunner.api.service.OpenAiService;
 import com.agilerunner.api.service.dto.GitHubCommentResponse;
+import com.agilerunner.api.service.github.response.GitHubCommentExecutionResult;
 import com.agilerunner.api.service.github.request.GitHubEventServiceRequest;
 import com.agilerunner.domain.Review;
 import com.agilerunner.domain.agentruntime.WebhookExecution;
@@ -87,7 +88,8 @@ public class GitHubWebhookController {
                                                                WebhookExecution webhookExecution,
                                                                Review review) {
         try {
-            GitHubCommentResponse response = gitHubCommentService.comment(review, serviceRequest);
+            GitHubCommentExecutionResult executionResult = gitHubCommentService.execute(review, serviceRequest);
+            GitHubCommentResponse response = executionResult.requireGitHubCommentResponse();
             deliveryCache.record(deliveryId);
             recordCommentPostedSafely(webhookExecution, response);
             return ResponseEntity.ok(response);

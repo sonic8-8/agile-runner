@@ -5,9 +5,11 @@ import com.agilerunner.api.service.OpenAiService;
 import com.agilerunner.api.service.agentruntime.AgentRuntimeService;
 import com.agilerunner.api.service.dto.GitHubCommentResponse;
 import com.agilerunner.api.service.github.request.GitHubEventServiceRequest;
+import com.agilerunner.api.service.github.response.GitHubCommentExecutionResult;
 import com.agilerunner.api.service.dto.PostedInlineComment;
 import com.agilerunner.domain.Review;
 import com.agilerunner.domain.agentruntime.WebhookExecution;
+import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
 import com.agilerunner.domain.exception.AgileRunnerException;
 import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.util.WebhookDeliveryCache;
@@ -87,7 +89,8 @@ class GitHubWebhookControllerTest {
         when(webhookDeliveryCache.isDuplicate(deliveryId)).thenReturn(false);
         when(agentRuntimeService.startWebhookExecution(eq(deliveryId), any(GitHubEventServiceRequest.class))).thenReturn(webhookExecution);
         when(openAiService.generateReview(any(GitHubEventServiceRequest.class))).thenReturn(review);
-        when(gitHubCommentService.comment(eq(review), any(GitHubEventServiceRequest.class))).thenReturn(response);
+        when(gitHubCommentService.execute(eq(review), any(GitHubEventServiceRequest.class)))
+                .thenReturn(writtenResult(response));
 
         // when
         mockMvc.perform(post("/webhook/github")
@@ -135,7 +138,8 @@ class GitHubWebhookControllerTest {
         when(webhookDeliveryCache.isDuplicate(deliveryId)).thenReturn(false);
         when(agentRuntimeService.startWebhookExecution(eq(deliveryId), any(GitHubEventServiceRequest.class))).thenReturn(webhookExecution);
         when(openAiService.generateReview(any(GitHubEventServiceRequest.class))).thenReturn(review);
-        when(gitHubCommentService.comment(eq(review), any(GitHubEventServiceRequest.class))).thenReturn(response);
+        when(gitHubCommentService.execute(eq(review), any(GitHubEventServiceRequest.class)))
+                .thenReturn(writtenResult(response));
 
         // when & then
         mockMvc.perform(post("/webhook/github")
@@ -178,7 +182,8 @@ class GitHubWebhookControllerTest {
         when(webhookDeliveryCache.isDuplicate(deliveryId)).thenReturn(false);
         when(agentRuntimeService.startWebhookExecution(eq(deliveryId), any(GitHubEventServiceRequest.class))).thenReturn(webhookExecution);
         when(openAiService.generateReview(any(GitHubEventServiceRequest.class))).thenReturn(review);
-        when(gitHubCommentService.comment(eq(review), any(GitHubEventServiceRequest.class))).thenReturn(response);
+        when(gitHubCommentService.execute(eq(review), any(GitHubEventServiceRequest.class)))
+                .thenReturn(writtenResult(response));
         doThrow(new RuntimeException("runtime write failed"))
                 .when(agentRuntimeService)
                 .recordCommentPosted(webhookExecution, response);
@@ -227,7 +232,8 @@ class GitHubWebhookControllerTest {
         }).when(webhookDeliveryCache).record(anyString());
         when(agentRuntimeService.startWebhookExecution(eq(deliveryId), any(GitHubEventServiceRequest.class))).thenReturn(webhookExecution);
         when(openAiService.generateReview(any(GitHubEventServiceRequest.class))).thenReturn(review);
-        when(gitHubCommentService.comment(eq(review), any(GitHubEventServiceRequest.class))).thenReturn(response);
+        when(gitHubCommentService.execute(eq(review), any(GitHubEventServiceRequest.class)))
+                .thenReturn(writtenResult(response));
         doThrow(new RuntimeException("runtime write failed"))
                 .when(agentRuntimeService)
                 .recordCommentPosted(webhookExecution, response);
@@ -249,7 +255,7 @@ class GitHubWebhookControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(""));
 
-        verify(gitHubCommentService, times(1)).comment(eq(review), any(GitHubEventServiceRequest.class));
+        verify(gitHubCommentService, times(1)).execute(eq(review), any(GitHubEventServiceRequest.class));
         verify(agentRuntimeService, times(1)).startWebhookExecution(eq(deliveryId), any(GitHubEventServiceRequest.class));
     }
 
@@ -272,7 +278,7 @@ class GitHubWebhookControllerTest {
 
         verify(agentRuntimeService, never()).startWebhookExecution(anyString(), any(GitHubEventServiceRequest.class));
         verify(openAiService, never()).generateReview(any(GitHubEventServiceRequest.class));
-        verify(gitHubCommentService, never()).comment(any(Review.class), any(GitHubEventServiceRequest.class));
+        verify(gitHubCommentService, never()).execute(any(Review.class), any(GitHubEventServiceRequest.class));
     }
 
     @DisplayName("pull_request가 아닌 이벤트는 기존처럼 조기 종료한다.")
@@ -294,7 +300,7 @@ class GitHubWebhookControllerTest {
 
         verify(agentRuntimeService, never()).startWebhookExecution(anyString(), any(GitHubEventServiceRequest.class));
         verify(openAiService, never()).generateReview(any(GitHubEventServiceRequest.class));
-        verify(gitHubCommentService, never()).comment(any(Review.class), any(GitHubEventServiceRequest.class));
+        verify(gitHubCommentService, never()).execute(any(Review.class), any(GitHubEventServiceRequest.class));
     }
 
     @DisplayName("installation 정보가 없으면 실패 응답으로 종료하고 다음 흐름으로 진행하지 않는다.")
@@ -320,7 +326,7 @@ class GitHubWebhookControllerTest {
 
         verify(agentRuntimeService, never()).startWebhookExecution(anyString(), any(GitHubEventServiceRequest.class));
         verify(openAiService, never()).generateReview(any(GitHubEventServiceRequest.class));
-        verify(gitHubCommentService, never()).comment(any(Review.class), any(GitHubEventServiceRequest.class));
+        verify(gitHubCommentService, never()).execute(any(Review.class), any(GitHubEventServiceRequest.class));
     }
 
     @DisplayName("installation 정보가 없으면 공통 예외와 오류 코드로 분류한다.")
@@ -378,7 +384,7 @@ class GitHubWebhookControllerTest {
                     assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.OPENAI_REVIEW_FAILED);
                 });
 
-        verify(gitHubCommentService, never()).comment(any(Review.class), any(GitHubEventServiceRequest.class));
+        verify(gitHubCommentService, never()).execute(any(Review.class), any(GitHubEventServiceRequest.class));
     }
 
     @DisplayName("리뷰 생성 결과가 null이면 오류 코드를 남기고 빈 응답으로 종료한다.")
@@ -421,7 +427,7 @@ class GitHubWebhookControllerTest {
                 .isInstanceOfSatisfying(AgileRunnerException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.OPENAI_REVIEW_FAILED)
                 );
-        verify(gitHubCommentService, never()).comment(any(Review.class), any(GitHubEventServiceRequest.class));
+        verify(gitHubCommentService, never()).execute(any(Review.class), any(GitHubEventServiceRequest.class));
     }
 
     private Map<String, Object> buildPayload() {
@@ -431,5 +437,13 @@ class GitHubWebhookControllerTest {
         payload.put("repository", Map.of("full_name", "owner/repo"));
         payload.put("pull_request", Map.of("number", 12));
         return payload;
+    }
+
+    private GitHubCommentExecutionResult writtenResult(GitHubCommentResponse response) {
+        return GitHubCommentExecutionResult.written(
+                ExecutionControlMode.NORMAL,
+                response.postedInlineComments().size(),
+                response
+        );
     }
 }

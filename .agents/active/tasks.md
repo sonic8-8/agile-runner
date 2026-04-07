@@ -129,6 +129,16 @@ dry-run no-write 분기 도입
 - dry-run에서는 본문/인라인 코멘트 write 미수행
 - dry-run에서도 리뷰 생성 결과 또는 준비 결과는 검증 가능하게 유지
 - `NORMAL` 모드는 기존과 같이 write까지 이어지도록 유지
+- 외부 webhook 응답 계약은 바꾸지 않고, dry-run 검증 가능한 결과는 service 내부 결과 타입 또는 service-level 테스트 기준으로 닫는다.
+
+### 관련 파일 후보
+- `src/main/java/com/agilerunner/api/service/GitHubCommentService.java`
+- `src/main/java/com/agilerunner/api/service/dto/GitHubCommentResponse.java`
+- `src/main/java/com/agilerunner/api/service/github/request/GitHubEventServiceRequest.java`
+- `src/main/java/com/agilerunner/domain/executioncontrol/ExecutionControlMode.java`
+- `src/test/java/com/agilerunner/api/service/GitHubCommentServiceTest.java`
+- `src/test/java/com/agilerunner/api/controller/GitHubWebhookControllerTest.java`
+- `src/test/java/com/agilerunner/api/service/OpenAiServiceTest.java`
 
 ### 비대상
 - runtime evidence 스키마 변경
@@ -146,6 +156,7 @@ dry-run no-write 분기 도입
 
 ### 검증
 - dry-run no-write 테스트
+- dry-run 준비 결과 또는 write 생략 결과가 service-level 테스트에서 검증 가능한지 확인
 - normal mode 회귀 테스트
 - 필요 시 실제 앱/H2 대표 검증 생략 사유 기록
 - 관련 단위/통합 테스트 실행 통과

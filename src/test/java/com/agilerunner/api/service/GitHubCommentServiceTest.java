@@ -2,10 +2,13 @@ package com.agilerunner.api.service;
 
 import com.agilerunner.api.service.dto.GitHubCommentResponse;
 import com.agilerunner.api.service.github.request.GitHubEventServiceRequest;
+import com.agilerunner.api.service.github.response.GitHubCommentExecutionResult;
 import com.agilerunner.client.github.auth.GitHubClientFactory;
 import com.agilerunner.domain.InlineComment;
 import com.agilerunner.domain.ParsedFilePatch;
 import com.agilerunner.domain.Review;
+import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
+import com.agilerunner.domain.executioncontrol.GitHubWriteSkipReason;
 import com.agilerunner.domain.exception.AgileRunnerException;
 import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.util.GitHubPositionConverter;
@@ -197,6 +200,57 @@ class GitHubCommentServiceTest {
         assertThat(response.postedInlineComments().get(0).id()).isEqualTo(202L);
         assertThat(response.postedInlineComments().get(0).htmlUrl()).isEqualTo("https://github.com/comment/202");
         assertThat(response.message()).isEqualTo("리뷰 코멘트가 성공적으로 등록되었습니다.");
+    }
+
+    @DisplayName("DRY_RUN 모드에서는 사전 준비를 유지하되 GitHub write를 수행하지 않는다.")
+    @Test
+    void execute_skipsGitHubWritesAndPreservesPreparedResultInDryRunMode() throws Exception {
+        // given
+        GitHubClientFactory gitHubClientFactory = mock(GitHubClientFactory.class);
+        GitHubPatchService gitHubPatchService = mock(GitHubPatchService.class);
+        GitHubPositionConverter gitHubPositionConverter = mock(GitHubPositionConverter.class);
+        GitHubCommentService service = new GitHubCommentService(gitHubClientFactory, gitHubPatchService, gitHubPositionConverter);
+
+        GitHub gitHub = mock(GitHub.class);
+        GHRepository repository = mock(GHRepository.class);
+        GHCommitPointer head = mock(GHCommitPointer.class);
+        GHIssueComment mainComment = new GHIssueComment();
+        GHPullRequestReviewComment reviewComment = new GHPullRequestReviewComment();
+        ParsedFilePatch parsedFilePatch = ParsedFilePatch.of("src/Main.java", List.of());
+        List<String> commentCalls = new ArrayList<>();
+        GHPullRequest pullRequest = new StubPullRequest(head, mainComment, reviewComment, commentCalls);
+
+        Review review = Review.of(
+                "owner/repo",
+                12,
+                "리뷰 본문",
+                List.of(InlineComment.of("src/Main.java", 10, "라인 코멘트"))
+        );
+        GitHubEventServiceRequest request = GitHubEventServiceRequest.of(
+                PULL_REQUEST,
+                Map.of("action", "opened"),
+                100L,
+                ExecutionControlMode.DRY_RUN
+        );
+
+        when(gitHubClientFactory.createGitHubClient(100L)).thenReturn(gitHub);
+        when(gitHub.getRepository("owner/repo")).thenReturn(repository);
+        when(repository.getPullRequest(12)).thenReturn(pullRequest);
+        when(head.getSha()).thenReturn("head-sha");
+        when(gitHubPatchService.buildParsedFilePatches(pullRequest)).thenReturn(List.of(parsedFilePatch));
+        when(gitHubPatchService.buildPathToPatch(List.of(parsedFilePatch))).thenReturn(Map.of("src/Main.java", parsedFilePatch));
+        when(gitHubPositionConverter.toPosition(parsedFilePatch, 10)).thenReturn(OptionalInt.of(7));
+
+        // when
+        GitHubCommentExecutionResult result = service.execute(review, request);
+
+        // then
+        assertThat(result.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
+        assertThat(result.isWritePerformed()).isFalse();
+        assertThat(result.getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
+        assertThat(result.getPreparedInlineCommentCount()).isEqualTo(1);
+        assertThat(result.getGitHubCommentResponse()).isNull();
+        assertThat(commentCalls).isEmpty();
     }
 
     @DisplayName("메인 코멘트 등록에 실패하면 예외를 던지고 인라인 코멘트는 등록하지 않는다.")

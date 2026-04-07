@@ -2,6 +2,7 @@ package com.agilerunner.api.service;
 
 import com.agilerunner.api.service.dto.GitHubCommentResponse;
 import com.agilerunner.api.service.github.request.GitHubEventServiceRequest;
+import com.agilerunner.api.service.github.response.GitHubCommentExecutionResult;
 import com.agilerunner.api.service.dto.PostedInlineComment;
 import com.agilerunner.client.github.auth.GitHubClientFactory;
 import com.agilerunner.domain.InlineComment;
@@ -9,6 +10,8 @@ import com.agilerunner.domain.ParsedFilePatch;
 import com.agilerunner.domain.Review;
 import com.agilerunner.domain.exception.AgileRunnerException;
 import com.agilerunner.domain.exception.ErrorCode;
+import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
+import com.agilerunner.domain.executioncontrol.GitHubWriteSkipReason;
 import com.agilerunner.util.GitHubPositionConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,12 +31,29 @@ public class GitHubCommentService {
     private final GitHubPositionConverter gitHubPositionConverter;
 
     public GitHubCommentResponse comment(Review review, GitHubEventServiceRequest request) {
+        GitHubCommentExecutionResult result = execute(review, request);
+        return result.requireGitHubCommentResponse();
+    }
+
+    public GitHubCommentExecutionResult execute(Review review, GitHubEventServiceRequest request) {
         try {
             CommentPreflight preflight = prepareCommentPreflight(review, request);
+            if (isDryRun(request)) {
+                return GitHubCommentExecutionResult.skipped(
+                        request.getExecutionControlMode(),
+                        GitHubWriteSkipReason.DRY_RUN,
+                        preflight.getPreparedInlineComments().size()
+                );
+            }
+
             GHIssueComment mainComment = postMainComment(preflight.getPullRequest(), review.getReviewBody());
             List<PostedInlineComment> postedInlineComments = postInlineComments(preflight);
-
-            return buildResponse(mainComment, postedInlineComments);
+            GitHubCommentResponse response = buildResponse(mainComment, postedInlineComments);
+            return GitHubCommentExecutionResult.written(
+                    request.getExecutionControlMode(),
+                    preflight.getPreparedInlineComments().size(),
+                    response
+            );
         } catch (AgileRunnerException exception) {
             log.error("GitHub 코멘트 등록 실패, repository={}, PR={}",
                     review.getRepositoryName(), review.getPullRequestNumber(), exception);
@@ -47,6 +67,10 @@ public class GitHubCommentService {
                     e
             );
         }
+    }
+
+    private boolean isDryRun(GitHubEventServiceRequest request) {
+        return request.getExecutionControlMode() == ExecutionControlMode.DRY_RUN;
     }
 
     private CommentPreflight prepareCommentPreflight(Review review, GitHubEventServiceRequest request) throws Exception {
