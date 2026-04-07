@@ -1,7 +1,7 @@
 package com.agilerunner.api.controller.github.request;
 
 import com.agilerunner.GitHubEventType;
-import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
+import com.agilerunner.api.service.github.request.GitHubEventServiceRequest;
 import com.agilerunner.domain.exception.AgileRunnerException;
 import com.agilerunner.domain.exception.ErrorCode;
 

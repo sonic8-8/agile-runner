@@ -4,7 +4,7 @@ import com.agilerunner.api.service.GitHubCommentService;
 import com.agilerunner.api.service.OpenAiService;
 import com.agilerunner.api.service.agentruntime.AgentRuntimeService;
 import com.agilerunner.api.service.dto.GitHubCommentResponse;
-import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
+import com.agilerunner.api.service.github.request.GitHubEventServiceRequest;
 import com.agilerunner.api.service.dto.PostedInlineComment;
 import com.agilerunner.domain.Review;
 import com.agilerunner.domain.agentruntime.WebhookExecution;

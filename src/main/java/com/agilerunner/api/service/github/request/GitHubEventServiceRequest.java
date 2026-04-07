@@ -1,6 +1,7 @@
-package com.agilerunner.api.service.dto;
+package com.agilerunner.api.service.github.request;
 
 import com.agilerunner.GitHubEventType;
+import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
 import lombok.Getter;
 
 import java.util.Map;
@@ -16,15 +17,20 @@ public class GitHubEventServiceRequest {
     private final GitHubEventType gitHubEventType;
     private final Map<String, Object> payload;
     private final long installationId;
+    private final ExecutionControlMode executionControlMode;
 
-    private GitHubEventServiceRequest(GitHubEventType gitHubEventType, Map<String, Object> payload, long installationId) {
+    private GitHubEventServiceRequest(GitHubEventType gitHubEventType,
+                                      Map<String, Object> payload,
+                                      long installationId,
+                                      ExecutionControlMode executionControlMode) {
         this.gitHubEventType = gitHubEventType;
         this.payload = payload;
         this.installationId = installationId;
+        this.executionControlMode = executionControlMode;
     }
 
     public static GitHubEventServiceRequest of(GitHubEventType gitHubEventType, Map<String, Object> payload, long installationId) {
-        return new GitHubEventServiceRequest(gitHubEventType, payload, installationId);
+        return new GitHubEventServiceRequest(gitHubEventType, payload, installationId, ExecutionControlMode.NORMAL);
     }
 
     public String getRepositoryName() {

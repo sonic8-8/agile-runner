@@ -1,6 +1,6 @@
 package com.agilerunner.api.service;
 
-import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
+import com.agilerunner.api.service.github.request.GitHubEventServiceRequest;
 import com.agilerunner.client.github.auth.GitHubClientFactory;
 import com.agilerunner.domain.ParsedFilePatch;
 import com.agilerunner.domain.exception.AgileRunnerException;

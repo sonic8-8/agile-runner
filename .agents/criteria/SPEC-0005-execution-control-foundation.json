@@ -1,0 +1,35 @@
+{
+  "spec_id": "SPEC-0005",
+  "spec_name": "실행 제어 기능 기반 마련",
+  "spec_version": 1,
+  "criteria": [
+    {
+      "key": "webhook-contract-preserved-after-execution-control",
+      "target": "실행 제어 기능 도입 후 웹훅 성공 계약 유지",
+      "test_view": "컨트롤러/서비스 통합 관점",
+      "pass_condition": "실행 제어 모드와 dry-run 기능을 도입한 이후에도 성공 코멘트 응답, 같은 delivery_id 조기 종료, `pull_request` 외 이벤트 조기 종료 등 기존 `/webhook/github` 성공/조기 종료 계약이 그대로 유지된다.",
+      "fail_condition": "실행 제어 기능 도입 때문에 응답 본문이나 상태, 조기 종료 동작이 바뀌거나 기존 회귀 테스트가 깨진다."
+    },
+    {
+      "key": "execution-control-mode-resolved-consistently",
+      "target": "실행 제어 모드 해석 일관성",
+      "test_view": "입력 모델/서비스 경계 관점",
+      "pass_condition": "현재 webhook 요청은 별도 제어 입력이 없으면 일관되게 `NORMAL` 모드로 해석되고, 서비스 경계에서는 `NORMAL`, `DRY_RUN` 같은 실행 제어 모드를 명시적으로 전달하고 해석할 수 있다.",
+      "fail_condition": "같은 입력이 위치에 따라 다른 실행 제어 모드로 해석되거나, 현재 webhook 요청의 기본 `NORMAL` 해석이 깨진다."
+    },
+    {
+      "key": "dry-run-skips-write-and-preserves-review-flow",
+      "target": "dry-run no-write와 review 흐름 유지",
+      "test_view": "실행 분기/외부 side effect 관점",
+      "pass_condition": "`DRY_RUN` 모드에서는 review 생성 또는 이후 테스트에서 검증 가능한 결과 흐름은 유지되지만 GitHub 본문 코멘트와 인라인 코멘트 write는 수행하지 않는다. `NORMAL` 모드는 기존과 같이 write까지 이어진다.",
+      "fail_condition": "`DRY_RUN` 모드에서 GitHub write가 발생하거나, no-write 보장을 위해 review 생성/검증 가능한 결과 흐름까지 사라진다. 또는 `NORMAL` 모드 동작이 함께 깨진다."
+    },
+    {
+      "key": "runtime-evidence-records-execution-control",
+      "target": "실행 제어 모드의 runtime evidence 적재",
+      "test_view": "저장소/H2 실제 검증 관점",
+      "pass_condition": "로컬 프로필 실제 앱 기동 후 대표 `NORMAL` 실행의 `WebhookExecution`과 `AgentExecutionLog`에 실행 제어 모드와 write 수행 여부가 적재되고, H2 파일 DB에서 이를 확인할 수 있다. dry-run 경로의 write 생략 이유는 targeted test에서 검증할 수 있다.",
+      "fail_condition": "실행 제어 모드나 write 수행 여부가 실행 근거에 남지 않거나, 실제 앱/H2 기준 적재가 깨진다. 또는 dry-run 경로의 write 생략 이유를 테스트에서 검증할 수 없다."
+    }
+  ]
+}

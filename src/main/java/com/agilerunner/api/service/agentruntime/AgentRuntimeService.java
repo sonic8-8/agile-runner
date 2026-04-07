@@ -1,7 +1,7 @@
 package com.agilerunner.api.service.agentruntime;
 
 import com.agilerunner.api.service.dto.GitHubCommentResponse;
-import com.agilerunner.api.service.dto.GitHubEventServiceRequest;
+import com.agilerunner.api.service.github.request.GitHubEventServiceRequest;
 import com.agilerunner.client.agentruntime.AgentRuntimeRepository;
 import com.agilerunner.domain.Review;
 import com.agilerunner.domain.agentruntime.AgentExecutionLog;

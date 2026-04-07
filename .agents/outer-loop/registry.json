@@ -1,9 +1,9 @@
 {
   "version": 1,
   "latest": {
-    "spec_id": "SPEC-0004",
-    "task_id": "TASK-0003",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0004/TASK-0003-runtime-failure-disposition-evidence.md",
+    "spec_id": "SPEC-0005",
+    "task_id": "TASK-0001",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0005/TASK-0001-execution-control-safety-net.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0004/SPEC-0004-summary.md"
   },
   "proposals": [
