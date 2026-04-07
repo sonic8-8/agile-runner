@@ -78,6 +78,9 @@ description: Use when executing a meaningful Agile Runner task under this reposi
 - `/webhook/github` 흐름, controller orchestration, `agent-runtime` 저장 또는 runtime failure handling을 변경한 task면 실제 애플리케이션 기동, H2 file DB 생성, 실제 앱/H2 대표 검증 확인
 - 실제 앱/H2 대표 검증에 사용하는 `delivery_id`는 이전 검증과 겹치지 않는 새 값으로 정하고, 기존 local H2 row와 충돌하지 않게 관리
 - 실제 앱/H2 대표 검증이 실패하면 schema 또는 runtime failure로 단정하기 전에 `delivery_id` 재사용 충돌 여부를 먼저 확인
+- local H2 file DB를 외부에서 조회하는 실제 앱/H2 대표 검증은 기본적으로 `앱 기동 -> 새로운 delivery_id로 대표 검증 요청 1건 실행 -> HTTP 결과 확인 -> 앱 종료 -> H2 CLI 또는 SQL 조회 도구로 evidence 확인` 순서로 진행
+- 애플리케이션 실행 중 H2 조회가 실패하면 schema 또는 runtime failure로 바로 단정하지 말고, 먼저 H2 file lock 여부를 확인
+- 다른 순서로 검증하면 그 이유를 retrospective에 남김
 - 실제 애플리케이션 검증이 불가하면 retrospective에 사유와 남은 위험 기록
 - 위 항목이 모두 맞으면 task 완료로 본다.
 
