@@ -1,0 +1,42 @@
+{
+  "spec_id": "SPEC-0006",
+  "spec_name": "수동 재실행 기능 기반 마련",
+  "spec_version": 1,
+  "criteria": [
+    {
+      "key": "webhook-contract-preserved-during-manual-rerun",
+      "target": "수동 재실행 도입 후 기존 webhook 계약 유지",
+      "test_view": "컨트롤러/서비스 통합 관점",
+      "pass_condition": "수동 재실행 기능을 추가한 이후에도 `/webhook/github`의 성공 응답, 같은 delivery_id 조기 종료, `pull_request` 외 이벤트 조기 종료 등 기존 webhook 계약이 그대로 유지된다.",
+      "fail_condition": "수동 재실행 기능 도입 때문에 기존 `/webhook/github` 응답 본문, 상태, 조기 종료 동작이 바뀌거나 기존 회귀 테스트가 깨진다."
+    },
+    {
+      "key": "manual-rerun-entrypoint-contract-defined",
+      "target": "수동 재실행 진입점 기본 응답 계약 고정",
+      "test_view": "컨트롤러 black-box 관점",
+      "pass_condition": "수동 재실행 진입점은 `POST /reviews/rerun`으로 열리고, 성공 시 `200 OK`와 함께 최소한 `executionKey`, `executionControlMode`, `writePerformed`를 담은 응답을 반환한다.",
+      "fail_condition": "수동 재실행 진입점의 성공 상태 코드나 응답 필드가 명확히 고정되지 않거나, 테스트에서 응답 계약을 검증할 수 없다."
+    },
+    {
+      "key": "manual-rerun-request-resolved-consistently",
+      "target": "수동 재실행 요청 해석 일관성",
+      "test_view": "입력 모델/서비스 경계 관점",
+      "pass_condition": "수동 재실행 요청은 저장소 이름, PR 번호, 설치 ID, 실행 제어 모드를 일관되게 해석하고, controller/service 경계에서 같은 의미로 전달된다.",
+      "fail_condition": "같은 수동 재실행 입력이 위치에 따라 다르게 해석되거나, 요청 모델과 service 경계 모델의 의미가 어긋난다."
+    },
+    {
+      "key": "manual-rerun-respects-execution-control",
+      "target": "수동 재실행 경로의 실행 제어 모드 준수",
+      "test_view": "실행 분기/외부 side effect 관점",
+      "pass_condition": "수동 재실행 `NORMAL` 경로는 기존과 같이 실제 GitHub 코멘트 write까지 이어지고, 수동 재실행 `DRY_RUN` 경로는 기존 dry-run 분기를 재사용해 no-write를 유지한다.",
+      "fail_condition": "수동 재실행 `NORMAL` 경로가 write를 수행하지 못하거나, 수동 재실행 `DRY_RUN` 경로에서 GitHub write가 발생한다. 또는 기존 webhook 경로 동작이 함께 깨진다."
+    },
+    {
+      "key": "runtime-evidence-distinguishes-manual-rerun",
+      "target": "수동 재실행 구분값의 runtime evidence 적재",
+      "test_view": "저장소/H2 실제 검증 관점",
+      "pass_condition": "로컬 프로필 실제 앱 기동 후 대표 수동 재실행 응답의 `executionKey`를 기준으로 `WebhookExecution`과 `AgentExecutionLog`에 실행 시작 유형과 실행 제어 모드가 적재되고, H2 파일 DB에서 이를 확인할 수 있다.",
+      "fail_condition": "수동 재실행 경로의 실행 시작 유형이나 실행 제어 모드가 runtime evidence에 남지 않거나, 대표 수동 재실행 응답의 `executionKey` 기준으로 실제 앱/H2 적재를 확인할 수 없다."
+    }
+  ]
+}
