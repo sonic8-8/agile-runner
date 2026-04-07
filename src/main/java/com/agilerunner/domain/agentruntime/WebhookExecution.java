@@ -1,5 +1,7 @@
 package com.agilerunner.domain.agentruntime;
 
+import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
+import com.agilerunner.domain.executioncontrol.GitHubWriteSkipReason;
 import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.domain.exception.FailureDisposition;
 import lombok.Getter;
@@ -19,6 +21,9 @@ public class WebhookExecution {
     private final String errorMessage;
     private final ErrorCode errorCode;
     private final FailureDisposition failureDisposition;
+    private final ExecutionControlMode executionControlMode;
+    private final Boolean writePerformed;
+    private final GitHubWriteSkipReason writeSkipReason;
     private final LocalDateTime startedAt;
     private final LocalDateTime finishedAt;
 
@@ -33,6 +38,9 @@ public class WebhookExecution {
                       String errorMessage,
                       ErrorCode errorCode,
                       FailureDisposition failureDisposition,
+                      ExecutionControlMode executionControlMode,
+                      Boolean writePerformed,
+                      GitHubWriteSkipReason writeSkipReason,
                       LocalDateTime startedAt,
                       LocalDateTime finishedAt) {
         this.executionKey = executionKey;
@@ -46,6 +54,9 @@ public class WebhookExecution {
         this.errorMessage = errorMessage;
         this.errorCode = errorCode;
         this.failureDisposition = failureDisposition;
+        this.executionControlMode = executionControlMode;
+        this.writePerformed = writePerformed;
+        this.writeSkipReason = writeSkipReason;
         this.startedAt = startedAt;
         this.finishedAt = finishedAt;
     }
@@ -70,8 +81,34 @@ public class WebhookExecution {
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
                 startedAt,
                 null
+        );
+    }
+
+    public WebhookExecution withExecutionControl(ExecutionControlMode executionControlMode,
+                                                 Boolean writePerformed,
+                                                 GitHubWriteSkipReason writeSkipReason) {
+        return new WebhookExecution(
+                executionKey,
+                taskKey,
+                deliveryId,
+                repositoryName,
+                pullRequestNumber,
+                eventType,
+                action,
+                status,
+                errorMessage,
+                errorCode,
+                failureDisposition,
+                executionControlMode,
+                writePerformed,
+                writeSkipReason,
+                startedAt,
+                finishedAt
         );
     }
 
@@ -99,6 +136,9 @@ public class WebhookExecution {
                 errorMessage,
                 errorCode,
                 failureDisposition,
+                executionControlMode,
+                writePerformed,
+                writeSkipReason,
                 startedAt,
                 finishedAt
         );

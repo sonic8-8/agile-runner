@@ -2,6 +2,7 @@ package com.agilerunner.api.service.agentruntime;
 
 import com.agilerunner.api.service.dto.GitHubCommentResponse;
 import com.agilerunner.api.service.github.request.GitHubEventServiceRequest;
+import com.agilerunner.api.service.github.response.GitHubCommentExecutionResult;
 import com.agilerunner.client.agentruntime.AgentRuntimeRepository;
 import com.agilerunner.domain.agentruntime.AgentExecutionLog;
 import com.agilerunner.domain.agentruntime.AgentExecutionStatus;
@@ -11,6 +12,8 @@ import com.agilerunner.domain.agentruntime.WebhookExecution;
 import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
 import com.agilerunner.domain.agentruntime.TaskRuntimeState;
 import com.agilerunner.domain.agentruntime.TaskRuntimeStatus;
+import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
+import com.agilerunner.domain.executioncontrol.GitHubWriteSkipReason;
 import com.agilerunner.domain.exception.AgileRunnerException;
 import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.domain.exception.FailureDisposition;
@@ -82,9 +85,9 @@ class AgentRuntimeServiceTest {
         assertThat(webhookExecution.getTaskKey()).isEqualTo("PR_REVIEW:sonic8-8:agile-runner#11");
     }
 
-    @DisplayName("comment posting 성공 시 task runtime state와 webhook execution을 완료 상태로 기록한다.")
+    @DisplayName("comment execution 결과 성공 시 task runtime state와 webhook execution을 완료 상태로 기록한다.")
     @Test
-    void recordCommentPosted_marksTaskAndRunAsDone() {
+    void recordExecutionResult_marksTaskAndRunAsDone() {
         // given
         AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
         TaskRuntimeState existingTask = TaskRuntimeState.of(
@@ -109,10 +112,14 @@ class AgentRuntimeServiceTest {
                 "synchronize",
                 LocalDateTime.of(2026, 4, 2, 10, 1)
         );
-        GitHubCommentResponse response = GitHubCommentResponse.of(123L, "https://github.com/comment/123", List.of(), "ok");
+        GitHubCommentExecutionResult executionResult = GitHubCommentExecutionResult.written(
+                ExecutionControlMode.NORMAL,
+                0,
+                GitHubCommentResponse.of(123L, "https://github.com/comment/123", List.of(), "ok")
+        );
 
         // when
-        service.recordCommentPosted(webhookExecution, response);
+        service.recordExecutionResult(webhookExecution, executionResult);
 
         // then
         ArgumentCaptor<TaskRuntimeState> taskCaptor = ArgumentCaptor.forClass(TaskRuntimeState.class);
@@ -136,14 +143,128 @@ class AgentRuntimeServiceTest {
         assertThat(savedRun.getStatus()).isEqualTo(WebhookExecutionStatus.SUCCEEDED);
         assertThat(savedRun.getFinishedAt()).isNotNull();
         assertThat(savedRun.getErrorCode()).isNull();
+        assertThat(savedRun.getExecutionControlMode()).isEqualTo(ExecutionControlMode.NORMAL);
+        assertThat(savedRun.getWritePerformed()).isTrue();
+        assertThat(savedRun.getWriteSkipReason()).isNull();
 
         AgentExecutionLog executionLog = logCaptor.getValue();
         assertThat(executionLog.getStepName()).isEqualTo(AgentRuntimeService.STEP_COMMENT_POSTED);
         assertThat(executionLog.getStatus()).isEqualTo(AgentExecutionStatus.SUCCEEDED);
         assertThat(executionLog.getErrorCode()).isNull();
+        assertThat(executionLog.getExecutionControlMode()).isEqualTo(ExecutionControlMode.NORMAL);
+        assertThat(executionLog.getWritePerformed()).isTrue();
+        assertThat(executionLog.getWriteSkipReason()).isNull();
 
         List<ValidationCriteria> criteria = criteriaCaptor.getValue();
         assertThat(criteria).allMatch(criterion -> criterion.getStatus() == CriteriaStatus.PASSED);
+    }
+
+    @DisplayName("normal execution result를 기록할 때 실행 제어 모드와 write 수행 여부를 함께 저장한다.")
+    @Test
+    void recordExecutionResult_recordsExecutionControlEvidence() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        TaskRuntimeState existingTask = TaskRuntimeState.of(
+                "PR_REVIEW:sonic8-8:agile-runner#14",
+                14L,
+                "GitHub PR review for sonic8-8/agile-runner#14",
+                TaskRuntimeStatus.IN_PROGRESS,
+                0,
+                null,
+                LocalDateTime.of(2026, 4, 7, 18, 0),
+                null
+        );
+        when(repository.findTaskRuntimeState("PR_REVIEW:sonic8-8:agile-runner#14")).thenReturn(Optional.of(existingTask));
+        AgentRuntimeService service = new AgentRuntimeService(repository, new ObjectMapper());
+        WebhookExecution webhookExecution = WebhookExecution.start(
+                "EXECUTION:delivery-14",
+                "PR_REVIEW:sonic8-8:agile-runner#14",
+                "delivery-14",
+                "sonic8-8/agile-runner",
+                14,
+                "PULL_REQUEST",
+                "opened",
+                LocalDateTime.of(2026, 4, 7, 18, 1)
+        );
+        GitHubCommentExecutionResult executionResult = GitHubCommentExecutionResult.written(
+                ExecutionControlMode.NORMAL,
+                1,
+                GitHubCommentResponse.of(140L, "https://github.com/comment/140", List.of(), "ok")
+        );
+
+        // when
+        service.recordExecutionResult(webhookExecution, executionResult);
+
+        // then
+        ArgumentCaptor<WebhookExecution> webhookExecutionCaptor = ArgumentCaptor.forClass(WebhookExecution.class);
+        ArgumentCaptor<AgentExecutionLog> logCaptor = ArgumentCaptor.forClass(AgentExecutionLog.class);
+
+        verify(repository).upsertWebhookExecution(webhookExecutionCaptor.capture());
+        verify(repository).appendExecutionLog(logCaptor.capture());
+
+        WebhookExecution savedExecution = webhookExecutionCaptor.getValue();
+        assertThat(savedExecution.getExecutionControlMode()).isEqualTo(ExecutionControlMode.NORMAL);
+        assertThat(savedExecution.getWritePerformed()).isTrue();
+        assertThat(savedExecution.getWriteSkipReason()).isNull();
+
+        AgentExecutionLog executionLog = logCaptor.getValue();
+        assertThat(executionLog.getExecutionControlMode()).isEqualTo(ExecutionControlMode.NORMAL);
+        assertThat(executionLog.getWritePerformed()).isTrue();
+        assertThat(executionLog.getWriteSkipReason()).isNull();
+    }
+
+    @DisplayName("dry-run skipped result를 기록할 때 write 생략 이유를 함께 저장한다.")
+    @Test
+    void recordExecutionResult_recordsWriteSkipReasonForDryRun() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        TaskRuntimeState existingTask = TaskRuntimeState.of(
+                "PR_REVIEW:sonic8-8:agile-runner#15",
+                15L,
+                "GitHub PR review for sonic8-8/agile-runner#15",
+                TaskRuntimeStatus.IN_PROGRESS,
+                0,
+                null,
+                LocalDateTime.of(2026, 4, 7, 18, 10),
+                null
+        );
+        when(repository.findTaskRuntimeState("PR_REVIEW:sonic8-8:agile-runner#15")).thenReturn(Optional.of(existingTask));
+        AgentRuntimeService service = new AgentRuntimeService(repository, new ObjectMapper());
+        WebhookExecution webhookExecution = WebhookExecution.start(
+                "EXECUTION:delivery-15",
+                "PR_REVIEW:sonic8-8:agile-runner#15",
+                "delivery-15",
+                "sonic8-8/agile-runner",
+                15,
+                "PULL_REQUEST",
+                "opened",
+                LocalDateTime.of(2026, 4, 7, 18, 11)
+        );
+        GitHubCommentExecutionResult executionResult = GitHubCommentExecutionResult.skipped(
+                ExecutionControlMode.DRY_RUN,
+                GitHubWriteSkipReason.DRY_RUN,
+                2
+        );
+
+        // when
+        service.recordExecutionResult(webhookExecution, executionResult);
+
+        // then
+        ArgumentCaptor<WebhookExecution> webhookExecutionCaptor = ArgumentCaptor.forClass(WebhookExecution.class);
+        ArgumentCaptor<AgentExecutionLog> logCaptor = ArgumentCaptor.forClass(AgentExecutionLog.class);
+
+        verify(repository).upsertWebhookExecution(webhookExecutionCaptor.capture());
+        verify(repository).appendExecutionLog(logCaptor.capture());
+
+        WebhookExecution savedExecution = webhookExecutionCaptor.getValue();
+        assertThat(savedExecution.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
+        assertThat(savedExecution.getWritePerformed()).isFalse();
+        assertThat(savedExecution.getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
+
+        AgentExecutionLog executionLog = logCaptor.getValue();
+        assertThat(executionLog.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
+        assertThat(executionLog.getWritePerformed()).isFalse();
+        assertThat(executionLog.getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
     }
 
     @DisplayName("review generation 실패 시 task runtime state와 webhook execution을 오류 코드와 대응 분류와 함께 실패 상태로 기록한다.")

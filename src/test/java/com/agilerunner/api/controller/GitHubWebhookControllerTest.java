@@ -153,6 +153,12 @@ class GitHubWebhookControllerTest {
                 .andExpect(jsonPath("$.postedInlineComments[0].id").value(22L))
                 .andExpect(jsonPath("$.postedInlineComments[0].htmlUrl").value("https://github.com/comment/22"))
                 .andExpect(jsonPath("$.message").value("리뷰 코멘트가 성공적으로 등록되었습니다."));
+
+        ArgumentCaptor<GitHubCommentExecutionResult> executionResultCaptor = ArgumentCaptor.forClass(GitHubCommentExecutionResult.class);
+        verify(agentRuntimeService).recordExecutionResult(eq(webhookExecution), executionResultCaptor.capture());
+        assertThat(executionResultCaptor.getValue().getExecutionControlMode()).isEqualTo(ExecutionControlMode.NORMAL);
+        assertThat(executionResultCaptor.getValue().isWritePerformed()).isTrue();
+        assertThat(executionResultCaptor.getValue().getWriteSkipReason()).isNull();
     }
 
     @DisplayName("successful comment 이후 runtime 기록에 실패해도 기존 성공 응답을 유지한다.")
@@ -186,7 +192,7 @@ class GitHubWebhookControllerTest {
                 .thenReturn(writtenResult(response));
         doThrow(new RuntimeException("runtime write failed"))
                 .when(agentRuntimeService)
-                .recordCommentPosted(webhookExecution, response);
+                .recordExecutionResult(eq(webhookExecution), any(GitHubCommentExecutionResult.class));
 
         // when & then
         mockMvc.perform(post("/webhook/github")
@@ -236,7 +242,7 @@ class GitHubWebhookControllerTest {
                 .thenReturn(writtenResult(response));
         doThrow(new RuntimeException("runtime write failed"))
                 .when(agentRuntimeService)
-                .recordCommentPosted(webhookExecution, response);
+                .recordExecutionResult(eq(webhookExecution), any(GitHubCommentExecutionResult.class));
 
         // when
         mockMvc.perform(post("/webhook/github")

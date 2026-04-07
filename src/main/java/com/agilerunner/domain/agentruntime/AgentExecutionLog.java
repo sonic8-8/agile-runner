@@ -1,5 +1,7 @@
 package com.agilerunner.domain.agentruntime;
 
+import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
+import com.agilerunner.domain.executioncontrol.GitHubWriteSkipReason;
 import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.domain.exception.FailureDisposition;
 import lombok.Getter;
@@ -19,6 +21,9 @@ public class AgentExecutionLog {
     private final String errorMessage;
     private final ErrorCode errorCode;
     private final FailureDisposition failureDisposition;
+    private final ExecutionControlMode executionControlMode;
+    private final Boolean writePerformed;
+    private final GitHubWriteSkipReason writeSkipReason;
     private final String payloadJson;
     private final LocalDateTime startedAt;
     private final LocalDateTime endedAt;
@@ -34,6 +39,9 @@ public class AgentExecutionLog {
                               String errorMessage,
                               ErrorCode errorCode,
                               FailureDisposition failureDisposition,
+                              ExecutionControlMode executionControlMode,
+                              Boolean writePerformed,
+                              GitHubWriteSkipReason writeSkipReason,
                               String payloadJson,
                               LocalDateTime startedAt,
                               LocalDateTime endedAt) {
@@ -48,6 +56,9 @@ public class AgentExecutionLog {
         this.errorMessage = errorMessage;
         this.errorCode = errorCode;
         this.failureDisposition = failureDisposition;
+        this.executionControlMode = executionControlMode;
+        this.writePerformed = writePerformed;
+        this.writeSkipReason = writeSkipReason;
         this.payloadJson = payloadJson;
         this.startedAt = startedAt;
         this.endedAt = endedAt;
@@ -66,7 +77,7 @@ public class AgentExecutionLog {
                                        String payloadJson,
                                        LocalDateTime startedAt,
                                        LocalDateTime endedAt) {
-        return of(
+        return new AgentExecutionLog(
                 taskKey,
                 issueNumber,
                 executionKey,
@@ -77,6 +88,9 @@ public class AgentExecutionLog {
                 outputSummary,
                 errorMessage,
                 errorCode,
+                null,
+                null,
+                null,
                 null,
                 payloadJson,
                 startedAt,
@@ -110,6 +124,33 @@ public class AgentExecutionLog {
                 errorMessage,
                 errorCode,
                 failureDisposition,
+                null,
+                null,
+                null,
+                payloadJson,
+                startedAt,
+                endedAt
+        );
+    }
+
+    public AgentExecutionLog withExecutionControl(ExecutionControlMode executionControlMode,
+                                                  Boolean writePerformed,
+                                                  GitHubWriteSkipReason writeSkipReason) {
+        return new AgentExecutionLog(
+                taskKey,
+                issueNumber,
+                executionKey,
+                agentRole,
+                stepName,
+                status,
+                inputSummary,
+                outputSummary,
+                errorMessage,
+                errorCode,
+                failureDisposition,
+                executionControlMode,
+                writePerformed,
+                writeSkipReason,
                 payloadJson,
                 startedAt,
                 endedAt

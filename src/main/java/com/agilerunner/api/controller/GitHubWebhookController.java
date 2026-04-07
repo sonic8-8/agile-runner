@@ -91,7 +91,7 @@ public class GitHubWebhookController {
             GitHubCommentExecutionResult executionResult = gitHubCommentService.execute(review, serviceRequest);
             GitHubCommentResponse response = executionResult.requireGitHubCommentResponse();
             deliveryCache.record(deliveryId);
-            recordCommentPostedSafely(webhookExecution, response);
+            recordExecutionResultSafely(webhookExecution, executionResult);
             return ResponseEntity.ok(response);
         } catch (Exception exception) {
             agentRuntimeService.recordFailure(webhookExecution, AgentRuntimeService.STEP_COMMENT_POSTED, exception);
@@ -99,9 +99,9 @@ public class GitHubWebhookController {
         }
     }
 
-    private void recordCommentPostedSafely(WebhookExecution webhookExecution, GitHubCommentResponse response) {
+    private void recordExecutionResultSafely(WebhookExecution webhookExecution, GitHubCommentExecutionResult executionResult) {
         try {
-            agentRuntimeService.recordCommentPosted(webhookExecution, response);
+            agentRuntimeService.recordExecutionResult(webhookExecution, executionResult);
         } catch (Exception exception) {
             log.warn("GitHub 코멘트 등록 후 runtime 기록에 실패했습니다. deliveryId={}, executionKey={}",
                     webhookExecution.getDeliveryId(),

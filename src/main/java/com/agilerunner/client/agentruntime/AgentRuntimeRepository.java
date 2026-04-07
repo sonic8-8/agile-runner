@@ -10,6 +10,8 @@ import com.agilerunner.domain.agentruntime.WebhookExecution;
 import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
 import com.agilerunner.domain.agentruntime.TaskRuntimeState;
 import com.agilerunner.domain.agentruntime.TaskRuntimeStatus;
+import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
+import com.agilerunner.domain.executioncontrol.GitHubWriteSkipReason;
 import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.domain.exception.FailureDisposition;
 import lombok.RequiredArgsConstructor;
@@ -99,6 +101,9 @@ public class AgentRuntimeRepository {
                 error_message,
                 error_code,
                 failure_disposition,
+                execution_control_mode,
+                write_performed,
+                write_skip_reason,
                 started_at,
                 finished_at,
                 updated_at
@@ -115,13 +120,16 @@ public class AgentRuntimeRepository {
                 :errorMessage,
                 :errorCode,
                 :failureDisposition,
+                :executionControlMode,
+                :writePerformed,
+                :writeSkipReason,
                 :startedAt,
                 :finishedAt,
                 CURRENT_TIMESTAMP
             )
             """;
     private static final String FIND_WEBHOOK_EXECUTION_SQL = """
-            SELECT execution_key, task_key, delivery_id, repository_name, pull_request_number, event_type, action, status, error_message, error_code, failure_disposition, started_at, finished_at
+            SELECT execution_key, task_key, delivery_id, repository_name, pull_request_number, event_type, action, status, error_message, error_code, failure_disposition, execution_control_mode, write_performed, write_skip_reason, started_at, finished_at
             FROM WEBHOOK_EXECUTION
             WHERE execution_key = :executionKey
             """;
@@ -138,6 +146,9 @@ public class AgentRuntimeRepository {
                 error_message,
                 error_code,
                 failure_disposition,
+                execution_control_mode,
+                write_performed,
+                write_skip_reason,
                 payload_json,
                 started_at,
                 ended_at
@@ -153,13 +164,16 @@ public class AgentRuntimeRepository {
                 :errorMessage,
                 :errorCode,
                 :failureDisposition,
+                :executionControlMode,
+                :writePerformed,
+                :writeSkipReason,
                 :payloadJson,
                 :startedAt,
                 :endedAt
             )
             """;
     private static final String FIND_AGENT_EXECUTION_LOGS_SQL = """
-            SELECT task_key, issue_number, execution_key, agent_role, step_name, status, input_summary, output_summary, error_message, error_code, failure_disposition, payload_json, started_at, ended_at
+            SELECT task_key, issue_number, execution_key, agent_role, step_name, status, input_summary, output_summary, error_message, error_code, failure_disposition, execution_control_mode, write_performed, write_skip_reason, payload_json, started_at, ended_at
             FROM AGENT_EXECUTION_LOG
             WHERE task_key = :taskKey
             ORDER BY id ASC
@@ -275,6 +289,9 @@ public class AgentRuntimeRepository {
                 .addValue("errorMessage", webhookExecution.getErrorMessage())
                 .addValue("errorCode", getErrorCodeName(webhookExecution.getErrorCode()))
                 .addValue("failureDisposition", getFailureDispositionName(webhookExecution.getFailureDisposition()))
+                .addValue("executionControlMode", getExecutionControlModeName(webhookExecution.getExecutionControlMode()))
+                .addValue("writePerformed", webhookExecution.getWritePerformed())
+                .addValue("writeSkipReason", getWriteSkipReasonName(webhookExecution.getWriteSkipReason()))
                 .addValue("startedAt", webhookExecution.getStartedAt())
                 .addValue("finishedAt", webhookExecution.getFinishedAt());
     }
@@ -292,6 +309,9 @@ public class AgentRuntimeRepository {
                 .addValue("errorMessage", executionLog.getErrorMessage())
                 .addValue("errorCode", getErrorCodeName(executionLog.getErrorCode()))
                 .addValue("failureDisposition", getFailureDispositionName(executionLog.getFailureDisposition()))
+                .addValue("executionControlMode", getExecutionControlModeName(executionLog.getExecutionControlMode()))
+                .addValue("writePerformed", executionLog.getWritePerformed())
+                .addValue("writeSkipReason", getWriteSkipReasonName(executionLog.getWriteSkipReason()))
                 .addValue("payloadJson", executionLog.getPayloadJson())
                 .addValue("startedAt", executionLog.getStartedAt())
                 .addValue("endedAt", executionLog.getEndedAt());
@@ -331,6 +351,10 @@ public class AgentRuntimeRepository {
                 resultSet.getString("event_type"),
                 resultSet.getString("action"),
                 getLocalDateTime(resultSet, "started_at")
+        ).withExecutionControl(
+                getExecutionControlMode(resultSet.getString("execution_control_mode")),
+                getNullableBoolean(resultSet, "write_performed"),
+                getWriteSkipReason(resultSet.getString("write_skip_reason"))
         ).complete(
                 WebhookExecutionStatus.valueOf(resultSet.getString("status")),
                 resultSet.getString("error_message"),
@@ -356,6 +380,10 @@ public class AgentRuntimeRepository {
                 resultSet.getString("payload_json"),
                 getLocalDateTime(resultSet, "started_at"),
                 getLocalDateTime(resultSet, "ended_at")
+        ).withExecutionControl(
+                getExecutionControlMode(resultSet.getString("execution_control_mode")),
+                getNullableBoolean(resultSet, "write_performed"),
+                getWriteSkipReason(resultSet.getString("write_skip_reason"))
         );
     }
 
@@ -422,5 +450,46 @@ public class AgentRuntimeRepository {
         }
 
         return failureDisposition.name();
+    }
+
+    private ExecutionControlMode getExecutionControlMode(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return ExecutionControlMode.valueOf(value);
+    }
+
+    private String getExecutionControlModeName(ExecutionControlMode executionControlMode) {
+        if (executionControlMode == null) {
+            return null;
+        }
+
+        return executionControlMode.name();
+    }
+
+    private GitHubWriteSkipReason getWriteSkipReason(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return GitHubWriteSkipReason.valueOf(value);
+    }
+
+    private String getWriteSkipReasonName(GitHubWriteSkipReason writeSkipReason) {
+        if (writeSkipReason == null) {
+            return null;
+        }
+
+        return writeSkipReason.name();
+    }
+
+    private Boolean getNullableBoolean(ResultSet resultSet, String columnName) throws SQLException {
+        boolean value = resultSet.getBoolean(columnName);
+        if (resultSet.wasNull()) {
+            return null;
+        }
+
+        return value;
     }
 }

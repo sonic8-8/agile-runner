@@ -2,6 +2,7 @@ package com.agilerunner.api.service.agentruntime;
 
 import com.agilerunner.api.service.dto.GitHubCommentResponse;
 import com.agilerunner.api.service.github.request.GitHubEventServiceRequest;
+import com.agilerunner.api.service.github.response.GitHubCommentExecutionResult;
 import com.agilerunner.client.agentruntime.AgentRuntimeRepository;
 import com.agilerunner.domain.Review;
 import com.agilerunner.domain.agentruntime.AgentExecutionLog;
@@ -20,6 +21,8 @@ import com.agilerunner.domain.exception.AgileRunnerException;
 import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.domain.exception.FailureDisposition;
 import com.agilerunner.domain.exception.FailureDispositionPolicy;
+import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
+import com.agilerunner.domain.executioncontrol.GitHubWriteSkipReason;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
@@ -69,7 +72,7 @@ public class AgentRuntimeService {
                 request.getGitHubEventType().name(),
                 request.getAction(),
                 now
-        );
+        ).withExecutionControl(request.getExecutionControlMode(), false, null);
 
         if (!isEnabled()) {
             return webhookExecution;
@@ -116,7 +119,7 @@ public class AgentRuntimeService {
                         toJson(buildWebhookSnapshot(deliveryId, request)),
                         now,
                         now
-                )
+                ).withExecutionControl(request.getExecutionControlMode(), false, null)
         );
 
         return webhookExecution;
@@ -157,11 +160,11 @@ public class AgentRuntimeService {
                         toJson(buildReviewSnapshot(review)),
                         now,
                         now
-                )
+                ).withExecutionControl(webhookExecution.getExecutionControlMode(), webhookExecution.getWritePerformed(), webhookExecution.getWriteSkipReason())
         );
     }
 
-    public void recordCommentPosted(WebhookExecution webhookExecution, GitHubCommentResponse response) {
+    public void recordExecutionResult(WebhookExecution webhookExecution, GitHubCommentExecutionResult executionResult) {
         if (!isEnabled()) {
             return;
         }
@@ -169,20 +172,15 @@ public class AgentRuntimeService {
         LocalDateTime now = LocalDateTime.now();
         long issueNumber = webhookExecution.getPullRequestNumber();
         TaskRuntimeState existingTaskRuntimeState = agentRuntimeRepository.findTaskRuntimeState(webhookExecution.getTaskKey()).orElse(null);
-        WebhookExecution completedWebhookExecution = webhookExecution.complete(WebhookExecutionStatus.SUCCEEDED, null, null, now);
-
-        agentRuntimeRepository.replaceValidationCriteria(
-                webhookExecution.getTaskKey(),
-                buildCriteria(
-                        webhookExecution.getTaskKey(),
-                        CriteriaStatus.PASSED,
-                        CriteriaStatus.PASSED,
-                        CriteriaStatus.PASSED,
-                        "Webhook payload accepted",
-                        "Review generated successfully",
-                        buildCommentEvidence(response)
+        WebhookExecution completedWebhookExecution = webhookExecution
+                .withExecutionControl(
+                        executionResult.getExecutionControlMode(),
+                        executionResult.isWritePerformed(),
+                        executionResult.getWriteSkipReason()
                 )
-        );
+                .complete(WebhookExecutionStatus.SUCCEEDED, null, null, now);
+
+        replaceSuccessfulCommentCriteria(webhookExecution, executionResult);
         agentRuntimeRepository.upsertWebhookExecution(completedWebhookExecution);
         agentRuntimeRepository.upsertTaskRuntimeState(
                 TaskRuntimeState.of(
@@ -196,23 +194,7 @@ public class AgentRuntimeService {
                         now
                 )
         );
-        agentRuntimeRepository.appendExecutionLog(
-                AgentExecutionLog.of(
-                        webhookExecution.getTaskKey(),
-                        issueNumber,
-                        webhookExecution.getExecutionKey(),
-                        AgentRole.ORCHESTRATOR,
-                        STEP_COMMENT_POSTED,
-                        AgentExecutionStatus.SUCCEEDED,
-                        "GitHub review comments posted",
-                        buildCommentOutputSummary(response),
-                        null,
-                        null,
-                        toJson(buildCommentSnapshot(response)),
-                        now,
-                        now
-                )
-        );
+        appendSuccessfulCommentLog(webhookExecution, executionResult, issueNumber, now);
     }
 
     public void recordFailure(WebhookExecution webhookExecution, String stepName, Exception exception) {
@@ -274,6 +256,10 @@ public class AgentRuntimeService {
                         toJson(buildErrorSnapshot(exception)),
                         now,
                         now
+                ).withExecutionControl(
+                        webhookExecution.getExecutionControlMode(),
+                        webhookExecution.getWritePerformed(),
+                        webhookExecution.getWriteSkipReason()
                 )
         );
     }
@@ -341,6 +327,49 @@ public class AgentRuntimeService {
         return validationCriteria;
     }
 
+    private void replaceSuccessfulCommentCriteria(WebhookExecution webhookExecution,
+                                                  GitHubCommentExecutionResult executionResult) {
+        agentRuntimeRepository.replaceValidationCriteria(
+                webhookExecution.getTaskKey(),
+                buildCriteria(
+                        webhookExecution.getTaskKey(),
+                        CriteriaStatus.PASSED,
+                        CriteriaStatus.PASSED,
+                        CriteriaStatus.PASSED,
+                        "Webhook payload accepted",
+                        "Review generated successfully",
+                        buildCommentEvidence(executionResult)
+                )
+        );
+    }
+
+    private void appendSuccessfulCommentLog(WebhookExecution webhookExecution,
+                                            GitHubCommentExecutionResult executionResult,
+                                            long issueNumber,
+                                            LocalDateTime now) {
+        agentRuntimeRepository.appendExecutionLog(
+                AgentExecutionLog.of(
+                        webhookExecution.getTaskKey(),
+                        issueNumber,
+                        webhookExecution.getExecutionKey(),
+                        AgentRole.ORCHESTRATOR,
+                        STEP_COMMENT_POSTED,
+                        AgentExecutionStatus.SUCCEEDED,
+                        buildCommentInputSummary(executionResult),
+                        buildCommentOutputSummary(executionResult),
+                        null,
+                        null,
+                        toJson(buildCommentSnapshot(executionResult)),
+                        now,
+                        now
+                ).withExecutionControl(
+                        executionResult.getExecutionControlMode(),
+                        executionResult.isWritePerformed(),
+                        executionResult.getWriteSkipReason()
+                )
+        );
+    }
+
     private CriteriaStatus resolveReviewCriteriaStatus(String stepName) {
         if (STEP_COMMENT_POSTED.equals(stepName)) {
             return CriteriaStatus.PASSED;
@@ -405,7 +434,14 @@ public class AgentRuntimeService {
         return "bodyLength=" + review.getReviewBody().length() + ", inlineComments=" + review.getInlineComments().size();
     }
 
-    private String buildCommentEvidence(GitHubCommentResponse response) {
+    private String buildCommentEvidence(GitHubCommentExecutionResult executionResult) {
+        if (!executionResult.isWritePerformed()) {
+            return "executionControlMode=" + executionResult.getExecutionControlMode().name()
+                    + ", writePerformed=false, writeSkipReason=" + executionResult.getWriteSkipReason().name()
+                    + ", preparedInlineComments=" + executionResult.getPreparedInlineCommentCount();
+        }
+
+        GitHubCommentResponse response = executionResult.requireGitHubCommentResponse();
         return "reviewCommentId=" + response.reviewCommentId() + ", inlineComments=" + response.postedInlineComments().size();
     }
 
@@ -413,7 +449,16 @@ public class AgentRuntimeService {
         return "review generated with " + review.getInlineComments().size() + " inline comments";
     }
 
-    private String buildCommentOutputSummary(GitHubCommentResponse response) {
+    private String buildCommentInputSummary(GitHubCommentExecutionResult executionResult) {
+        return "execution control result recorded";
+    }
+
+    private String buildCommentOutputSummary(GitHubCommentExecutionResult executionResult) {
+        if (!executionResult.isWritePerformed()) {
+            return "write skipped because " + executionResult.getWriteSkipReason().name();
+        }
+
+        GitHubCommentResponse response = executionResult.requireGitHubCommentResponse();
         return "main comment " + response.reviewCommentId() + " and " + response.postedInlineComments().size() + " inline comments posted";
     }
 
@@ -429,6 +474,7 @@ public class AgentRuntimeService {
         snapshot.put("repositoryName", request.getRepositoryName());
         snapshot.put("pullRequestNumber", request.getPullRequestNumber());
         snapshot.put("installationId", request.getInstallationId());
+        snapshot.put("executionControlMode", request.getExecutionControlMode().name());
         return snapshot;
     }
 
@@ -441,11 +487,18 @@ public class AgentRuntimeService {
         return snapshot;
     }
 
-    private Map<String, Object> buildCommentSnapshot(GitHubCommentResponse response) {
+    private Map<String, Object> buildCommentSnapshot(GitHubCommentExecutionResult executionResult) {
         Map<String, Object> snapshot = new LinkedHashMap<>();
-        snapshot.put("reviewCommentId", response.reviewCommentId());
-        snapshot.put("reviewCommentUrl", response.reviewCommentUrl());
-        snapshot.put("postedInlineCommentCount", response.postedInlineComments().size());
+        snapshot.put("executionControlMode", executionResult.getExecutionControlMode().name());
+        snapshot.put("writePerformed", executionResult.isWritePerformed());
+        snapshot.put("writeSkipReason", getWriteSkipReasonName(executionResult.getWriteSkipReason()));
+        snapshot.put("preparedInlineCommentCount", executionResult.getPreparedInlineCommentCount());
+        if (executionResult.isWritePerformed()) {
+            GitHubCommentResponse response = executionResult.requireGitHubCommentResponse();
+            snapshot.put("reviewCommentId", response.reviewCommentId());
+            snapshot.put("reviewCommentUrl", response.reviewCommentUrl());
+            snapshot.put("postedInlineCommentCount", response.postedInlineComments().size());
+        }
         return snapshot;
     }
 
@@ -462,5 +515,13 @@ public class AgentRuntimeService {
         } catch (JsonProcessingException exception) {
             return "{\"serializationError\":\"agent-runtime-payload\"}";
         }
+    }
+
+    private String getWriteSkipReasonName(@Nullable GitHubWriteSkipReason writeSkipReason) {
+        if (writeSkipReason == null) {
+            return null;
+        }
+
+        return writeSkipReason.name();
     }
 }

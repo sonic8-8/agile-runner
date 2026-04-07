@@ -11,6 +11,8 @@ import com.agilerunner.domain.agentruntime.WebhookExecution;
 import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
 import com.agilerunner.domain.agentruntime.TaskRuntimeState;
 import com.agilerunner.domain.agentruntime.TaskRuntimeStatus;
+import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
+import com.agilerunner.domain.executioncontrol.GitHubWriteSkipReason;
 import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.domain.exception.FailureDisposition;
 import org.junit.jupiter.api.DisplayName;
@@ -136,6 +138,10 @@ class AgentRuntimeRepositoryTest {
                     "{\"failed\":2}",
                     LocalDateTime.of(2026, 4, 2, 13, 0),
                     LocalDateTime.of(2026, 4, 2, 13, 1)
+            ).withExecutionControl(
+                    ExecutionControlMode.DRY_RUN,
+                    false,
+                    GitHubWriteSkipReason.DRY_RUN
             );
 
             // when
@@ -151,6 +157,21 @@ class AgentRuntimeRepositoryTest {
                             "SELECT failure_disposition FROM AGENT_EXECUTION_LOG WHERE task_key = 'TASK-103'",
                             String.class
                     );
+            String storedExecutionControlMode = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT execution_control_mode FROM AGENT_EXECUTION_LOG WHERE task_key = 'TASK-103'",
+                            String.class
+                    );
+            Boolean storedWritePerformed = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT write_performed FROM AGENT_EXECUTION_LOG WHERE task_key = 'TASK-103'",
+                            Boolean.class
+                    );
+            String storedWriteSkipReason = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT write_skip_reason FROM AGENT_EXECUTION_LOG WHERE task_key = 'TASK-103'",
+                            String.class
+                    );
 
             // then
             assertThat(found).hasSize(1);
@@ -159,9 +180,15 @@ class AgentRuntimeRepositoryTest {
             assertThat(found.getFirst().getStatus()).isEqualTo(AgentExecutionStatus.FAILED);
             assertThat(found.getFirst().getErrorCode()).isEqualTo(ErrorCode.OPENAI_REVIEW_FAILED);
             assertThat(found.getFirst().getFailureDisposition()).isEqualTo(FailureDisposition.RETRYABLE);
+            assertThat(found.getFirst().getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
+            assertThat(found.getFirst().getWritePerformed()).isFalse();
+            assertThat(found.getFirst().getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
             assertThat(found.getFirst().getPayloadJson()).isEqualTo("{\"failed\":2}");
             assertThat(storedExecutionKey).isEqualTo("EXECUTION-103");
             assertThat(storedFailureDisposition).isEqualTo("RETRYABLE");
+            assertThat(storedExecutionControlMode).isEqualTo("DRY_RUN");
+            assertThat(storedWritePerformed).isFalse();
+            assertThat(storedWriteSkipReason).isEqualTo("DRY_RUN");
         });
     }
 
@@ -214,6 +241,10 @@ class AgentRuntimeRepositoryTest {
                     "PULL_REQUEST",
                     "synchronize",
                     LocalDateTime.of(2026, 4, 2, 14, 0)
+            ).withExecutionControl(
+                    ExecutionControlMode.DRY_RUN,
+                    false,
+                    GitHubWriteSkipReason.DRY_RUN
             ).complete(
                     WebhookExecutionStatus.FAILED,
                     "GitHub App ID missing",
@@ -240,6 +271,21 @@ class AgentRuntimeRepositoryTest {
                             "SELECT failure_disposition FROM WEBHOOK_EXECUTION WHERE execution_key = 'EXECUTION:201'",
                             String.class
                     );
+            String storedExecutionControlMode = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT execution_control_mode FROM WEBHOOK_EXECUTION WHERE execution_key = 'EXECUTION:201'",
+                            String.class
+                    );
+            Boolean storedWritePerformed = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT write_performed FROM WEBHOOK_EXECUTION WHERE execution_key = 'EXECUTION:201'",
+                            Boolean.class
+                    );
+            String storedWriteSkipReason = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT write_skip_reason FROM WEBHOOK_EXECUTION WHERE execution_key = 'EXECUTION:201'",
+                            String.class
+                    );
 
             // then
             assertThat(found).isPresent();
@@ -248,9 +294,15 @@ class AgentRuntimeRepositoryTest {
             assertThat(found.get().getStatus()).isEqualTo(WebhookExecutionStatus.FAILED);
             assertThat(found.get().getErrorCode()).isEqualTo(ErrorCode.GITHUB_APP_CONFIGURATION_MISSING);
             assertThat(found.get().getFailureDisposition()).isEqualTo(FailureDisposition.MANUAL_ACTION_REQUIRED);
+            assertThat(found.get().getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
+            assertThat(found.get().getWritePerformed()).isFalse();
+            assertThat(found.get().getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
             assertThat(storedStatus).isEqualTo("FAILED");
             assertThat(storedErrorCode).isEqualTo("GITHUB_APP_CONFIGURATION_MISSING");
             assertThat(storedFailureDisposition).isEqualTo("MANUAL_ACTION_REQUIRED");
+            assertThat(storedExecutionControlMode).isEqualTo("DRY_RUN");
+            assertThat(storedWritePerformed).isFalse();
+            assertThat(storedWriteSkipReason).isEqualTo("DRY_RUN");
         });
     }
 

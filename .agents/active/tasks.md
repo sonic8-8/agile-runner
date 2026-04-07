@@ -175,14 +175,18 @@ dry-run no-write 분기 도입
 ### 구현 범위
 - `WebhookExecution`에 실행 제어 모드와 write 수행 여부 저장
 - `AgentExecutionLog`에 실행 제어 모드와 write 수행 여부, write 생략 이유 저장
+- `WebhookExecution`과 `AgentExecutionLog` 둘 다에 execution control mode, write performed를 일관되게 남기고, write를 의도적으로 생략한 경우에만 write skip reason을 남긴다.
 - 저장소 SQL, 행 매퍼, 스키마를 새 필드에 맞춰 정리
+- controller orchestration이 새 runtime evidence 적재 경계를 막지 않도록 필요한 범위에서 함께 정리한다.
 - 대표 `NORMAL` 검증은 fresh `delivery_id`를 사용한다.
 - 로컬 프로필 실제 앱 기동 후 대표 웹훅 실행 결과를 H2에서 실행 제어 모드 기준으로 확인한다.
+- dry-run 실제 앱/H2 대표 검증은 이번 task 범위에 넣지 않는다. 현재 외부 webhook 입력 계약을 바꾸지 않으므로 representative verification은 `NORMAL` 실행 1건으로 고정하고, dry-run write 생략 이유는 targeted test로 닫는다.
 
 ### 관련 파일 후보
 - `src/main/java/com/agilerunner/domain/agentruntime/WebhookExecution.java`
 - `src/main/java/com/agilerunner/domain/agentruntime/AgentExecutionLog.java`
 - `src/main/java/com/agilerunner/api/service/agentruntime/AgentRuntimeService.java`
+- `src/main/java/com/agilerunner/api/controller/GitHubWebhookController.java`
 - `src/main/java/com/agilerunner/client/agentruntime/AgentRuntimeRepository.java`
 - `src/main/resources/agent-runtime/schema.sql`
 - `src/test/java/com/agilerunner/api/service/agentruntime/AgentRuntimeServiceTest.java`
@@ -198,15 +202,17 @@ dry-run no-write 분기 도입
 - `runtime-evidence-records-execution-control`
 
 ### 완료 조건
-- `WebhookExecution`과 `AgentExecutionLog`에 실행 제어 모드와 write 수행 여부, write 생략 이유가 적재된다.
+- `WebhookExecution`과 `AgentExecutionLog`에 실행 제어 모드와 write 수행 여부가 적재된다.
+- write를 의도적으로 생략한 경우에는 `writeSkipReason`이 적재되고, dry-run 경로의 write 생략 이유는 targeted test에서 검증된다.
 - H2 저장소 왕복 테스트와 전체 테스트가 통과한다.
 - 로컬 프로필 실제 앱 기동 후 대표 `NORMAL` 실행 근거에 실행 제어 모드와 write 수행 여부가 확인된다.
 
 ### 검증
 - 실행 근거 저장소/서비스 왕복 테스트
+- Tester는 저장소/서비스 targeted test로 dry-run write 생략 이유와 `NORMAL` 회귀를 먼저 고정한다.
 - 컨트롤러/서비스 회귀 테스트
 - 전체 테스트 실행
-- 로컬 프로필 실제 앱 기동 후 H2 파일 DB 조회로 같은 `execution_key` 기준의 `WebhookExecution`과 `AgentExecutionLog`에 실행 제어 모드와 write 수행 여부가 함께 적재되는지 확인
+- Orchestrator 종료 판정에서만 로컬 프로필 실제 앱 기동 후 H2 파일 DB 조회로 같은 `execution_key` 기준의 `WebhookExecution`과 `AgentExecutionLog`에 execution control mode와 write performed가 함께 적재되는지 확인
 
 ### GitHub Issue
 - 새 Issue 생성
