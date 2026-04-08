@@ -25,6 +25,8 @@ public class WebhookExecution {
     private final ExecutionControlMode executionControlMode;
     private final Boolean writePerformed;
     private final GitHubWriteSkipReason writeSkipReason;
+    private final Boolean selectionApplied;
+    private final String selectedPathsSummary;
     private final LocalDateTime startedAt;
     private final LocalDateTime finishedAt;
 
@@ -43,6 +45,8 @@ public class WebhookExecution {
                       ExecutionControlMode executionControlMode,
                       Boolean writePerformed,
                       GitHubWriteSkipReason writeSkipReason,
+                      Boolean selectionApplied,
+                      String selectedPathsSummary,
                       LocalDateTime startedAt,
                       LocalDateTime finishedAt) {
         this.executionKey = executionKey;
@@ -60,6 +64,8 @@ public class WebhookExecution {
         this.executionControlMode = executionControlMode;
         this.writePerformed = writePerformed;
         this.writeSkipReason = writeSkipReason;
+        this.selectionApplied = selectionApplied;
+        this.selectedPathsSummary = selectedPathsSummary;
         this.startedAt = startedAt;
         this.finishedAt = finishedAt;
     }
@@ -82,6 +88,8 @@ public class WebhookExecution {
                 eventType,
                 action,
                 WebhookExecutionStatus.STARTED,
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -112,6 +120,32 @@ public class WebhookExecution {
                 executionControlMode,
                 writePerformed,
                 writeSkipReason,
+                selectionApplied,
+                selectedPathsSummary,
+                startedAt,
+                finishedAt
+        );
+    }
+
+    public WebhookExecution withSelectionScope(Boolean selectionApplied, String selectedPathsSummary) {
+        return new WebhookExecution(
+                executionKey,
+                taskKey,
+                deliveryId,
+                executionStartType,
+                repositoryName,
+                pullRequestNumber,
+                eventType,
+                action,
+                status,
+                errorMessage,
+                errorCode,
+                failureDisposition,
+                executionControlMode,
+                writePerformed,
+                writeSkipReason,
+                selectionApplied,
+                selectedPathsSummary,
                 startedAt,
                 finishedAt
         );
@@ -134,6 +168,8 @@ public class WebhookExecution {
                 executionControlMode,
                 writePerformed,
                 writeSkipReason,
+                selectionApplied,
+                selectedPathsSummary,
                 startedAt,
                 finishedAt
         );
@@ -167,6 +203,8 @@ public class WebhookExecution {
                 executionControlMode,
                 writePerformed,
                 writeSkipReason,
+                selectionApplied,
+                selectedPathsSummary,
                 startedAt,
                 finishedAt
         );

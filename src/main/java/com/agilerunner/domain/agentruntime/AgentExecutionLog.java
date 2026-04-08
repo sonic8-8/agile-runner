@@ -25,6 +25,8 @@ public class AgentExecutionLog {
     private final ExecutionControlMode executionControlMode;
     private final Boolean writePerformed;
     private final GitHubWriteSkipReason writeSkipReason;
+    private final Boolean selectionApplied;
+    private final String selectedPathsSummary;
     private final String payloadJson;
     private final LocalDateTime startedAt;
     private final LocalDateTime endedAt;
@@ -44,6 +46,8 @@ public class AgentExecutionLog {
                               ExecutionControlMode executionControlMode,
                               Boolean writePerformed,
                               GitHubWriteSkipReason writeSkipReason,
+                              Boolean selectionApplied,
+                              String selectedPathsSummary,
                               String payloadJson,
                               LocalDateTime startedAt,
                               LocalDateTime endedAt) {
@@ -62,6 +66,8 @@ public class AgentExecutionLog {
         this.executionControlMode = executionControlMode;
         this.writePerformed = writePerformed;
         this.writeSkipReason = writeSkipReason;
+        this.selectionApplied = selectionApplied;
+        this.selectedPathsSummary = selectedPathsSummary;
         this.payloadJson = payloadJson;
         this.startedAt = startedAt;
         this.endedAt = endedAt;
@@ -96,6 +102,8 @@ public class AgentExecutionLog {
                 null,
                 null,
                 null,
+                null,
+                null,
                 payloadJson,
                 startedAt,
                 endedAt
@@ -128,6 +136,8 @@ public class AgentExecutionLog {
                 outputSummary,
                 errorMessage,
                 errorCode,
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -168,6 +178,8 @@ public class AgentExecutionLog {
                 null,
                 null,
                 null,
+                null,
+                null,
                 payloadJson,
                 startedAt,
                 endedAt
@@ -202,6 +214,8 @@ public class AgentExecutionLog {
                 errorMessage,
                 errorCode,
                 failureDisposition,
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -230,6 +244,33 @@ public class AgentExecutionLog {
                 executionControlMode,
                 writePerformed,
                 writeSkipReason,
+                selectionApplied,
+                selectedPathsSummary,
+                payloadJson,
+                startedAt,
+                endedAt
+        );
+    }
+
+    public AgentExecutionLog withSelectionScope(Boolean selectionApplied, String selectedPathsSummary) {
+        return new AgentExecutionLog(
+                taskKey,
+                issueNumber,
+                executionKey,
+                executionStartType,
+                agentRole,
+                stepName,
+                status,
+                inputSummary,
+                outputSummary,
+                errorMessage,
+                errorCode,
+                failureDisposition,
+                executionControlMode,
+                writePerformed,
+                writeSkipReason,
+                selectionApplied,
+                selectedPathsSummary,
                 payloadJson,
                 startedAt,
                 endedAt
@@ -253,6 +294,8 @@ public class AgentExecutionLog {
                 executionControlMode,
                 writePerformed,
                 writeSkipReason,
+                selectionApplied,
+                selectedPathsSummary,
                 payloadJson,
                 startedAt,
                 endedAt

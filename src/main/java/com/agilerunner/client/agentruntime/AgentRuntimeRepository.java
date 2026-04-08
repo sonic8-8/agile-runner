@@ -106,6 +106,8 @@ public class AgentRuntimeRepository {
                 execution_control_mode,
                 write_performed,
                 write_skip_reason,
+                selection_applied,
+                selected_paths_summary,
                 started_at,
                 finished_at,
                 updated_at
@@ -126,13 +128,15 @@ public class AgentRuntimeRepository {
                 :executionControlMode,
                 :writePerformed,
                 :writeSkipReason,
+                :selectionApplied,
+                :selectedPathsSummary,
                 :startedAt,
                 :finishedAt,
                 CURRENT_TIMESTAMP
             )
             """;
     private static final String FIND_WEBHOOK_EXECUTION_SQL = """
-            SELECT execution_key, task_key, delivery_id, repository_name, pull_request_number, event_type, action, status, error_message, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed, write_skip_reason, started_at, finished_at
+            SELECT execution_key, task_key, delivery_id, repository_name, pull_request_number, event_type, action, status, error_message, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed, write_skip_reason, selection_applied, selected_paths_summary, started_at, finished_at
             FROM WEBHOOK_EXECUTION
             WHERE execution_key = :executionKey
             """;
@@ -153,6 +157,8 @@ public class AgentRuntimeRepository {
                 execution_control_mode,
                 write_performed,
                 write_skip_reason,
+                selection_applied,
+                selected_paths_summary,
                 payload_json,
                 started_at,
                 ended_at
@@ -172,13 +178,15 @@ public class AgentRuntimeRepository {
                 :executionControlMode,
                 :writePerformed,
                 :writeSkipReason,
+                :selectionApplied,
+                :selectedPathsSummary,
                 :payloadJson,
                 :startedAt,
                 :endedAt
             )
             """;
     private static final String FIND_AGENT_EXECUTION_LOGS_SQL = """
-            SELECT task_key, issue_number, execution_key, agent_role, step_name, status, input_summary, output_summary, error_message, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed, write_skip_reason, payload_json, started_at, ended_at
+            SELECT task_key, issue_number, execution_key, agent_role, step_name, status, input_summary, output_summary, error_message, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed, write_skip_reason, selection_applied, selected_paths_summary, payload_json, started_at, ended_at
             FROM AGENT_EXECUTION_LOG
             WHERE task_key = :taskKey
             ORDER BY id ASC
@@ -298,6 +306,8 @@ public class AgentRuntimeRepository {
                 .addValue("executionControlMode", getExecutionControlModeName(webhookExecution.getExecutionControlMode()))
                 .addValue("writePerformed", webhookExecution.getWritePerformed())
                 .addValue("writeSkipReason", getWriteSkipReasonName(webhookExecution.getWriteSkipReason()))
+                .addValue("selectionApplied", webhookExecution.getSelectionApplied())
+                .addValue("selectedPathsSummary", webhookExecution.getSelectedPathsSummary())
                 .addValue("startedAt", webhookExecution.getStartedAt())
                 .addValue("finishedAt", webhookExecution.getFinishedAt());
     }
@@ -319,6 +329,8 @@ public class AgentRuntimeRepository {
                 .addValue("executionControlMode", getExecutionControlModeName(executionLog.getExecutionControlMode()))
                 .addValue("writePerformed", executionLog.getWritePerformed())
                 .addValue("writeSkipReason", getWriteSkipReasonName(executionLog.getWriteSkipReason()))
+                .addValue("selectionApplied", executionLog.getSelectionApplied())
+                .addValue("selectedPathsSummary", executionLog.getSelectedPathsSummary())
                 .addValue("payloadJson", executionLog.getPayloadJson())
                 .addValue("startedAt", executionLog.getStartedAt())
                 .addValue("endedAt", executionLog.getEndedAt());
@@ -364,6 +376,9 @@ public class AgentRuntimeRepository {
                 getExecutionControlMode(resultSet.getString("execution_control_mode")),
                 getNullableBoolean(resultSet, "write_performed"),
                 getWriteSkipReason(resultSet.getString("write_skip_reason"))
+        ).withSelectionScope(
+                getNullableBoolean(resultSet, "selection_applied"),
+                resultSet.getString("selected_paths_summary")
         ).complete(
                 WebhookExecutionStatus.valueOf(resultSet.getString("status")),
                 resultSet.getString("error_message"),
@@ -394,6 +409,9 @@ public class AgentRuntimeRepository {
                 getExecutionControlMode(resultSet.getString("execution_control_mode")),
                 getNullableBoolean(resultSet, "write_performed"),
                 getWriteSkipReason(resultSet.getString("write_skip_reason"))
+        ).withSelectionScope(
+                getNullableBoolean(resultSet, "selection_applied"),
+                resultSet.getString("selected_paths_summary")
         );
     }
 

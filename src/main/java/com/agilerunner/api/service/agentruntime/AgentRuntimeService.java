@@ -66,6 +66,7 @@ public class AgentRuntimeService {
         long issueNumber = pullRequestNumber;
         String taskKey = buildTaskKey(repositoryName, pullRequestNumber);
         String executionKey = buildExecutionKey(deliveryId);
+        SelectionScope selectionScope = SelectionScope.from(request.getSelectedPaths());
 
         WebhookExecution webhookExecution = WebhookExecution.start(
                 executionKey,
@@ -77,7 +78,8 @@ public class AgentRuntimeService {
                 request.getAction(),
                 now
         ).withExecutionStartType(ExecutionStartType.WEBHOOK)
-                .withExecutionControl(request.getExecutionControlMode(), false, null);
+                .withExecutionControl(request.getExecutionControlMode(), false, null)
+                .withSelectionScope(selectionScope.selectionApplied(), selectionScope.selectedPathsSummary());
 
         if (!isEnabled()) {
             return webhookExecution;
@@ -126,6 +128,7 @@ public class AgentRuntimeService {
                         now,
                         now
                 ).withExecutionControl(request.getExecutionControlMode(), false, null)
+                        .withSelectionScope(selectionScope.selectionApplied(), selectionScope.selectedPathsSummary())
         );
 
         return webhookExecution;
@@ -138,6 +141,7 @@ public class AgentRuntimeService {
         String manualRerunId = UUID.randomUUID().toString();
         String deliveryId = buildManualRerunDeliveryId(manualRerunId);
         String executionKey = buildManualRerunExecutionKey(manualRerunId);
+        SelectionScope selectionScope = SelectionScope.from(request.getSelectedPaths());
 
         WebhookExecution runtimeExecution = WebhookExecution.start(
                 executionKey,
@@ -149,7 +153,8 @@ public class AgentRuntimeService {
                 "manual_rerun",
                 now
         ).withExecutionStartType(ExecutionStartType.MANUAL_RERUN)
-                .withExecutionControl(request.getExecutionControlMode(), false, null);
+                .withExecutionControl(request.getExecutionControlMode(), false, null)
+                .withSelectionScope(selectionScope.selectionApplied(), selectionScope.selectedPathsSummary());
 
         if (!isEnabled()) {
             return runtimeExecution;
@@ -198,6 +203,7 @@ public class AgentRuntimeService {
                         now,
                         now
                 ).withExecutionControl(request.getExecutionControlMode(), false, null)
+                        .withSelectionScope(selectionScope.selectionApplied(), selectionScope.selectedPathsSummary())
         );
 
         return runtimeExecution;
@@ -240,6 +246,7 @@ public class AgentRuntimeService {
                         now,
                         now
                 ).withExecutionControl(webhookExecution.getExecutionControlMode(), webhookExecution.getWritePerformed(), webhookExecution.getWriteSkipReason())
+                        .withSelectionScope(webhookExecution.getSelectionApplied(), webhookExecution.getSelectedPathsSummary())
         );
     }
 
@@ -340,6 +347,9 @@ public class AgentRuntimeService {
                         webhookExecution.getExecutionControlMode(),
                         webhookExecution.getWritePerformed(),
                         webhookExecution.getWriteSkipReason()
+                ).withSelectionScope(
+                        webhookExecution.getSelectionApplied(),
+                        webhookExecution.getSelectedPathsSummary()
                 )
         );
     }
@@ -447,6 +457,9 @@ public class AgentRuntimeService {
                         executionResult.getExecutionControlMode(),
                         executionResult.isWritePerformed(),
                         executionResult.getWriteSkipReason()
+                ).withSelectionScope(
+                        webhookExecution.getSelectionApplied(),
+                        webhookExecution.getSelectedPathsSummary()
                 )
         );
     }
@@ -517,6 +530,26 @@ public class AgentRuntimeService {
 
     private String buildTaskTitle(String repositoryName, int pullRequestNumber) {
         return "GitHub PR review for " + repositoryName + "#" + pullRequestNumber;
+    }
+
+    private record SelectionScope(Boolean selectionApplied, String selectedPathsSummary) {
+        private static SelectionScope from(List<String> selectedPaths) {
+            if (selectedPaths == null || selectedPaths.isEmpty()) {
+                return new SelectionScope(false, null);
+            }
+
+            List<String> normalizedPaths = selectedPaths.stream()
+                    .filter(path -> path != null && !path.isBlank())
+                    .distinct()
+                    .sorted()
+                    .toList();
+
+            if (normalizedPaths.isEmpty()) {
+                return new SelectionScope(false, null);
+            }
+
+            return new SelectionScope(true, String.join("|", normalizedPaths));
+        }
     }
 
     private String buildReviewEvidence(Review review) {

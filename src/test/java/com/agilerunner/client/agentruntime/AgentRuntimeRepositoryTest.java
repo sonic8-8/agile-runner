@@ -145,6 +145,9 @@ class AgentRuntimeRepositoryTest {
                     ExecutionControlMode.DRY_RUN,
                     false,
                     GitHubWriteSkipReason.DRY_RUN
+            ).withSelectionScope(
+                    true,
+                    "src/Main.java|src/Test.java"
             );
 
             // when
@@ -180,6 +183,16 @@ class AgentRuntimeRepositoryTest {
                             "SELECT write_skip_reason FROM AGENT_EXECUTION_LOG WHERE task_key = 'TASK-103'",
                             String.class
                     );
+            Boolean storedSelectionApplied = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT selection_applied FROM AGENT_EXECUTION_LOG WHERE task_key = 'TASK-103'",
+                            Boolean.class
+                    );
+            String storedSelectedPathsSummary = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT selected_paths_summary FROM AGENT_EXECUTION_LOG WHERE task_key = 'TASK-103'",
+                            String.class
+                    );
 
             // then
             assertThat(found).hasSize(1);
@@ -192,6 +205,8 @@ class AgentRuntimeRepositoryTest {
             assertThat(found.getFirst().getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
             assertThat(found.getFirst().getWritePerformed()).isFalse();
             assertThat(found.getFirst().getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
+            assertThat(found.getFirst().getSelectionApplied()).isTrue();
+            assertThat(found.getFirst().getSelectedPathsSummary()).isEqualTo("src/Main.java|src/Test.java");
             assertThat(found.getFirst().getPayloadJson()).isEqualTo("{\"failed\":2}");
             assertThat(storedExecutionKey).isEqualTo("EXECUTION-103");
             assertThat(storedFailureDisposition).isEqualTo("RETRYABLE");
@@ -199,6 +214,8 @@ class AgentRuntimeRepositoryTest {
             assertThat(storedExecutionControlMode).isEqualTo("DRY_RUN");
             assertThat(storedWritePerformed).isFalse();
             assertThat(storedWriteSkipReason).isEqualTo("DRY_RUN");
+            assertThat(storedSelectionApplied).isTrue();
+            assertThat(storedSelectedPathsSummary).isEqualTo("src/Main.java|src/Test.java");
         });
     }
 
@@ -257,6 +274,9 @@ class AgentRuntimeRepositoryTest {
                     ExecutionControlMode.DRY_RUN,
                     false,
                     GitHubWriteSkipReason.DRY_RUN
+            ).withSelectionScope(
+                    true,
+                    "src/Main.java|src/Test.java"
             ).complete(
                     WebhookExecutionStatus.FAILED,
                     "GitHub App ID missing",
@@ -303,6 +323,16 @@ class AgentRuntimeRepositoryTest {
                             "SELECT write_skip_reason FROM WEBHOOK_EXECUTION WHERE execution_key = 'EXECUTION:201'",
                             String.class
                     );
+            Boolean storedSelectionApplied = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT selection_applied FROM WEBHOOK_EXECUTION WHERE execution_key = 'EXECUTION:201'",
+                            Boolean.class
+                    );
+            String storedSelectedPathsSummary = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT selected_paths_summary FROM WEBHOOK_EXECUTION WHERE execution_key = 'EXECUTION:201'",
+                            String.class
+                    );
 
             // then
             assertThat(found).isPresent();
@@ -315,6 +345,8 @@ class AgentRuntimeRepositoryTest {
             assertThat(found.get().getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
             assertThat(found.get().getWritePerformed()).isFalse();
             assertThat(found.get().getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
+            assertThat(found.get().getSelectionApplied()).isTrue();
+            assertThat(found.get().getSelectedPathsSummary()).isEqualTo("src/Main.java|src/Test.java");
             assertThat(storedStatus).isEqualTo("FAILED");
             assertThat(storedErrorCode).isEqualTo("GITHUB_APP_CONFIGURATION_MISSING");
             assertThat(storedFailureDisposition).isEqualTo("MANUAL_ACTION_REQUIRED");
@@ -322,6 +354,8 @@ class AgentRuntimeRepositoryTest {
             assertThat(storedExecutionControlMode).isEqualTo("DRY_RUN");
             assertThat(storedWritePerformed).isFalse();
             assertThat(storedWriteSkipReason).isEqualTo("DRY_RUN");
+            assertThat(storedSelectionApplied).isTrue();
+            assertThat(storedSelectedPathsSummary).isEqualTo("src/Main.java|src/Test.java");
         });
     }
 
@@ -379,6 +413,9 @@ class AgentRuntimeRepositoryTest {
                     ExecutionControlMode.NORMAL,
                     true,
                     null
+            ).withSelectionScope(
+                    true,
+                    "src/Main.java|src/Test.java"
             ).complete(
                     WebhookExecutionStatus.SUCCEEDED,
                     null,
@@ -405,6 +442,9 @@ class AgentRuntimeRepositoryTest {
                     ExecutionControlMode.NORMAL,
                     true,
                     null
+            ).withSelectionScope(
+                    true,
+                    "src/Main.java|src/Test.java"
             );
 
             // when
@@ -419,12 +459,16 @@ class AgentRuntimeRepositoryTest {
             assertThat(foundExecution.get().getExecutionControlMode()).isEqualTo(ExecutionControlMode.NORMAL);
             assertThat(foundExecution.get().getWritePerformed()).isTrue();
             assertThat(foundExecution.get().getWriteSkipReason()).isNull();
+            assertThat(foundExecution.get().getSelectionApplied()).isTrue();
+            assertThat(foundExecution.get().getSelectedPathsSummary()).isEqualTo("src/Main.java|src/Test.java");
 
             assertThat(foundLogs).hasSize(1);
             assertThat(foundLogs.getFirst().getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
             assertThat(foundLogs.getFirst().getExecutionControlMode()).isEqualTo(ExecutionControlMode.NORMAL);
             assertThat(foundLogs.getFirst().getWritePerformed()).isTrue();
             assertThat(foundLogs.getFirst().getWriteSkipReason()).isNull();
+            assertThat(foundLogs.getFirst().getSelectionApplied()).isTrue();
+            assertThat(foundLogs.getFirst().getSelectedPathsSummary()).isEqualTo("src/Main.java|src/Test.java");
         });
     }
 }

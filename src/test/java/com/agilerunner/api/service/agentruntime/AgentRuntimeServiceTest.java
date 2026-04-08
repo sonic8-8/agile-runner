@@ -98,7 +98,8 @@ class AgentRuntimeServiceTest {
                 "sonic8-8/agile-runner",
                 21,
                 999L,
-                ExecutionControlMode.DRY_RUN
+                ExecutionControlMode.DRY_RUN,
+                List.of("src/Test.java", "src/Main.java")
         );
 
         // when
@@ -117,15 +118,79 @@ class AgentRuntimeServiceTest {
         assertThat(savedExecution.getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
         assertThat(savedExecution.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
         assertThat(savedExecution.getWritePerformed()).isFalse();
+        assertThat(savedExecution.getSelectionApplied()).isTrue();
+        assertThat(savedExecution.getSelectedPathsSummary()).isEqualTo("src/Main.java|src/Test.java");
 
         AgentExecutionLog executionLog = logCaptor.getValue();
         assertThat(executionLog.getExecutionKey()).isEqualTo(savedExecution.getExecutionKey());
         assertThat(executionLog.getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
         assertThat(executionLog.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
         assertThat(executionLog.getWritePerformed()).isFalse();
+        assertThat(executionLog.getSelectionApplied()).isTrue();
+        assertThat(executionLog.getSelectedPathsSummary()).isEqualTo("src/Main.java|src/Test.java");
 
         assertThat(runtimeExecution.getExecutionKey()).isEqualTo(savedExecution.getExecutionKey());
         assertThat(runtimeExecution.getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+        assertThat(runtimeExecution.getSelectionApplied()).isTrue();
+        assertThat(runtimeExecution.getSelectedPathsSummary()).isEqualTo("src/Main.java|src/Test.java");
+    }
+
+    @DisplayName("manual rerun execution 시작 시 선택 경로는 공백 제거, 중복 제거, 정렬 후 요약 문자열로 저장한다.")
+    @Test
+    void startManualRerunExecution_normalizesSelectedPathsSummary() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        when(repository.findTaskRuntimeState("PR_REVIEW:sonic8-8:agile-runner#22")).thenReturn(Optional.empty());
+        AgentRuntimeService service = new AgentRuntimeService(repository, new ObjectMapper());
+        ManualRerunServiceRequest request = ManualRerunServiceRequest.of(
+                "sonic8-8/agile-runner",
+                22,
+                999L,
+                ExecutionControlMode.DRY_RUN,
+                List.of("src/B.java", " ", "src/A.java", "src/A.java")
+        );
+
+        // when
+        WebhookExecution runtimeExecution = service.startManualRerunExecution(request);
+
+        // then
+        ArgumentCaptor<WebhookExecution> executionCaptor = ArgumentCaptor.forClass(WebhookExecution.class);
+        verify(repository).upsertWebhookExecution(executionCaptor.capture());
+
+        WebhookExecution savedExecution = executionCaptor.getValue();
+        assertThat(savedExecution.getSelectionApplied()).isTrue();
+        assertThat(savedExecution.getSelectedPathsSummary()).isEqualTo("src/A.java|src/B.java");
+        assertThat(runtimeExecution.getSelectionApplied()).isTrue();
+        assertThat(runtimeExecution.getSelectedPathsSummary()).isEqualTo("src/A.java|src/B.java");
+    }
+
+    @DisplayName("manual rerun execution 시작 시 선택 경로가 비어 있으면 선택 실행 적용 없음으로 저장한다.")
+    @Test
+    void startManualRerunExecution_withBlankOnlyPaths_persistsSelectionDisabled() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        when(repository.findTaskRuntimeState("PR_REVIEW:sonic8-8:agile-runner#23")).thenReturn(Optional.empty());
+        AgentRuntimeService service = new AgentRuntimeService(repository, new ObjectMapper());
+        ManualRerunServiceRequest request = ManualRerunServiceRequest.of(
+                "sonic8-8/agile-runner",
+                23,
+                999L,
+                ExecutionControlMode.DRY_RUN,
+                List.of(" ", "")
+        );
+
+        // when
+        WebhookExecution runtimeExecution = service.startManualRerunExecution(request);
+
+        // then
+        ArgumentCaptor<WebhookExecution> executionCaptor = ArgumentCaptor.forClass(WebhookExecution.class);
+        verify(repository).upsertWebhookExecution(executionCaptor.capture());
+
+        WebhookExecution savedExecution = executionCaptor.getValue();
+        assertThat(savedExecution.getSelectionApplied()).isFalse();
+        assertThat(savedExecution.getSelectedPathsSummary()).isNull();
+        assertThat(runtimeExecution.getSelectionApplied()).isFalse();
+        assertThat(runtimeExecution.getSelectedPathsSummary()).isNull();
     }
 
     @DisplayName("manual rerun execution 결과 성공 시 manual rerun 시작 유형과 execution key를 유지한다.")
@@ -160,6 +225,9 @@ class AgentRuntimeServiceTest {
                 ExecutionControlMode.DRY_RUN,
                 false,
                 GitHubWriteSkipReason.DRY_RUN
+        ).withSelectionScope(
+                true,
+                "src/Main.java|src/Test.java"
         );
         GitHubCommentExecutionResult executionResult = GitHubCommentExecutionResult.skipped(
                 ExecutionControlMode.DRY_RUN,
@@ -183,6 +251,8 @@ class AgentRuntimeServiceTest {
         assertThat(savedExecution.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
         assertThat(savedExecution.getWritePerformed()).isFalse();
         assertThat(savedExecution.getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
+        assertThat(savedExecution.getSelectionApplied()).isTrue();
+        assertThat(savedExecution.getSelectedPathsSummary()).isEqualTo("src/Main.java|src/Test.java");
 
         AgentExecutionLog executionLog = logCaptor.getValue();
         assertThat(executionLog.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:delivery-31");
@@ -190,6 +260,8 @@ class AgentRuntimeServiceTest {
         assertThat(executionLog.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
         assertThat(executionLog.getWritePerformed()).isFalse();
         assertThat(executionLog.getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
+        assertThat(executionLog.getSelectionApplied()).isTrue();
+        assertThat(executionLog.getSelectedPathsSummary()).isEqualTo("src/Main.java|src/Test.java");
     }
 
     @DisplayName("comment execution 결과 성공 시 task runtime state와 webhook execution을 완료 상태로 기록한다.")
