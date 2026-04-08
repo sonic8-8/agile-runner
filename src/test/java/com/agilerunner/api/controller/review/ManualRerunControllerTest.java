@@ -4,6 +4,7 @@ import com.agilerunner.api.service.review.ManualRerunService;
 import com.agilerunner.api.service.review.request.ManualRerunServiceRequest;
 import com.agilerunner.api.service.review.response.ManualRerunServiceResponse;
 import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
+import com.agilerunner.domain.review.RerunExecutionStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 import java.util.Map;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -37,14 +39,17 @@ class ManualRerunControllerTest {
     @MockitoBean
     private ManualRerunService manualRerunService;
 
-    @DisplayName("수동 재실행 요청은 선택 파일 경로를 service request로 전달하고 기존 응답 계약을 유지한다.")
+    @DisplayName("수동 재실행 요청은 선택 파일 경로를 service request로 전달하고 확장된 응답 계약을 유지한다.")
     @Test
     void rerun_returnsResponseContract() throws Exception {
         // given
         ManualRerunServiceResponse response = ManualRerunServiceResponse.of(
                 "EXECUTION:MANUAL_RERUN:owner/repo#12:1",
                 ExecutionControlMode.DRY_RUN,
-                false
+                false,
+                RerunExecutionStatus.SUCCEEDED,
+                null,
+                null
         );
         when(manualRerunService.rerun(any(ManualRerunServiceRequest.class))).thenReturn(response);
 
@@ -61,7 +66,10 @@ class ManualRerunControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:owner/repo#12:1"))
                 .andExpect(jsonPath("$.executionControlMode").value("DRY_RUN"))
-                .andExpect(jsonPath("$.writePerformed").value(false));
+                .andExpect(jsonPath("$.writePerformed").value(false))
+                .andExpect(jsonPath("$.executionStatus").value("SUCCEEDED"))
+                .andExpect(jsonPath("$.errorCode").value(nullValue()))
+                .andExpect(jsonPath("$.failureDisposition").value(nullValue()));
 
         ArgumentCaptor<ManualRerunServiceRequest> requestCaptor = ArgumentCaptor.forClass(ManualRerunServiceRequest.class);
         verify(manualRerunService).rerun(requestCaptor.capture());
