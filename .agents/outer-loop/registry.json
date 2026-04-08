@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0007",
-    "task_id": "TASK-0002",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0007/TASK-0002-selective-execution-input-model.md",
+    "task_id": "TASK-0003",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0007/TASK-0003-selective-review-comment-scope.md",
     "spec_summary_path": null
   },
   "proposals": [

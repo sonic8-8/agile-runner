@@ -76,8 +76,14 @@ public class GitHubCommentService {
     private CommentPreflight prepareCommentPreflight(Review review, GitHubEventServiceRequest request) throws Exception {
         GHPullRequest pullRequest = loadPullRequest(review, request);
         String headSha = pullRequest.getHead().getSha();
-        Map<String, ParsedFilePatch> pathToParsedFilePatches = buildParsedFilePatches(pullRequest);
-        List<PreparedInlineComment> preparedInlineComments = prepareInlineComments(review, pathToParsedFilePatches);
+        Map<String, ParsedFilePatch> pathToParsedFilePatches = filterParsedFilePatches(
+                request,
+                buildParsedFilePatches(pullRequest)
+        );
+        List<PreparedInlineComment> preparedInlineComments = prepareInlineComments(
+                filterInlineComments(review, request),
+                pathToParsedFilePatches
+        );
         return CommentPreflight.of(pullRequest, headSha, preparedInlineComments);
     }
 
@@ -106,11 +112,40 @@ public class GitHubCommentService {
         return pullRequest.comment(reviewBody);
     }
 
-    private List<PreparedInlineComment> prepareInlineComments(Review review,
+    private Map<String, ParsedFilePatch> filterParsedFilePatches(GitHubEventServiceRequest request,
+                                                                 Map<String, ParsedFilePatch> pathToParsedFilePatches) {
+        if (request.getSelectedPaths().isEmpty()) {
+            return pathToParsedFilePatches;
+        }
+
+        Map<String, ParsedFilePatch> filtered = new LinkedHashMap<>();
+        for (String selectedPath : request.getSelectedPaths()) {
+            ParsedFilePatch parsedFilePatch = pathToParsedFilePatches.get(selectedPath);
+            if (parsedFilePatch == null) {
+                continue;
+            }
+            filtered.put(selectedPath, parsedFilePatch);
+        }
+
+        return filtered;
+    }
+
+    private List<InlineComment> filterInlineComments(Review review, GitHubEventServiceRequest request) {
+        if (request.getSelectedPaths().isEmpty()) {
+            return review.getInlineComments();
+        }
+
+        Set<String> selectedPaths = new LinkedHashSet<>(request.getSelectedPaths());
+        return review.getInlineComments().stream()
+                .filter(inlineComment -> selectedPaths.contains(inlineComment.getPath()))
+                .toList();
+    }
+
+    private List<PreparedInlineComment> prepareInlineComments(List<InlineComment> inlineComments,
                                                               Map<String, ParsedFilePatch> pathToParsedFilePatches) {
         List<PreparedInlineComment> preparedInlineComments = new ArrayList<>();
 
-        for (InlineComment inlineComment : review.getInlineComments()) {
+        for (InlineComment inlineComment : inlineComments) {
             preparedInlineComments.add(prepareInlineComment(inlineComment, pathToParsedFilePatches));
         }
 

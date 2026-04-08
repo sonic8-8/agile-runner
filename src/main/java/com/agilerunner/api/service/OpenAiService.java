@@ -23,7 +23,9 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -70,8 +72,20 @@ public class OpenAiService {
     private ReviewResponse requestOpenAiReview(GitHubEventServiceRequest request, String repositoryName, int pullRequestNumber) throws Exception {
         GHPullRequest pullRequest = loadPullRequest(request, repositoryName, pullRequestNumber);
         List<ParsedFilePatch> parsedFilePatches = gitHubPatchService.buildParsedFilePatches(pullRequest);
-        String prompt = buildReviewPromptFrom(parsedFilePatches);
+        String prompt = buildReviewPromptFrom(filterParsedFilePatches(request, parsedFilePatches));
         return callOpenAiWith(prompt);
+    }
+
+    private List<ParsedFilePatch> filterParsedFilePatches(GitHubEventServiceRequest request,
+                                                          List<ParsedFilePatch> parsedFilePatches) {
+        if (request.getSelectedPaths().isEmpty()) {
+            return parsedFilePatches;
+        }
+
+        Set<String> selectedPaths = new LinkedHashSet<>(request.getSelectedPaths());
+        return parsedFilePatches.stream()
+                .filter(parsedFilePatch -> selectedPaths.contains(parsedFilePatch.getPath()))
+                .toList();
     }
 
     private GHPullRequest loadPullRequest(GitHubEventServiceRequest request, String repositoryName, int pullRequestNumber) throws Exception {

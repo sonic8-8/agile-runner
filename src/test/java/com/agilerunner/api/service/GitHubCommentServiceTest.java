@@ -354,6 +354,123 @@ class GitHubCommentServiceTest {
         verify(pullRequest).createReviewComment("라인 코멘트 2", "head-sha", "src/Main.java", 8);
     }
 
+    @DisplayName("선택 파일 경로가 있으면 경로 기반 인라인 코멘트 대상은 해당 경로만 유지한다.")
+    @Test
+    void comment_limitsInlineCommentTargetsToSelectedPaths() throws Exception {
+        // given
+        GitHubClientFactory gitHubClientFactory = mock(GitHubClientFactory.class);
+        GitHubPatchService gitHubPatchService = mock(GitHubPatchService.class);
+        GitHubPositionConverter gitHubPositionConverter = mock(GitHubPositionConverter.class);
+        GitHubCommentService service = new GitHubCommentService(gitHubClientFactory, gitHubPatchService, gitHubPositionConverter);
+
+        GitHub gitHub = mock(GitHub.class);
+        GHRepository repository = mock(GHRepository.class);
+        GHCommitPointer head = mock(GHCommitPointer.class);
+        GHIssueComment mainComment = new GHIssueComment();
+        GHPullRequestReviewComment reviewComment = new GHPullRequestReviewComment();
+        ParsedFilePatch mainPatch = ParsedFilePatch.of("src/Main.java", List.of());
+        ParsedFilePatch testPatch = ParsedFilePatch.of("src/Test.java", List.of());
+        List<String> commentCalls = new ArrayList<>();
+        GHPullRequest pullRequest = new StubPullRequest(head, mainComment, reviewComment, commentCalls);
+
+        Review review = Review.of(
+                "owner/repo",
+                12,
+                "리뷰 본문",
+                List.of(
+                        InlineComment.of("src/Main.java", 10, "메인 라인 코멘트"),
+                        InlineComment.of("src/Test.java", 20, "테스트 라인 코멘트")
+                )
+        );
+        GitHubEventServiceRequest request = GitHubEventServiceRequest.of(
+                PULL_REQUEST,
+                Map.of("action", "opened"),
+                100L,
+                ExecutionControlMode.NORMAL,
+                List.of("src/Main.java")
+        );
+
+        when(gitHubClientFactory.createGitHubClient(100L)).thenReturn(gitHub);
+        when(gitHub.getRepository("owner/repo")).thenReturn(repository);
+        when(repository.getPullRequest(12)).thenReturn(pullRequest);
+        when(head.getSha()).thenReturn("head-sha");
+        when(gitHubPatchService.buildParsedFilePatches(pullRequest)).thenReturn(List.of(mainPatch, testPatch));
+        when(gitHubPatchService.buildPathToPatch(List.of(mainPatch, testPatch))).thenReturn(Map.of(
+                "src/Main.java", mainPatch,
+                "src/Test.java", testPatch
+        ));
+        when(gitHubPositionConverter.toPosition(mainPatch, 10)).thenReturn(OptionalInt.of(7));
+        when(gitHubPositionConverter.toPosition(testPatch, 20)).thenReturn(OptionalInt.of(8));
+        setField(mainComment, "id", 101L);
+        setField(mainComment, "html_url", "https://github.com/comment/101");
+        setField(reviewComment, "id", 202L);
+        setField(reviewComment, "html_url", "https://github.com/comment/202");
+
+        // when
+        GitHubCommentResponse response = service.comment(review, request);
+
+        // then
+        assertThat(commentCalls).containsExactly(
+                "main:리뷰 본문",
+                "inline:메인 라인 코멘트:head-sha:src/Main.java:7"
+        );
+        assertThat(response.postedInlineComments()).hasSize(1);
+        verify(gitHubPositionConverter, never()).toPosition(testPatch, 20);
+    }
+
+    @DisplayName("선택 파일 경로가 PR diff와 매칭되지 않으면 경로 기반 인라인 코멘트 없이 성공 응답을 유지한다.")
+    @Test
+    void comment_keepsSuccessContractWhenSelectedPathsDoNotMatchDiff() throws Exception {
+        // given
+        GitHubClientFactory gitHubClientFactory = mock(GitHubClientFactory.class);
+        GitHubPatchService gitHubPatchService = mock(GitHubPatchService.class);
+        GitHubPositionConverter gitHubPositionConverter = mock(GitHubPositionConverter.class);
+        GitHubCommentService service = new GitHubCommentService(gitHubClientFactory, gitHubPatchService, gitHubPositionConverter);
+
+        GitHub gitHub = mock(GitHub.class);
+        GHRepository repository = mock(GHRepository.class);
+        GHCommitPointer head = mock(GHCommitPointer.class);
+        GHIssueComment mainComment = new GHIssueComment();
+        GHPullRequestReviewComment reviewComment = new GHPullRequestReviewComment();
+        ParsedFilePatch mainPatch = ParsedFilePatch.of("src/Main.java", List.of());
+        List<String> commentCalls = new ArrayList<>();
+        GHPullRequest pullRequest = new StubPullRequest(head, mainComment, reviewComment, commentCalls);
+
+        Review review = Review.of(
+                "owner/repo",
+                12,
+                "리뷰 본문",
+                List.of(InlineComment.of("src/Main.java", 10, "메인 라인 코멘트"))
+        );
+        GitHubEventServiceRequest request = GitHubEventServiceRequest.of(
+                PULL_REQUEST,
+                Map.of("action", "opened"),
+                100L,
+                ExecutionControlMode.NORMAL,
+                List.of("docs/README.md")
+        );
+
+        when(gitHubClientFactory.createGitHubClient(100L)).thenReturn(gitHub);
+        when(gitHub.getRepository("owner/repo")).thenReturn(repository);
+        when(repository.getPullRequest(12)).thenReturn(pullRequest);
+        when(head.getSha()).thenReturn("head-sha");
+        when(gitHubPatchService.buildParsedFilePatches(pullRequest)).thenReturn(List.of(mainPatch));
+        when(gitHubPatchService.buildPathToPatch(List.of(mainPatch))).thenReturn(Map.of("src/Main.java", mainPatch));
+        setField(mainComment, "id", 101L);
+        setField(mainComment, "html_url", "https://github.com/comment/101");
+        setField(reviewComment, "id", 202L);
+        setField(reviewComment, "html_url", "https://github.com/comment/202");
+
+        // when
+        GitHubCommentResponse response = service.comment(review, request);
+
+        // then
+        assertThat(commentCalls).containsExactly("main:리뷰 본문");
+        assertThat(response.reviewCommentId()).isEqualTo(101L);
+        assertThat(response.postedInlineComments()).isEmpty();
+        verify(gitHubPositionConverter, never()).toPosition(mainPatch, 10);
+    }
+
     private void setField(Object target, String fieldName, Object value) throws Exception {
         Class<?> current = target.getClass();
 
