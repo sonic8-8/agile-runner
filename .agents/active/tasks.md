@@ -5,212 +5,196 @@
 각 `Task`는 하나의 명확한 결과, 검증 기준, GitHub Issue 연결 규칙을 가져야 한다.
 
 ## 현재 활성 Spec
-- ID: `SPEC-0007`
-- 이름: `선택 실행 기능 기반 마련`
+- ID: `SPEC-0008`
+- 이름: `재실행 응답 모델 정교화`
 - 기준 문서:
   - `.agents/active/spec.md`
-  - `.agents/criteria/SPEC-0007-selective-execution-foundation.json`
+  - `.agents/criteria/SPEC-0008-rerun-response-refinement.json`
 
 ## 공통 규칙
 - 구현 순서는 `TASK-0001 -> TASK-0002 -> TASK-0003 -> TASK-0004`로 고정한다.
 - 각 `Task` 시작 전 해당 task용 GitHub Issue를 새로 연결한다.
 - 각 `Task`는 연결된 `ValidationCriteria`와 테스트 근거가 없으면 완료로 보지 않는다.
-- 선택 실행 기능 도입 중에도 `/webhook/github` 성공 응답과 조기 종료 계약, `POST /reviews/rerun`의 기존 성공 응답 계약은 유지돼야 한다.
-- `TASK-0001` 시작 전 기존 webhook/manual rerun 회귀 안전망과 representative runtime evidence를 먼저 확인하고, 필요한 범위만 새 테스트를 추가한다.
-- 선택 실행 조건은 이번 spec에서 `파일 경로 목록`만 허용하고, 비어 있으면 전체 실행으로 해석한다.
-- 선택 실행 기능은 우선 manual rerun 경로에서만 다루고, webhook 입력 형식은 바꾸지 않는다.
-- 이번 spec에서는 선택 조건 입력, 경로 필터링, 실행 근거 적재까지만 닫고, glob 패턴이나 line 단위 선택은 후속 spec으로 넘긴다.
+- rerun 응답 모델을 정리하는 동안에도 `/webhook/github` 계약은 그대로 유지한다.
+- `POST /reviews/rerun`은 계속 내부/관리자용 진입점으로 유지하고, 성공 HTTP 상태는 기존처럼 `200 OK`를 유지한다.
+- 기존 최소 응답 필드 `executionKey`, `executionControlMode`, `writePerformed`는 유지한다.
+- 이번 spec에서는 rerun 응답에 실행 결과 상태와 실패 정보 표현을 추가하지만, 조회 API는 만들지 않는다.
+- 응답 필드가 늘어나도 runtime evidence와 같은 의미를 가져야 한다.
+- `TASK-0001` 시작 전 기존 manual rerun 회귀 안전망과 representative runtime evidence를 먼저 확인하고, 필요한 범위만 새 테스트를 추가한다.
 
 ## 요약 표
 | Task | 이름 | 핵심 목표 | 연결 ValidationCriteria | 핵심 검증 | Issue |
 | --- | --- | --- | --- | --- | --- |
-| `TASK-0001` | 선택 실행 안전망 고정 | 기존 webhook/manual rerun 계약과 재사용할 안전망 먼저 고정 | `webhook-and-rerun-contract-preserved-during-selective-execution` | webhook/manual rerun 회귀 테스트 | 새 Issue |
-| `TASK-0002` | 선택 실행 입력 모델 도입 | manual rerun 요청과 service request에 선택 파일 경로 목록 추가 | `selection-input-resolved-consistently` | 입력 모델 정합성, 빈 목록 기본 해석, 기존 응답 계약 유지 | 새 Issue |
-| `TASK-0003` | 선택 경로 기준 리뷰와 코멘트 제한 | 선택 파일 경로만 리뷰 입력과 경로 기반 inline comment 대상에 반영 | `selected-paths-limit-review-and-comment-scope` | 선택 경로만 남는 리뷰 입력과 경로 기반 inline comment 대상 검증 | 새 Issue |
-| `TASK-0004` | 선택 실행 근거 적재와 실제 검증 | runtime evidence에 선택 실행 여부와 정렬된 경로 요약 적재 | `runtime-evidence-records-selection-scope` | 저장소/H2 스키마, representative 선택 실행 검증 | 새 Issue |
+| `TASK-0001` | 재실행 응답 안전망 고정 | 현재 rerun 응답 계약과 runtime evidence 정합성 기준 먼저 고정 | `manual-rerun-contract-preserved-while-response-expands` | rerun/controller 회귀 테스트 | 새 Issue |
+| `TASK-0002` | 재실행 응답 모델 확장 | response DTO와 service response에 실행 상태/실패 정보 필드 추가 | `manual-rerun-response-exposes-execution-status-consistently` | DTO/컨트롤러 응답 계약 테스트 | 새 Issue |
+| `TASK-0003` | 재실행 실패 상태 응답 연결 | rerun 실패 경로를 응답 필드에 같은 의미로 반영 | `manual-rerun-response-keeps-write-and-failure-state-readable` | service/controller black-box 테스트 | 새 Issue |
+| `TASK-0004` | 재실행 응답과 실행 근거 정합성 검증 | 응답 본문과 runtime evidence의 같은 execution key 정합성 확인 | `manual-rerun-response-matches-runtime-evidence` | 실제 앱/H2 representative 검증 | 새 Issue |
 
 ## TASK-0001
 ### 이름
-선택 실행 안전망 고정
+재실행 응답 안전망 고정
 
 ### 목표
-- 선택 실행 기능을 넣기 전에 기존 webhook 계약과 manual rerun 계약, 그리고 이후 task가 재사용할 회귀 안전망을 테스트로 먼저 고정한다.
+- rerun 응답을 확장하기 전에 현재 `POST /reviews/rerun` 계약과 이후 task가 재사용할 안전망을 테스트로 먼저 고정한다.
 
 ### 구현 범위
-- 기존 `GitHubWebhookControllerTest`, `GitHubCommentServiceTest`, `ManualRerunControllerTest`, `ManualRerunServiceTest`, `AgentRuntimeServiceTest`를 재사용하거나 필요한 경우만 보강한다.
-- 기존 안전망이 이미 충분하면 그 근거를 문서와 회고에 남기고, 부족한 경우만 새 테스트를 추가한다.
-- 대상은 아래를 우선 포함한다.
-  - `/webhook/github` 성공 응답과 조기 종료 계약
-  - `POST /reviews/rerun` 성공 응답 계약
-  - manual rerun `NORMAL`, `DRY_RUN` 기본 경로
-- 실제 선택 파일 경로 입력과 경로 제한 구현은 `TASK-0002`, `TASK-0003`에서 닫는다.
+- 기존 `ManualRerunControllerTest`, `ManualRerunServiceTest`, `GitHubWebhookControllerTest`, `AgentRuntimeServiceTest`를 재사용하거나 필요한 경우만 보강한다.
+- 아래 기준을 우선 고정한다.
+  - `POST /reviews/rerun`의 `200 OK` 유지
+  - 기존 최소 응답 필드 유지
+  - `executionKey`와 runtime evidence 연결 가능성 유지
+  - `/webhook/github` 계약 비영향
+- 기존 안전망이 충분하면 그 근거를 문서와 회고에 남기고, 부족한 경우만 새 테스트를 추가한다.
 
 ### 비대상
-- 선택 파일 경로 입력 DTO 구현
-- 선택 경로 기반 리뷰/코멘트 제한
+- response DTO 필드 추가
+- rerun 실패 상태 연결 구현
 - runtime evidence 스키마 변경
 
 ### 연결 ValidationCriteria
-- `webhook-and-rerun-contract-preserved-during-selective-execution`
+- `manual-rerun-contract-preserved-while-response-expands`
 
 ### 완료 조건
-- 선택 실행 기능 도입 전 기존 webhook/manual rerun 계약과 이후 task가 재사용할 회귀 안전망이 테스트와 체크리스트로 고정된다.
-- 이후 task에서 같은 테스트를 그대로 재사용할 수 있다.
+- rerun 응답 확장 전 기존 응답 계약과 이후 task가 재사용할 회귀 안전망이 테스트와 체크리스트로 고정된다.
+- webhook 계약 비영향도 테스트와 체크리스트로 확인된다.
 
 ### 검증
-- webhook/manual rerun 회귀 테스트 실행 통과
+- rerun/controller 회귀 테스트 실행 통과
 - 현재 유지 계약과 테스트 근거 대응 관계 점검
 
 ### GitHub Issue
 - 새 Issue 생성
-- 권장 제목: `[BE] 선택 실행 안전망 고정`
+- 권장 제목: `[BE] 재실행 응답 안전망 고정`
 
 ## TASK-0002
 ### 이름
-선택 실행 입력 모델 도입
+재실행 응답 모델 확장
 
 ### 목표
-- manual rerun 요청과 service request에서 선택 파일 경로 목록을 명시적으로 다룰 수 있게 만든다.
+- manual rerun response DTO와 service response DTO에 실행 결과 상태와 실패 정보 필드를 명시적으로 추가한다.
 
 ### 구현 범위
-- manual rerun request DTO에 선택 파일 경로 목록 추가
-- service request DTO에 선택 파일 경로 목록 추가
-- controller/service 경계에서 선택 파일 경로 목록 전달
-- 선택 파일 경로 목록이 비어 있으면 전체 실행으로 해석하는 기본 규칙 정리
-- 기존 `/reviews/rerun` 성공 응답 계약은 유지한다.
-- downstream 실행 경계까지 값 전달이 필요하면 `GitHubEventServiceRequest` 같은 내부 request seam도 함께 정리한다.
+- controller response DTO에 `executionStatus`, `errorCode`, `failureDisposition` 필드 추가
+- service response DTO에 같은 필드 추가
+- `executionStatus` 허용 값은 이번 spec에서 `SUCCEEDED`, `FAILED`로 고정
+- controller/service 경계에서 새 필드가 같은 의미로 전달되게 정리
+- 기존 최소 응답 필드는 유지
+- 응답 본문은 여전히 `200 OK`와 함께 반환
 
 ### 관련 파일 후보
-- `src/main/java/com/agilerunner/api/controller/review/request/ManualRerunRequest.java`
+- `src/main/java/com/agilerunner/api/controller/review/response/ManualRerunResponse.java`
+- `src/main/java/com/agilerunner/api/service/review/response/ManualRerunServiceResponse.java`
 - `src/main/java/com/agilerunner/api/controller/review/ManualRerunController.java`
-- `src/main/java/com/agilerunner/api/service/review/request/ManualRerunServiceRequest.java`
-- `src/main/java/com/agilerunner/api/service/review/ManualRerunService.java`
-- `src/main/java/com/agilerunner/api/service/github/request/GitHubEventServiceRequest.java`
-- `src/test/java/com/agilerunner/api/controller/review/request/ManualRerunRequestTest.java`
 - `src/test/java/com/agilerunner/api/controller/review/ManualRerunControllerTest.java`
-- `src/test/java/com/agilerunner/api/service/review/ManualRerunServiceTest.java`
 
 ### 비대상
-- 선택 경로 기반 리뷰/코멘트 제한
+- rerun 실패 경로의 실제 값 연결
 - runtime evidence 스키마 변경
-- webhook 입력 형식 변경
+- 조회 API 추가
 
 ### 연결 ValidationCriteria
-- `selection-input-resolved-consistently`
+- `manual-rerun-response-exposes-execution-status-consistently`
 
 ### 완료 조건
-- manual rerun 요청이 선택 파일 경로 목록을 controller/service 경계에서 같은 의미로 해석한다.
-- 선택 파일 경로 목록이 비어 있으면 전체 실행 기본 해석을 유지한다.
-- 기존 `/reviews/rerun` 성공 응답 계약이 유지된다.
+- rerun 응답이 `executionStatus`, `errorCode`, `failureDisposition` 필드를 포함한다.
+- controller/service response DTO가 같은 의미로 필드를 전달한다.
+- `executionStatus`는 `SUCCEEDED`, `FAILED`만 사용한다.
+- 기존 `executionKey`, `executionControlMode`, `writePerformed` 계약은 유지된다.
 
 ### 검증
-- request DTO 테스트
+- response DTO 테스트
 - controller black-box 테스트
-- service request 전달 테스트
-- 기존 webhook/manual rerun 회귀 테스트
+- 기존 rerun 회귀 테스트
 
 ### GitHub Issue
 - 새 Issue 생성
-- 권장 제목: `[BE] 선택 실행 입력 모델 도입`
+- 권장 제목: `[BE] 재실행 응답 모델 확장`
 
 ## TASK-0003
 ### 이름
-선택 경로 기준 리뷰와 코멘트 제한
+재실행 실패 상태 응답 연결
 
 ### 목표
-- 선택 파일 경로 목록이 주어지면 리뷰 생성 입력과 경로 기반 inline comment 대상이 해당 경로만 기준으로 제한되게 한다.
+- review 생성 실패, 코멘트 작성 실패, dry-run non-write 같은 rerun 결과를 응답 필드에서 구분 가능하게 만든다.
 
 ### 구현 범위
-- review 생성 입력에서 선택 파일 경로만 남기도록 정리
-- 리뷰 결과의 inline comment는 선택 파일 경로만 유지하도록 정리
-- GitHub 경로 기반 inline comment 작성 대상도 선택 파일 경로만 기준으로 제한
-- 선택 파일 경로 목록이 비어 있으면 기존 전체 실행 경로 유지
-- 선택 파일 경로가 PR diff와 하나도 매칭되지 않으면 리뷰 입력과 경로 기반 inline comment 대상은 빈 상태로 처리하고, 기존 성공 응답 계약은 유지
-- `NORMAL`, `DRY_RUN` 실행 제어는 기존 규칙 유지
-- representative actual-app 검증은 `TASK-0004`에서 executionKey 기준 evidence 확인으로 닫고, 이번 task는 targeted/full test까지로 종료한다.
+- `ManualRerunService`가 `executionStatus`, `errorCode`, `failureDisposition`, `writePerformed`를 같은 의미로 채운다.
+- review 생성 실패와 코멘트 작성 실패는 `FAILED` 상태 아래에서 `errorCode`, `failureDisposition` 조합으로 읽히게 정리한다.
+- dry-run은 `SUCCEEDED + writePerformed=false + errorCode=null + failureDisposition=null` 조합으로 해석되게 정리한다.
+- controller 응답과 service 응답이 같은 의미를 유지한다.
 
 ### 관련 파일 후보
-- `src/main/java/com/agilerunner/api/service/OpenAiService.java`
-- `src/main/java/com/agilerunner/api/service/GitHubCommentService.java`
 - `src/main/java/com/agilerunner/api/service/review/ManualRerunService.java`
-- `src/main/java/com/agilerunner/api/service/review/request/ManualRerunServiceRequest.java`
-- `src/main/java/com/agilerunner/domain/Review.java`
-- `src/main/java/com/agilerunner/domain/InlineComment.java`
+- `src/main/java/com/agilerunner/api/service/review/response/ManualRerunServiceResponse.java`
+- `src/main/java/com/agilerunner/api/controller/review/response/ManualRerunResponse.java`
 - `src/test/java/com/agilerunner/api/service/review/ManualRerunServiceTest.java`
-- `src/test/java/com/agilerunner/api/service/GitHubCommentServiceTest.java`
-- `src/test/java/com/agilerunner/api/service/OpenAiServiceTest.java`
-
-### 비대상
-- runtime evidence 스키마 변경
-- glob/정규식 선택 문법
-- webhook 입력 형식 변경
-
-### 연결 ValidationCriteria
-- `selected-paths-limit-review-and-comment-scope`
-
-### 완료 조건
-- 선택 파일 경로 목록이 주어지면 비선택 경로는 리뷰 입력과 경로 기반 inline comment 대상에서 제외된다.
-- 선택 파일 경로 목록이 비어 있으면 기존 전체 실행 경로를 유지한다.
-- 선택 파일 경로가 PR diff와 하나도 매칭되지 않으면 리뷰 입력과 경로 기반 inline comment 대상은 빈 상태로 처리되고, 기존 성공 응답 계약은 유지된다.
-- `NORMAL`, `DRY_RUN` 실행 제어가 함께 유지된다.
-- actual-app/H2 representative 검증이 필요한 runtime evidence 확인은 `TASK-0004`에서 수행한다.
-
-### 검증
-- 선택 파일 경로 필터 테스트
-- 선택 경로 no-match 처리 테스트
-- manual rerun service/controller 테스트
-- GitHub 경로 기반 inline comment 대상 제한 테스트
-- 기존 webhook/manual rerun 회귀 테스트
-
-### GitHub Issue
-- 새 Issue 생성
-- 권장 제목: `[BE] 선택 경로 기반 리뷰 제한`
-
-## TASK-0004
-### 이름
-선택 실행 근거 적재와 실제 검증
-
-### 목표
-- runtime evidence에 선택 실행 여부와 정렬된 파일 경로 목록 요약 문자열을 남기고, 실제 앱/H2 기준으로 대표 선택 실행 1건을 검증한다.
-
-### 구현 범위
-- `WebhookExecution`과 `AgentExecutionLog`에 선택 실행 여부와 정렬된 파일 경로 목록 요약 문자열 필드 추가
-- 저장소 SQL, 행 매퍼, 스키마를 새 필드에 맞춰 정리
-- representative 선택 실행 응답의 `executionKey` 기준으로 H2 evidence 확인
-- representative 검증에는 fresh `delivery_id`와 `executionKey`를 사용
-- representative actual-app 검증은 `NORMAL` 1건과 선택 파일 경로 1~2개를 기준 시나리오로 삼고, `DRY_RUN` actual-app 검증은 이번 task 비대상으로 둔다.
-
-### 관련 파일 후보
-- `src/main/java/com/agilerunner/domain/agentruntime/WebhookExecution.java`
-- `src/main/java/com/agilerunner/domain/agentruntime/AgentExecutionLog.java`
-- `src/main/java/com/agilerunner/api/service/agentruntime/AgentRuntimeService.java`
-- `src/main/java/com/agilerunner/client/agentruntime/AgentRuntimeRepository.java`
-- `src/main/resources/agent-runtime/schema.sql`
-- `src/main/java/com/agilerunner/api/service/review/ManualRerunService.java`
-- `src/main/java/com/agilerunner/api/controller/review/ManualRerunController.java`
-- `src/test/java/com/agilerunner/api/service/agentruntime/AgentRuntimeServiceTest.java`
-- `src/test/java/com/agilerunner/client/agentruntime/AgentRuntimeRepositoryTest.java`
 - `src/test/java/com/agilerunner/api/controller/review/ManualRerunControllerTest.java`
 
 ### 비대상
-- 장기 저장소 도입
-- 운영 대시보드 구축
-- glob/정규식 선택 문법
+- runtime evidence 컬럼 추가
+- execution key 기반 조회 API
+- webhook 응답 계약 변경
 
 ### 연결 ValidationCriteria
-- `runtime-evidence-records-selection-scope`
+- `manual-rerun-response-keeps-write-and-failure-state-readable`
 
 ### 완료 조건
-- runtime evidence에 선택 실행 여부와 정렬된 파일 경로 목록 요약 문자열이 적재된다.
-- H2 저장소 왕복 테스트와 전체 테스트가 통과한다.
-- 로컬 프로필 실제 앱 기동 후 대표 선택 실행 응답의 `executionKey`를 기준으로 같은 값의 runtime evidence를 확인할 수 있다.
+- rerun 응답에서 실패 상태와 GitHub 코멘트 작성 여부를 함께 읽을 수 있다.
+- review 생성 실패, 코멘트 작성 실패, dry-run non-write가 `executionStatus`, `errorCode`, `failureDisposition`, `writePerformed` 조합으로 구분된다.
+- 기존 최소 응답 필드는 유지된다.
 
 ### 검증
-- runtime evidence 저장소/서비스 왕복 테스트
-- controller/service 회귀 테스트
-- 전체 테스트 실행
-- 로컬 프로필 실제 앱 기동 후 representative 선택 실행 검증
+- service black-box 테스트
+- controller black-box 테스트
+- 기존 rerun/webhook 회귀 테스트
 
 ### GitHub Issue
 - 새 Issue 생성
-- 권장 제목: `[BE] 선택 실행 근거 적재`
+- 권장 제목: `[BE] 재실행 실패 상태 응답 연결`
+
+## TASK-0004
+### 이름
+재실행 응답과 실행 근거 정합성 검증
+
+### 목표
+- 대표 manual rerun 실패 시나리오 1건의 `executionKey`를 기준으로 runtime evidence를 조회해 응답 본문과 같은 의미가 남는지 확인한다.
+
+### 구현 범위
+- rerun 응답에 담기는 `executionStatus`, `errorCode`, `failureDisposition`, `writePerformed`가 runtime evidence와 같은 의미가 되는지 검증
+- 정합성 검증에 꼭 필요한 최소 매핑 보정만 허용
+- 새 응답 필드 추가나 새 스키마 컬럼 추가는 비대상
+- local profile 실제 앱/H2 representative 검증 수행
+- representative 검증에는 fresh `delivery_id`와 fresh `executionKey`를 사용
+- representative 검증은 최소 1건의 실패 시나리오를 사용해 응답과 runtime evidence를 함께 확인
+
+### 관련 파일 후보
+- `src/main/java/com/agilerunner/api/service/review/ManualRerunService.java`
+- `src/main/java/com/agilerunner/api/service/agentruntime/AgentRuntimeService.java`
+- `src/main/java/com/agilerunner/client/agentruntime/AgentRuntimeRepository.java`
+- `src/main/java/com/agilerunner/api/controller/review/ManualRerunController.java`
+- `src/test/java/com/agilerunner/api/service/review/ManualRerunServiceTest.java`
+- `src/test/java/com/agilerunner/api/controller/review/ManualRerunControllerTest.java`
+- `src/test/java/com/agilerunner/api/service/agentruntime/AgentRuntimeServiceTest.java`
+- `src/test/java/com/agilerunner/client/agentruntime/AgentRuntimeRepositoryTest.java`
+
+### 비대상
+- 운영 대시보드 구축
+- 결과 조회 API 추가
+- 장기 저장소 도입
+
+### 연결 ValidationCriteria
+- `manual-rerun-response-matches-runtime-evidence`
+
+### 완료 조건
+- 대표 manual rerun 실패 시나리오 1건의 `executionKey`를 기준으로 runtime evidence를 조회했을 때 응답 본문의 `executionStatus`, `errorCode`, `failureDisposition`, `writePerformed`와 같은 의미가 확인된다.
+- targeted test, 전체 테스트, 실제 앱/H2 representative 검증이 모두 통과한다.
+
+### 검증
+- runtime evidence 서비스/저장소 테스트
+- controller/service 회귀 테스트
+- 전체 테스트 실행
+- 로컬 프로필 실제 앱 기동 후 representative rerun 검증
+
+### GitHub Issue
+- 새 Issue 생성
+- 권장 제목: `[BE] 재실행 응답과 실행 기록 정합성 검증`

@@ -1,0 +1,35 @@
+{
+  "spec_id": "SPEC-0008",
+  "spec_name": "재실행 응답 모델 정교화",
+  "spec_version": 1,
+  "criteria": [
+    {
+      "key": "manual-rerun-contract-preserved-while-response-expands",
+      "target": "재실행 응답 확장 중 기존 manual rerun 및 webhook 계약 유지",
+      "test_view": "컨트롤러/서비스 통합 관점",
+      "pass_condition": "rerun 응답 모델을 확장한 이후에도 `POST /reviews/rerun`의 `200 OK`, 기존 최소 응답 필드 `executionKey`, `executionControlMode`, `writePerformed`가 유지되고 `/webhook/github` 계약에는 영향이 없다.",
+      "fail_condition": "rerun 응답 모델 확장 때문에 `POST /reviews/rerun`의 상태 코드나 기존 최소 응답 필드가 깨지거나, `/webhook/github` 계약이 함께 흔들린다."
+    },
+    {
+      "key": "manual-rerun-response-exposes-execution-status-consistently",
+      "target": "재실행 응답의 실행 결과 상태 표현 일관성",
+      "test_view": "응답 DTO/컨트롤러 경계 관점",
+      "pass_condition": "rerun 응답은 `executionStatus(실행 결과 상태)`, `errorCode`, `failureDisposition(후속 조치 유형)`을 포함하고 controller response DTO와 service response DTO가 같은 의미로 이를 전달한다. `executionStatus`는 `SUCCEEDED` 또는 `FAILED`만 사용한다.",
+      "fail_condition": "controller와 service response DTO가 실행 결과 상태를 다르게 해석하거나, `executionStatus`, `errorCode`, `failureDisposition`이 경계마다 다른 의미로 노출되거나, `executionStatus`에 다른 문자열이 섞여 들어간다."
+    },
+    {
+      "key": "manual-rerun-response-keeps-write-and-failure-state-readable",
+      "target": "재실행 응답의 쓰기 여부 및 실패 상태 구분 가능성",
+      "test_view": "실행 결과/외부 side effect 관점",
+      "pass_condition": "rerun 응답은 `writePerformed`와 실패 상태를 함께 해석할 수 있어야 한다. review 생성 실패와 코멘트 작성 실패는 `FAILED` 상태 아래 `errorCode`, `failureDisposition` 조합으로 읽히고, dry-run non-write는 `SUCCEEDED + writePerformed=false + errorCode=null + failureDisposition=null` 조합으로 읽힌다.",
+      "fail_condition": "rerun 응답만으로 실패 상태와 GitHub 코멘트 작성 여부를 구분할 수 없거나, dry-run non-write가 실패처럼 읽히거나, 실패 경로인데 `FAILED` 상태와 실패 정보가 함께 남지 않는다."
+    },
+    {
+      "key": "manual-rerun-response-matches-runtime-evidence",
+      "target": "재실행 응답과 runtime evidence의 같은 의미 유지",
+      "test_view": "저장소/H2 실제 검증 관점",
+      "pass_condition": "로컬 프로필 실제 앱 기동 후 대표 manual rerun 실패 시나리오 1건의 `executionKey(실행 키)`를 기준으로 runtime evidence를 조회했을 때 `executionStatus`, `errorCode`, `failureDisposition`, `writePerformed`가 응답 본문과 같은 의미로 남아 있다.",
+      "fail_condition": "대표 manual rerun 실패 시나리오의 `executionKey`를 기준으로 runtime evidence를 조회했을 때 응답 본문과 상태 의미가 다르거나, 필요한 failure/write 정보가 빠져 있다."
+    }
+  ]
+}

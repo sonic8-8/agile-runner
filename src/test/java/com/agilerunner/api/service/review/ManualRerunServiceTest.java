@@ -161,4 +161,41 @@ class ManualRerunServiceTest {
         assertThat(response.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
         assertThat(response.isWritePerformed()).isFalse();
     }
+
+    @DisplayName("수동 재실행 중 코멘트 작성이 실패해도 runtime execution key와 no-write 응답을 반환한다.")
+    @Test
+    void rerun_returnsRuntimeExecutionKeyWhenCommentExecutionFails() {
+        // given
+        OpenAiService openAiService = mock(OpenAiService.class);
+        GitHubCommentService gitHubCommentService = mock(GitHubCommentService.class);
+        AgentRuntimeService agentRuntimeService = mock(AgentRuntimeService.class);
+        ManualRerunService service = new ManualRerunService(openAiService, gitHubCommentService, agentRuntimeService);
+        ManualRerunServiceRequest request = ManualRerunServiceRequest.of(
+                "owner/repo",
+                12,
+                100L,
+                ExecutionControlMode.NORMAL
+        );
+        Review review = Review.of("owner/repo", 12, "리뷰 본문", List.of());
+        WebhookExecution runtimeExecution = mock(WebhookExecution.class);
+        AgileRunnerException failure = new AgileRunnerException(
+                ErrorCode.GITHUB_COMMENT_POST_FAILED,
+                "GitHub 코멘트 등록에 실패했습니다."
+        );
+        when(runtimeExecution.getExecutionKey()).thenReturn("EXECUTION:manual-rerun-15");
+        when(agentRuntimeService.startManualRerunExecution(request)).thenReturn(runtimeExecution);
+        when(openAiService.generateReview(any(GitHubEventServiceRequest.class))).thenReturn(review);
+        when(gitHubCommentService.execute(any(Review.class), any(GitHubEventServiceRequest.class))).thenThrow(failure);
+
+        // when
+        ManualRerunServiceResponse response = service.rerun(request);
+
+        // then
+        verify(agentRuntimeService).recordReviewGenerated(runtimeExecution, review);
+        verify(agentRuntimeService).recordFailure(runtimeExecution, AgentRuntimeService.STEP_COMMENT_POSTED, failure);
+
+        assertThat(response.getExecutionKey()).isEqualTo("EXECUTION:manual-rerun-15");
+        assertThat(response.getExecutionControlMode()).isEqualTo(ExecutionControlMode.NORMAL);
+        assertThat(response.isWritePerformed()).isFalse();
+    }
 }
