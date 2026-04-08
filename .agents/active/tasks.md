@@ -87,9 +87,10 @@
 - `src/main/java/com/agilerunner/api/controller/review/response/ManualRerunResponse.java`
 - `src/main/java/com/agilerunner/api/service/review/ManualRerunService.java`
 - `src/main/java/com/agilerunner/api/service/review/request/ManualRerunServiceRequest.java`
+- `src/main/java/com/agilerunner/api/service/review/response/ManualRerunServiceResponse.java`
 - `src/main/java/com/agilerunner/domain/executioncontrol/ExecutionControlMode.java`
 - `src/test/java/com/agilerunner/api/controller/review/ManualRerunControllerTest.java`
-- `src/test/java/com/agilerunner/api/service/review/ManualRerunServiceTest.java`
+- `src/test/java/com/agilerunner/api/controller/review/request/ManualRerunRequestTest.java`
 
 ### 비대상
 - 수동 재실행 실제 리뷰 생성/코멘트 작성 연결

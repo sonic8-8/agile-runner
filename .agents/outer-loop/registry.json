@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0006",
-    "task_id": "TASK-0001",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0006/TASK-0001-manual-rerun-safety-net.md",
+    "task_id": "TASK-0002",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0006/TASK-0002-manual-rerun-input-model.md",
     "spec_summary_path": null
   },
   "proposals": [
@@ -42,6 +42,10 @@
     {
       "proposal_id": "WORKFLOW-PROP-0007",
       "path": ".agents/outer-loop/proposals/WORKFLOW/WORKFLOW-PROP-0007-from-SPEC-0004-SUMMARY.md"
+    },
+    {
+      "proposal_id": "WORKFLOW-PROP-0008",
+      "path": ".agents/outer-loop/proposals/WORKFLOW/WORKFLOW-PROP-0008-from-SPEC-0006-TASK-0002.md"
     }
   ]
 }

@@ -67,6 +67,8 @@ description: Use when executing a meaningful Agile Runner task under this reposi
 - black-box 테스트를 다시 실행한다.
 - `AGENTS.md` 컨벤션 위반 여부를 다시 확인한다.
 - task 관련 targeted test를 확인한 뒤, 가능하면 저장소 표준 전체 테스트 실행 명령까지 확인한다.
+- task 종료 검증에서는 targeted test와 전체 테스트를 기본적으로 순차 실행하고, 같은 workspace에서 동시에 실행하지 않는다.
+- 병렬 실행이 필요하면 테스트 결과 출력 경로를 분리하거나, 같은 workspace 산출물을 공유하지 않는 방식만 허용한다.
 - 전체 테스트 실행을 생략하면 생략 사유를 retrospective에 남긴다.
 - 실패하면 `Constructor` 단계로 되돌린다.
 
