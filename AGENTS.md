@@ -43,6 +43,7 @@
 - `Tester`는 구현 후 behavior 통과 여부와 AGENTS.md 컨벤션 통과 여부를 다시 확인한다.
 - `Tester` 2차 단계에서는 task 관련 targeted test를 확인한 뒤, 가능하면 저장소 표준 전체 테스트 실행 명령까지 확인한다.
 - task 종료 검증에서 targeted test와 전체 테스트는 기본적으로 순차 실행하고, 같은 workspace에서 동시에 실행하지 않는다.
+- 같은 workspace 산출물을 공유하는 테스트 명령은 `multi_tool_use.parallel`로 묶지 않는다.
 - 병렬 실행이 필요하면 테스트 결과 출력 경로를 분리하거나, 같은 workspace 산출물을 공유하지 않는 방식만 허용한다.
 - 저장소 표준 전체 테스트 실행을 생략하면 생략 사유를 retrospective에 남긴다.
 - 실패 시 작업은 `Constructor`로 되돌리고, 수정 후 다시 검증한다.
