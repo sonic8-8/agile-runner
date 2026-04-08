@@ -12,8 +12,10 @@ import com.agilerunner.domain.Review;
 import com.agilerunner.domain.agentruntime.WebhookExecution;
 import com.agilerunner.domain.exception.AgileRunnerException;
 import com.agilerunner.domain.exception.ErrorCode;
+import com.agilerunner.domain.exception.FailureDisposition;
 import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
 import com.agilerunner.domain.executioncontrol.GitHubWriteSkipReason;
+import com.agilerunner.domain.review.RerunExecutionStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -76,6 +78,9 @@ class ManualRerunServiceTest {
         assertThat(response.getExecutionKey()).isEqualTo("EXECUTION:manual-rerun-12");
         assertThat(response.getExecutionControlMode()).isEqualTo(ExecutionControlMode.NORMAL);
         assertThat(response.isWritePerformed()).isTrue();
+        assertThat(response.getExecutionStatus()).isEqualTo(RerunExecutionStatus.SUCCEEDED);
+        assertThat(response.getErrorCode()).isNull();
+        assertThat(response.getFailureDisposition()).isNull();
     }
 
     @DisplayName("DRY_RUN 수동 재실행은 기존 dry-run 분기를 재사용해 write 없이 응답한다.")
@@ -125,6 +130,9 @@ class ManualRerunServiceTest {
         assertThat(response.getExecutionKey()).isEqualTo("EXECUTION:manual-rerun-13");
         assertThat(response.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
         assertThat(response.isWritePerformed()).isFalse();
+        assertThat(response.getExecutionStatus()).isEqualTo(RerunExecutionStatus.SUCCEEDED);
+        assertThat(response.getErrorCode()).isNull();
+        assertThat(response.getFailureDisposition()).isNull();
     }
 
     @DisplayName("수동 재실행 중 리뷰 생성이 실패해도 runtime execution key와 no-write 응답을 반환한다.")
@@ -160,6 +168,9 @@ class ManualRerunServiceTest {
         assertThat(response.getExecutionKey()).isEqualTo("EXECUTION:manual-rerun-14");
         assertThat(response.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
         assertThat(response.isWritePerformed()).isFalse();
+        assertThat(response.getExecutionStatus()).isEqualTo(RerunExecutionStatus.FAILED);
+        assertThat(response.getErrorCode()).isEqualTo(ErrorCode.GITHUB_APP_CONFIGURATION_MISSING);
+        assertThat(response.getFailureDisposition()).isEqualTo(FailureDisposition.MANUAL_ACTION_REQUIRED);
     }
 
     @DisplayName("수동 재실행 중 코멘트 작성이 실패해도 runtime execution key와 no-write 응답을 반환한다.")
@@ -197,5 +208,8 @@ class ManualRerunServiceTest {
         assertThat(response.getExecutionKey()).isEqualTo("EXECUTION:manual-rerun-15");
         assertThat(response.getExecutionControlMode()).isEqualTo(ExecutionControlMode.NORMAL);
         assertThat(response.isWritePerformed()).isFalse();
+        assertThat(response.getExecutionStatus()).isEqualTo(RerunExecutionStatus.FAILED);
+        assertThat(response.getErrorCode()).isEqualTo(ErrorCode.GITHUB_COMMENT_POST_FAILED);
+        assertThat(response.getFailureDisposition()).isEqualTo(FailureDisposition.RETRYABLE);
     }
 }

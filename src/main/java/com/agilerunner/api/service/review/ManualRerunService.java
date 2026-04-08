@@ -9,6 +9,10 @@ import com.agilerunner.api.service.review.request.ManualRerunServiceRequest;
 import com.agilerunner.api.service.review.response.ManualRerunServiceResponse;
 import com.agilerunner.domain.Review;
 import com.agilerunner.domain.agentruntime.WebhookExecution;
+import com.agilerunner.domain.exception.AgileRunnerException;
+import com.agilerunner.domain.exception.ErrorCode;
+import com.agilerunner.domain.exception.FailureDisposition;
+import com.agilerunner.domain.exception.FailureDispositionPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +20,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static com.agilerunner.GitHubEventType.PULL_REQUEST;
+import static com.agilerunner.domain.review.RerunExecutionStatus.FAILED;
+import static com.agilerunner.domain.review.RerunExecutionStatus.SUCCEEDED;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +36,7 @@ public class ManualRerunService {
     private final OpenAiService openAiService;
     private final GitHubCommentService gitHubCommentService;
     private final AgentRuntimeService agentRuntimeService;
+    private final FailureDispositionPolicy failureDispositionPolicy = new FailureDispositionPolicy();
 
     public ManualRerunServiceResponse rerun(ManualRerunServiceRequest request) {
         WebhookExecution runtimeExecution = agentRuntimeService.startManualRerunExecution(request);
@@ -49,7 +56,10 @@ public class ManualRerunService {
             return ManualRerunServiceResponse.of(
                     runtimeExecution.getExecutionKey(),
                     request.getExecutionControlMode(),
-                    false
+                    false,
+                    FAILED,
+                    getErrorCode(exception),
+                    getFailureDisposition(exception)
             );
         }
 
@@ -61,16 +71,38 @@ public class ManualRerunService {
             return ManualRerunServiceResponse.of(
                     runtimeExecution.getExecutionKey(),
                     request.getExecutionControlMode(),
-                    executionResult.isWritePerformed()
+                    executionResult.isWritePerformed(),
+                    SUCCEEDED,
+                    null,
+                    null
             );
         } catch (Exception exception) {
             agentRuntimeService.recordFailure(runtimeExecution, AgentRuntimeService.STEP_COMMENT_POSTED, exception);
             return ManualRerunServiceResponse.of(
                     runtimeExecution.getExecutionKey(),
                     request.getExecutionControlMode(),
-                    false
+                    false,
+                    FAILED,
+                    getErrorCode(exception),
+                    getFailureDisposition(exception)
             );
         }
+    }
+
+    private ErrorCode getErrorCode(Exception exception) {
+        if (exception instanceof AgileRunnerException agileRunnerException) {
+            return agileRunnerException.getErrorCode();
+        }
+
+        return null;
+    }
+
+    private FailureDisposition getFailureDisposition(Exception exception) {
+        if (exception instanceof AgileRunnerException agileRunnerException) {
+            return failureDispositionPolicy.classify(agileRunnerException);
+        }
+
+        return null;
     }
 
     private GitHubEventServiceRequest buildServiceRequest(ManualRerunServiceRequest request) {

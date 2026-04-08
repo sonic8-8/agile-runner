@@ -3,6 +3,8 @@ package com.agilerunner.api.controller.review;
 import com.agilerunner.api.service.review.ManualRerunService;
 import com.agilerunner.api.service.review.request.ManualRerunServiceRequest;
 import com.agilerunner.api.service.review.response.ManualRerunServiceResponse;
+import com.agilerunner.domain.exception.ErrorCode;
+import com.agilerunner.domain.exception.FailureDisposition;
 import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
 import com.agilerunner.domain.review.RerunExecutionStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -81,5 +83,38 @@ class ManualRerunControllerTest {
                 "src/main/App.java",
                 "src/test/AppTest.java"
         );
+    }
+
+    @DisplayName("수동 재실행 실패 응답은 실행 상태와 실패 정보를 함께 반환한다.")
+    @Test
+    void rerun_returnsFailureResponseFields() throws Exception {
+        // given
+        ManualRerunServiceResponse response = ManualRerunServiceResponse.of(
+                "EXECUTION:MANUAL_RERUN:owner/repo#12:2",
+                ExecutionControlMode.NORMAL,
+                false,
+                RerunExecutionStatus.FAILED,
+                ErrorCode.GITHUB_COMMENT_POST_FAILED,
+                FailureDisposition.RETRYABLE
+        );
+        when(manualRerunService.rerun(any(ManualRerunServiceRequest.class))).thenReturn(response);
+
+        // when & then
+        mockMvc.perform(post("/reviews/rerun")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "repositoryName", "owner/repo",
+                                "pullRequestNumber", 12,
+                                "installationId", 100L,
+                                "executionControlMode", "NORMAL",
+                                "selectedPaths", List.of()
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:owner/repo#12:2"))
+                .andExpect(jsonPath("$.executionControlMode").value("NORMAL"))
+                .andExpect(jsonPath("$.writePerformed").value(false))
+                .andExpect(jsonPath("$.executionStatus").value("FAILED"))
+                .andExpect(jsonPath("$.errorCode").value("GITHUB_COMMENT_POST_FAILED"))
+                .andExpect(jsonPath("$.failureDisposition").value("RETRYABLE"));
     }
 }
