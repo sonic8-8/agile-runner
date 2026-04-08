@@ -5,6 +5,7 @@ import com.agilerunner.domain.agentruntime.AgentExecutionStatus;
 import com.agilerunner.domain.agentruntime.AgentRole;
 import com.agilerunner.domain.agentruntime.CriteriaCategory;
 import com.agilerunner.domain.agentruntime.CriteriaStatus;
+import com.agilerunner.domain.agentruntime.ExecutionStartType;
 import com.agilerunner.domain.agentruntime.ValidationCriteria;
 import com.agilerunner.domain.agentruntime.WebhookExecution;
 import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
@@ -101,6 +102,7 @@ public class AgentRuntimeRepository {
                 error_message,
                 error_code,
                 failure_disposition,
+                execution_start_type,
                 execution_control_mode,
                 write_performed,
                 write_skip_reason,
@@ -120,6 +122,7 @@ public class AgentRuntimeRepository {
                 :errorMessage,
                 :errorCode,
                 :failureDisposition,
+                :executionStartType,
                 :executionControlMode,
                 :writePerformed,
                 :writeSkipReason,
@@ -129,7 +132,7 @@ public class AgentRuntimeRepository {
             )
             """;
     private static final String FIND_WEBHOOK_EXECUTION_SQL = """
-            SELECT execution_key, task_key, delivery_id, repository_name, pull_request_number, event_type, action, status, error_message, error_code, failure_disposition, execution_control_mode, write_performed, write_skip_reason, started_at, finished_at
+            SELECT execution_key, task_key, delivery_id, repository_name, pull_request_number, event_type, action, status, error_message, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed, write_skip_reason, started_at, finished_at
             FROM WEBHOOK_EXECUTION
             WHERE execution_key = :executionKey
             """;
@@ -146,6 +149,7 @@ public class AgentRuntimeRepository {
                 error_message,
                 error_code,
                 failure_disposition,
+                execution_start_type,
                 execution_control_mode,
                 write_performed,
                 write_skip_reason,
@@ -164,6 +168,7 @@ public class AgentRuntimeRepository {
                 :errorMessage,
                 :errorCode,
                 :failureDisposition,
+                :executionStartType,
                 :executionControlMode,
                 :writePerformed,
                 :writeSkipReason,
@@ -173,7 +178,7 @@ public class AgentRuntimeRepository {
             )
             """;
     private static final String FIND_AGENT_EXECUTION_LOGS_SQL = """
-            SELECT task_key, issue_number, execution_key, agent_role, step_name, status, input_summary, output_summary, error_message, error_code, failure_disposition, execution_control_mode, write_performed, write_skip_reason, payload_json, started_at, ended_at
+            SELECT task_key, issue_number, execution_key, agent_role, step_name, status, input_summary, output_summary, error_message, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed, write_skip_reason, payload_json, started_at, ended_at
             FROM AGENT_EXECUTION_LOG
             WHERE task_key = :taskKey
             ORDER BY id ASC
@@ -289,6 +294,7 @@ public class AgentRuntimeRepository {
                 .addValue("errorMessage", webhookExecution.getErrorMessage())
                 .addValue("errorCode", getErrorCodeName(webhookExecution.getErrorCode()))
                 .addValue("failureDisposition", getFailureDispositionName(webhookExecution.getFailureDisposition()))
+                .addValue("executionStartType", getExecutionStartTypeName(webhookExecution.getExecutionStartType()))
                 .addValue("executionControlMode", getExecutionControlModeName(webhookExecution.getExecutionControlMode()))
                 .addValue("writePerformed", webhookExecution.getWritePerformed())
                 .addValue("writeSkipReason", getWriteSkipReasonName(webhookExecution.getWriteSkipReason()))
@@ -309,6 +315,7 @@ public class AgentRuntimeRepository {
                 .addValue("errorMessage", executionLog.getErrorMessage())
                 .addValue("errorCode", getErrorCodeName(executionLog.getErrorCode()))
                 .addValue("failureDisposition", getFailureDispositionName(executionLog.getFailureDisposition()))
+                .addValue("executionStartType", getExecutionStartTypeName(executionLog.getExecutionStartType()))
                 .addValue("executionControlMode", getExecutionControlModeName(executionLog.getExecutionControlMode()))
                 .addValue("writePerformed", executionLog.getWritePerformed())
                 .addValue("writeSkipReason", getWriteSkipReasonName(executionLog.getWriteSkipReason()))
@@ -351,6 +358,8 @@ public class AgentRuntimeRepository {
                 resultSet.getString("event_type"),
                 resultSet.getString("action"),
                 getLocalDateTime(resultSet, "started_at")
+        ).withExecutionStartType(
+                getExecutionStartType(resultSet.getString("execution_start_type"))
         ).withExecutionControl(
                 getExecutionControlMode(resultSet.getString("execution_control_mode")),
                 getNullableBoolean(resultSet, "write_performed"),
@@ -369,6 +378,7 @@ public class AgentRuntimeRepository {
                 resultSet.getString("task_key"),
                 getLong(resultSet, "issue_number"),
                 resultSet.getString("execution_key"),
+                getExecutionStartType(resultSet.getString("execution_start_type")),
                 AgentRole.valueOf(resultSet.getString("agent_role")),
                 resultSet.getString("step_name"),
                 AgentExecutionStatus.valueOf(resultSet.getString("status")),
@@ -450,6 +460,22 @@ public class AgentRuntimeRepository {
         }
 
         return failureDisposition.name();
+    }
+
+    private ExecutionStartType getExecutionStartType(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return ExecutionStartType.valueOf(value);
+    }
+
+    private String getExecutionStartTypeName(ExecutionStartType executionStartType) {
+        if (executionStartType == null) {
+            return null;
+        }
+
+        return executionStartType.name();
     }
 
     private ExecutionControlMode getExecutionControlMode(String value) {

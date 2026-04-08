@@ -6,6 +6,7 @@ import com.agilerunner.domain.agentruntime.AgentExecutionStatus;
 import com.agilerunner.domain.agentruntime.AgentRole;
 import com.agilerunner.domain.agentruntime.CriteriaCategory;
 import com.agilerunner.domain.agentruntime.CriteriaStatus;
+import com.agilerunner.domain.agentruntime.ExecutionStartType;
 import com.agilerunner.domain.agentruntime.ValidationCriteria;
 import com.agilerunner.domain.agentruntime.WebhookExecution;
 import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
@@ -138,6 +139,8 @@ class AgentRuntimeRepositoryTest {
                     "{\"failed\":2}",
                     LocalDateTime.of(2026, 4, 2, 13, 0),
                     LocalDateTime.of(2026, 4, 2, 13, 1)
+            ).withExecutionStartType(
+                    ExecutionStartType.MANUAL_RERUN
             ).withExecutionControl(
                     ExecutionControlMode.DRY_RUN,
                     false,
@@ -162,6 +165,11 @@ class AgentRuntimeRepositoryTest {
                             "SELECT execution_control_mode FROM AGENT_EXECUTION_LOG WHERE task_key = 'TASK-103'",
                             String.class
                     );
+            String storedExecutionStartType = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT execution_start_type FROM AGENT_EXECUTION_LOG WHERE task_key = 'TASK-103'",
+                            String.class
+                    );
             Boolean storedWritePerformed = jdbcTemplate.getJdbcTemplate()
                     .queryForObject(
                             "SELECT write_performed FROM AGENT_EXECUTION_LOG WHERE task_key = 'TASK-103'",
@@ -180,12 +188,14 @@ class AgentRuntimeRepositoryTest {
             assertThat(found.getFirst().getStatus()).isEqualTo(AgentExecutionStatus.FAILED);
             assertThat(found.getFirst().getErrorCode()).isEqualTo(ErrorCode.OPENAI_REVIEW_FAILED);
             assertThat(found.getFirst().getFailureDisposition()).isEqualTo(FailureDisposition.RETRYABLE);
+            assertThat(found.getFirst().getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
             assertThat(found.getFirst().getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
             assertThat(found.getFirst().getWritePerformed()).isFalse();
             assertThat(found.getFirst().getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
             assertThat(found.getFirst().getPayloadJson()).isEqualTo("{\"failed\":2}");
             assertThat(storedExecutionKey).isEqualTo("EXECUTION-103");
             assertThat(storedFailureDisposition).isEqualTo("RETRYABLE");
+            assertThat(storedExecutionStartType).isEqualTo("MANUAL_RERUN");
             assertThat(storedExecutionControlMode).isEqualTo("DRY_RUN");
             assertThat(storedWritePerformed).isFalse();
             assertThat(storedWriteSkipReason).isEqualTo("DRY_RUN");
@@ -241,6 +251,8 @@ class AgentRuntimeRepositoryTest {
                     "PULL_REQUEST",
                     "synchronize",
                     LocalDateTime.of(2026, 4, 2, 14, 0)
+            ).withExecutionStartType(
+                    ExecutionStartType.MANUAL_RERUN
             ).withExecutionControl(
                     ExecutionControlMode.DRY_RUN,
                     false,
@@ -271,6 +283,11 @@ class AgentRuntimeRepositoryTest {
                             "SELECT failure_disposition FROM WEBHOOK_EXECUTION WHERE execution_key = 'EXECUTION:201'",
                             String.class
                     );
+            String storedExecutionStartType = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT execution_start_type FROM WEBHOOK_EXECUTION WHERE execution_key = 'EXECUTION:201'",
+                            String.class
+                    );
             String storedExecutionControlMode = jdbcTemplate.getJdbcTemplate()
                     .queryForObject(
                             "SELECT execution_control_mode FROM WEBHOOK_EXECUTION WHERE execution_key = 'EXECUTION:201'",
@@ -294,12 +311,14 @@ class AgentRuntimeRepositoryTest {
             assertThat(found.get().getStatus()).isEqualTo(WebhookExecutionStatus.FAILED);
             assertThat(found.get().getErrorCode()).isEqualTo(ErrorCode.GITHUB_APP_CONFIGURATION_MISSING);
             assertThat(found.get().getFailureDisposition()).isEqualTo(FailureDisposition.MANUAL_ACTION_REQUIRED);
+            assertThat(found.get().getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
             assertThat(found.get().getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
             assertThat(found.get().getWritePerformed()).isFalse();
             assertThat(found.get().getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
             assertThat(storedStatus).isEqualTo("FAILED");
             assertThat(storedErrorCode).isEqualTo("GITHUB_APP_CONFIGURATION_MISSING");
             assertThat(storedFailureDisposition).isEqualTo("MANUAL_ACTION_REQUIRED");
+            assertThat(storedExecutionStartType).isEqualTo("MANUAL_RERUN");
             assertThat(storedExecutionControlMode).isEqualTo("DRY_RUN");
             assertThat(storedWritePerformed).isFalse();
             assertThat(storedWriteSkipReason).isEqualTo("DRY_RUN");
@@ -336,6 +355,76 @@ class AgentRuntimeRepositoryTest {
             assertThat(found).isPresent();
             assertThat(found.get().getStatus()).isEqualTo(WebhookExecutionStatus.SUCCEEDED);
             assertThat(found.get().getErrorCode()).isNull();
+        });
+    }
+
+    @DisplayName("manual rerun execution과 실행 로그를 성공 상태로 저장하고 다시 조회할 수 있다.")
+    @Test
+    void upsertManualRerunExecutionAndLog_andFind() {
+        contextRunner.run(context -> {
+            // given
+            AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
+            WebhookExecution runtimeExecution = WebhookExecution.start(
+                    "EXECUTION:MANUAL_RERUN:301",
+                    "TASK-301",
+                    "manual-rerun-delivery-301",
+                    "sonic8-8/agile-runner",
+                    301,
+                    "PULL_REQUEST",
+                    "manual_rerun",
+                    LocalDateTime.of(2026, 4, 8, 21, 0)
+            ).withExecutionStartType(
+                    ExecutionStartType.MANUAL_RERUN
+            ).withExecutionControl(
+                    ExecutionControlMode.NORMAL,
+                    true,
+                    null
+            ).complete(
+                    WebhookExecutionStatus.SUCCEEDED,
+                    null,
+                    null,
+                    LocalDateTime.of(2026, 4, 8, 21, 2)
+            );
+            AgentExecutionLog executionLog = AgentExecutionLog.of(
+                    "TASK-301",
+                    301L,
+                    "EXECUTION:MANUAL_RERUN:301",
+                    AgentRole.ORCHESTRATOR,
+                    "comment-posted",
+                    AgentExecutionStatus.SUCCEEDED,
+                    "manual rerun execution result recorded",
+                    "GitHub comment write completed",
+                    null,
+                    null,
+                    "{\"manualRerun\":true}",
+                    LocalDateTime.of(2026, 4, 8, 21, 1),
+                    LocalDateTime.of(2026, 4, 8, 21, 2)
+            ).withExecutionStartType(
+                    ExecutionStartType.MANUAL_RERUN
+            ).withExecutionControl(
+                    ExecutionControlMode.NORMAL,
+                    true,
+                    null
+            );
+
+            // when
+            repository.upsertWebhookExecution(runtimeExecution);
+            repository.appendExecutionLog(executionLog);
+            Optional<WebhookExecution> foundExecution = repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:301");
+            List<AgentExecutionLog> foundLogs = repository.findExecutionLogs("TASK-301");
+
+            // then
+            assertThat(foundExecution).isPresent();
+            assertThat(foundExecution.get().getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+            assertThat(foundExecution.get().getExecutionControlMode()).isEqualTo(ExecutionControlMode.NORMAL);
+            assertThat(foundExecution.get().getWritePerformed()).isTrue();
+            assertThat(foundExecution.get().getWriteSkipReason()).isNull();
+
+            assertThat(foundLogs).hasSize(1);
+            assertThat(foundLogs.getFirst().getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+            assertThat(foundLogs.getFirst().getExecutionControlMode()).isEqualTo(ExecutionControlMode.NORMAL);
+            assertThat(foundLogs.getFirst().getWritePerformed()).isTrue();
+            assertThat(foundLogs.getFirst().getWriteSkipReason()).isNull();
         });
     }
 }

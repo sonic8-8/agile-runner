@@ -3,10 +3,12 @@ package com.agilerunner.api.service.agentruntime;
 import com.agilerunner.api.service.dto.GitHubCommentResponse;
 import com.agilerunner.api.service.github.request.GitHubEventServiceRequest;
 import com.agilerunner.api.service.github.response.GitHubCommentExecutionResult;
+import com.agilerunner.api.service.review.request.ManualRerunServiceRequest;
 import com.agilerunner.client.agentruntime.AgentRuntimeRepository;
 import com.agilerunner.domain.agentruntime.AgentExecutionLog;
 import com.agilerunner.domain.agentruntime.AgentExecutionStatus;
 import com.agilerunner.domain.agentruntime.CriteriaStatus;
+import com.agilerunner.domain.agentruntime.ExecutionStartType;
 import com.agilerunner.domain.agentruntime.ValidationCriteria;
 import com.agilerunner.domain.agentruntime.WebhookExecution;
 import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
@@ -83,6 +85,111 @@ class AgentRuntimeServiceTest {
         assertThat(executionLog.getStatus()).isEqualTo(AgentExecutionStatus.SUCCEEDED);
 
         assertThat(webhookExecution.getTaskKey()).isEqualTo("PR_REVIEW:sonic8-8:agile-runner#11");
+    }
+
+    @DisplayName("manual rerun execution 시작 시 manual rerun 시작 유형과 execution key를 함께 저장한다.")
+    @Test
+    void startManualRerunExecution_persistsManualRerunStartType() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        when(repository.findTaskRuntimeState("PR_REVIEW:sonic8-8:agile-runner#21")).thenReturn(Optional.empty());
+        AgentRuntimeService service = new AgentRuntimeService(repository, new ObjectMapper());
+        ManualRerunServiceRequest request = ManualRerunServiceRequest.of(
+                "sonic8-8/agile-runner",
+                21,
+                999L,
+                ExecutionControlMode.DRY_RUN
+        );
+
+        // when
+        WebhookExecution runtimeExecution = service.startManualRerunExecution(request);
+
+        // then
+        ArgumentCaptor<WebhookExecution> executionCaptor = ArgumentCaptor.forClass(WebhookExecution.class);
+        ArgumentCaptor<AgentExecutionLog> logCaptor = ArgumentCaptor.forClass(AgentExecutionLog.class);
+
+        verify(repository).upsertWebhookExecution(executionCaptor.capture());
+        verify(repository).appendExecutionLog(logCaptor.capture());
+
+        WebhookExecution savedExecution = executionCaptor.getValue();
+        assertThat(savedExecution.getExecutionKey()).startsWith("EXECUTION:MANUAL_RERUN:");
+        assertThat(savedExecution.getTaskKey()).isEqualTo("PR_REVIEW:sonic8-8:agile-runner#21");
+        assertThat(savedExecution.getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+        assertThat(savedExecution.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
+        assertThat(savedExecution.getWritePerformed()).isFalse();
+
+        AgentExecutionLog executionLog = logCaptor.getValue();
+        assertThat(executionLog.getExecutionKey()).isEqualTo(savedExecution.getExecutionKey());
+        assertThat(executionLog.getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+        assertThat(executionLog.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
+        assertThat(executionLog.getWritePerformed()).isFalse();
+
+        assertThat(runtimeExecution.getExecutionKey()).isEqualTo(savedExecution.getExecutionKey());
+        assertThat(runtimeExecution.getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+    }
+
+    @DisplayName("manual rerun execution 결과 성공 시 manual rerun 시작 유형과 execution key를 유지한다.")
+    @Test
+    void recordExecutionResult_preservesManualRerunStartType() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        TaskRuntimeState existingTask = TaskRuntimeState.of(
+                "PR_REVIEW:sonic8-8:agile-runner#31",
+                31L,
+                "GitHub PR review for sonic8-8/agile-runner#31",
+                TaskRuntimeStatus.IN_PROGRESS,
+                0,
+                null,
+                LocalDateTime.of(2026, 4, 8, 19, 0),
+                null
+        );
+        when(repository.findTaskRuntimeState("PR_REVIEW:sonic8-8:agile-runner#31")).thenReturn(Optional.of(existingTask));
+        AgentRuntimeService service = new AgentRuntimeService(repository, new ObjectMapper());
+        WebhookExecution runtimeExecution = WebhookExecution.start(
+                "EXECUTION:MANUAL_RERUN:delivery-31",
+                "PR_REVIEW:sonic8-8:agile-runner#31",
+                "manual-rerun-delivery-31",
+                "sonic8-8/agile-runner",
+                31,
+                "PULL_REQUEST",
+                "manual_rerun",
+                LocalDateTime.of(2026, 4, 8, 19, 1)
+        ).withExecutionStartType(
+                ExecutionStartType.MANUAL_RERUN
+        ).withExecutionControl(
+                ExecutionControlMode.DRY_RUN,
+                false,
+                GitHubWriteSkipReason.DRY_RUN
+        );
+        GitHubCommentExecutionResult executionResult = GitHubCommentExecutionResult.skipped(
+                ExecutionControlMode.DRY_RUN,
+                GitHubWriteSkipReason.DRY_RUN,
+                0
+        );
+
+        // when
+        service.recordExecutionResult(runtimeExecution, executionResult);
+
+        // then
+        ArgumentCaptor<WebhookExecution> executionCaptor = ArgumentCaptor.forClass(WebhookExecution.class);
+        ArgumentCaptor<AgentExecutionLog> logCaptor = ArgumentCaptor.forClass(AgentExecutionLog.class);
+
+        verify(repository).upsertWebhookExecution(executionCaptor.capture());
+        verify(repository).appendExecutionLog(logCaptor.capture());
+
+        WebhookExecution savedExecution = executionCaptor.getValue();
+        assertThat(savedExecution.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:delivery-31");
+        assertThat(savedExecution.getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+        assertThat(savedExecution.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
+        assertThat(savedExecution.getWritePerformed()).isFalse();
+        assertThat(savedExecution.getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
+
+        AgentExecutionLog executionLog = logCaptor.getValue();
+        assertThat(executionLog.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:delivery-31");
+        assertThat(executionLog.getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+        assertThat(executionLog.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
+        assertThat(executionLog.getWritePerformed()).isFalse();
+        assertThat(executionLog.getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
     }
 
     @DisplayName("comment execution 결과 성공 시 task runtime state와 webhook execution을 완료 상태로 기록한다.")

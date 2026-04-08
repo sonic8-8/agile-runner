@@ -13,6 +13,7 @@ public class WebhookExecution {
     private final String executionKey;
     private final String taskKey;
     private final String deliveryId;
+    private final ExecutionStartType executionStartType;
     private final String repositoryName;
     private final int pullRequestNumber;
     private final String eventType;
@@ -30,6 +31,7 @@ public class WebhookExecution {
     private WebhookExecution(String executionKey,
                       String taskKey,
                       String deliveryId,
+                      ExecutionStartType executionStartType,
                       String repositoryName,
                       int pullRequestNumber,
                       String eventType,
@@ -46,6 +48,7 @@ public class WebhookExecution {
         this.executionKey = executionKey;
         this.taskKey = taskKey;
         this.deliveryId = deliveryId;
+        this.executionStartType = executionStartType;
         this.repositoryName = repositoryName;
         this.pullRequestNumber = pullRequestNumber;
         this.eventType = eventType;
@@ -73,6 +76,7 @@ public class WebhookExecution {
                 executionKey,
                 taskKey,
                 deliveryId,
+                null,
                 repositoryName,
                 pullRequestNumber,
                 eventType,
@@ -96,6 +100,29 @@ public class WebhookExecution {
                 executionKey,
                 taskKey,
                 deliveryId,
+                executionStartType,
+                repositoryName,
+                pullRequestNumber,
+                eventType,
+                action,
+                status,
+                errorMessage,
+                errorCode,
+                failureDisposition,
+                executionControlMode,
+                writePerformed,
+                writeSkipReason,
+                startedAt,
+                finishedAt
+        );
+    }
+
+    public WebhookExecution withExecutionStartType(ExecutionStartType executionStartType) {
+        return new WebhookExecution(
+                executionKey,
+                taskKey,
+                deliveryId,
+                executionStartType,
                 repositoryName,
                 pullRequestNumber,
                 eventType,
@@ -128,6 +155,7 @@ public class WebhookExecution {
                 executionKey,
                 taskKey,
                 deliveryId,
+                executionStartType,
                 repositoryName,
                 pullRequestNumber,
                 eventType,

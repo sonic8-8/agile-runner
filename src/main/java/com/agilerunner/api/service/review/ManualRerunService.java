@@ -2,11 +2,13 @@ package com.agilerunner.api.service.review;
 
 import com.agilerunner.api.service.GitHubCommentService;
 import com.agilerunner.api.service.OpenAiService;
+import com.agilerunner.api.service.agentruntime.AgentRuntimeService;
 import com.agilerunner.api.service.github.request.GitHubEventServiceRequest;
 import com.agilerunner.api.service.github.response.GitHubCommentExecutionResult;
 import com.agilerunner.api.service.review.request.ManualRerunServiceRequest;
 import com.agilerunner.api.service.review.response.ManualRerunServiceResponse;
 import com.agilerunner.domain.Review;
+import com.agilerunner.domain.agentruntime.WebhookExecution;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -27,16 +29,48 @@ public class ManualRerunService {
 
     private final OpenAiService openAiService;
     private final GitHubCommentService gitHubCommentService;
+    private final AgentRuntimeService agentRuntimeService;
 
     public ManualRerunServiceResponse rerun(ManualRerunServiceRequest request) {
+        WebhookExecution runtimeExecution = agentRuntimeService.startManualRerunExecution(request);
         GitHubEventServiceRequest serviceRequest = buildServiceRequest(request);
-        Review review = openAiService.generateReview(serviceRequest);
-        GitHubCommentExecutionResult executionResult = gitHubCommentService.execute(review, serviceRequest);
+        return rerunWithRuntimeEvidence(request, runtimeExecution, serviceRequest);
+    }
 
-        return ManualRerunServiceResponse.awaitingRuntimeEvidence(
-                request.getExecutionControlMode(),
-                executionResult.isWritePerformed()
-        );
+    private ManualRerunServiceResponse rerunWithRuntimeEvidence(ManualRerunServiceRequest request,
+                                                                WebhookExecution runtimeExecution,
+                                                                GitHubEventServiceRequest serviceRequest) {
+        Review review;
+
+        try {
+            review = openAiService.generateReview(serviceRequest);
+        } catch (Exception exception) {
+            agentRuntimeService.recordFailure(runtimeExecution, AgentRuntimeService.STEP_REVIEW_GENERATED, exception);
+            return ManualRerunServiceResponse.of(
+                    runtimeExecution.getExecutionKey(),
+                    request.getExecutionControlMode(),
+                    false
+            );
+        }
+
+        agentRuntimeService.recordReviewGenerated(runtimeExecution, review);
+
+        try {
+            GitHubCommentExecutionResult executionResult = gitHubCommentService.execute(review, serviceRequest);
+            agentRuntimeService.recordExecutionResult(runtimeExecution, executionResult);
+            return ManualRerunServiceResponse.of(
+                    runtimeExecution.getExecutionKey(),
+                    request.getExecutionControlMode(),
+                    executionResult.isWritePerformed()
+            );
+        } catch (Exception exception) {
+            agentRuntimeService.recordFailure(runtimeExecution, AgentRuntimeService.STEP_COMMENT_POSTED, exception);
+            return ManualRerunServiceResponse.of(
+                    runtimeExecution.getExecutionKey(),
+                    request.getExecutionControlMode(),
+                    false
+            );
+        }
     }
 
     private GitHubEventServiceRequest buildServiceRequest(ManualRerunServiceRequest request) {

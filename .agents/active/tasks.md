@@ -175,6 +175,7 @@
 
 ### 구현 범위
 - runtime evidence에 webhook 실행과 수동 재실행을 구분하는 값 추가
+- 수동 재실행 성공 응답의 `executionKey`를 placeholder가 아니라 실제 runtime evidence 조회에 사용할 `execution_key`와 같은 값으로 맞춘다.
 - 저장소 SQL, 행 매퍼, 스키마를 새 필드에 맞춰 정리
 - controller/service orchestration이 새 runtime evidence 적재를 막지 않도록 필요한 범위에서 함께 정리
 - 대표 수동 재실행 검증은 성공 응답에서 받은 fresh `executionKey`를 기준으로 진행한다.
@@ -184,11 +185,14 @@
 - `src/main/java/com/agilerunner/domain/agentruntime/WebhookExecution.java`
 - `src/main/java/com/agilerunner/domain/agentruntime/AgentExecutionLog.java`
 - `src/main/java/com/agilerunner/api/service/agentruntime/AgentRuntimeService.java`
+- `src/main/java/com/agilerunner/api/controller/GitHubWebhookController.java`
 - `src/main/java/com/agilerunner/api/controller/review/ManualRerunController.java`
 - `src/main/java/com/agilerunner/api/service/review/ManualRerunService.java`
+- `src/main/java/com/agilerunner/api/service/review/response/ManualRerunServiceResponse.java`
 - `src/main/java/com/agilerunner/api/controller/review/response/ManualRerunResponse.java`
 - `src/main/java/com/agilerunner/client/agentruntime/AgentRuntimeRepository.java`
 - `src/main/resources/agent-runtime/schema.sql`
+- `src/test/java/com/agilerunner/api/controller/GitHubWebhookControllerTest.java`
 - `src/test/java/com/agilerunner/api/service/agentruntime/AgentRuntimeServiceTest.java`
 - `src/test/java/com/agilerunner/client/agentruntime/AgentRuntimeRepositoryTest.java`
 - `src/test/java/com/agilerunner/api/controller/review/ManualRerunControllerTest.java`
@@ -203,10 +207,12 @@
 
 ### 완료 조건
 - `WebhookExecution`과 `AgentExecutionLog`에 실행 시작 유형이 적재된다.
+- 수동 재실행 성공 응답의 `executionKey`가 placeholder가 아니라 실제 runtime evidence의 `execution_key`와 같게 유지된다.
 - H2 저장소 왕복 테스트와 전체 테스트가 통과한다.
 - 로컬 프로필 실제 앱 기동 후 대표 수동 재실행 응답의 `executionKey`를 기준으로 실행 시작 유형과 실행 제어 모드를 확인할 수 있다.
 
 ### 검증
+- 수동 재실행 응답 `executionKey`와 runtime evidence `execution_key` 일치 테스트
 - 실행 근거 저장소/서비스 왕복 테스트
 - 컨트롤러/서비스 회귀 테스트
 - 전체 테스트 실행

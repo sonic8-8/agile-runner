@@ -3,6 +3,7 @@ package com.agilerunner.api.service.agentruntime;
 import com.agilerunner.api.service.dto.GitHubCommentResponse;
 import com.agilerunner.api.service.github.request.GitHubEventServiceRequest;
 import com.agilerunner.api.service.github.response.GitHubCommentExecutionResult;
+import com.agilerunner.api.service.review.request.ManualRerunServiceRequest;
 import com.agilerunner.client.agentruntime.AgentRuntimeRepository;
 import com.agilerunner.domain.Review;
 import com.agilerunner.domain.agentruntime.AgentExecutionLog;
@@ -10,6 +11,7 @@ import com.agilerunner.domain.agentruntime.AgentExecutionStatus;
 import com.agilerunner.domain.agentruntime.AgentRole;
 import com.agilerunner.domain.agentruntime.CriteriaCategory;
 import com.agilerunner.domain.agentruntime.CriteriaStatus;
+import com.agilerunner.domain.agentruntime.ExecutionStartType;
 import com.agilerunner.domain.agentruntime.ValidationCriteria;
 import com.agilerunner.domain.agentruntime.WebhookExecution;
 import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
@@ -32,10 +34,12 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class AgentRuntimeService {
     public static final String STEP_WEBHOOK_ACCEPTED = "webhook-accepted";
+    public static final String STEP_MANUAL_RERUN_ACCEPTED = "manual-rerun-accepted";
     public static final String STEP_REVIEW_GENERATED = "review-generated";
     public static final String STEP_COMMENT_POSTED = "comment-posted";
 
@@ -72,7 +76,8 @@ public class AgentRuntimeService {
                 request.getGitHubEventType().name(),
                 request.getAction(),
                 now
-        ).withExecutionControl(request.getExecutionControlMode(), false, null);
+        ).withExecutionStartType(ExecutionStartType.WEBHOOK)
+                .withExecutionControl(request.getExecutionControlMode(), false, null);
 
         if (!isEnabled()) {
             return webhookExecution;
@@ -109,6 +114,7 @@ public class AgentRuntimeService {
                         taskKey,
                         issueNumber,
                         executionKey,
+                        ExecutionStartType.WEBHOOK,
                         AgentRole.ORCHESTRATOR,
                         STEP_WEBHOOK_ACCEPTED,
                         AgentExecutionStatus.SUCCEEDED,
@@ -123,6 +129,78 @@ public class AgentRuntimeService {
         );
 
         return webhookExecution;
+    }
+
+    public WebhookExecution startManualRerunExecution(ManualRerunServiceRequest request) {
+        LocalDateTime now = LocalDateTime.now();
+        String taskKey = buildTaskKey(request.getRepositoryName(), request.getPullRequestNumber());
+        long issueNumber = request.getPullRequestNumber();
+        String manualRerunId = UUID.randomUUID().toString();
+        String deliveryId = buildManualRerunDeliveryId(manualRerunId);
+        String executionKey = buildManualRerunExecutionKey(manualRerunId);
+
+        WebhookExecution runtimeExecution = WebhookExecution.start(
+                executionKey,
+                taskKey,
+                deliveryId,
+                request.getRepositoryName(),
+                request.getPullRequestNumber(),
+                "PULL_REQUEST",
+                "manual_rerun",
+                now
+        ).withExecutionStartType(ExecutionStartType.MANUAL_RERUN)
+                .withExecutionControl(request.getExecutionControlMode(), false, null);
+
+        if (!isEnabled()) {
+            return runtimeExecution;
+        }
+
+        TaskRuntimeState existingTaskRuntimeState = agentRuntimeRepository.findTaskRuntimeState(taskKey).orElse(null);
+        TaskRuntimeState taskRuntimeState = TaskRuntimeState.of(
+                taskKey,
+                issueNumber,
+                buildTaskTitle(request.getRepositoryName(), request.getPullRequestNumber()),
+                TaskRuntimeStatus.IN_PROGRESS,
+                getNextRetryCount(existingTaskRuntimeState),
+                AgentRole.ORCHESTRATOR,
+                getStartedAt(existingTaskRuntimeState, now),
+                null
+        );
+
+        agentRuntimeRepository.upsertTaskRuntimeState(taskRuntimeState);
+        agentRuntimeRepository.replaceValidationCriteria(
+                taskKey,
+                buildCriteria(
+                        taskKey,
+                        CriteriaStatus.PASSED,
+                        CriteriaStatus.PENDING,
+                        CriteriaStatus.PENDING,
+                        "Manual rerun request accepted",
+                        null,
+                        null
+                )
+        );
+        agentRuntimeRepository.upsertWebhookExecution(runtimeExecution);
+        agentRuntimeRepository.appendExecutionLog(
+                AgentExecutionLog.of(
+                        taskKey,
+                        issueNumber,
+                        executionKey,
+                        ExecutionStartType.MANUAL_RERUN,
+                        AgentRole.ORCHESTRATOR,
+                        STEP_MANUAL_RERUN_ACCEPTED,
+                        AgentExecutionStatus.SUCCEEDED,
+                        "Manual rerun request accepted",
+                        "task and manual rerun execution initialized",
+                        null,
+                        null,
+                        toJson(buildManualRerunSnapshot(request, deliveryId)),
+                        now,
+                        now
+                ).withExecutionControl(request.getExecutionControlMode(), false, null)
+        );
+
+        return runtimeExecution;
     }
 
     public void recordReviewGenerated(WebhookExecution webhookExecution, Review review) {
@@ -140,7 +218,7 @@ public class AgentRuntimeService {
                         CriteriaStatus.PASSED,
                         CriteriaStatus.PASSED,
                         CriteriaStatus.PENDING,
-                        "Webhook payload accepted",
+                        buildPayloadAcceptedEvidence(webhookExecution),
                         buildReviewEvidence(review),
                         null
                 )
@@ -150,6 +228,7 @@ public class AgentRuntimeService {
                         webhookExecution.getTaskKey(),
                         issueNumber,
                         webhookExecution.getExecutionKey(),
+                        webhookExecution.getExecutionStartType(),
                         AgentRole.ORCHESTRATOR,
                         STEP_REVIEW_GENERATED,
                         AgentExecutionStatus.SUCCEEDED,
@@ -222,7 +301,7 @@ public class AgentRuntimeService {
                         CriteriaStatus.PASSED,
                         resolveReviewCriteriaStatus(stepName),
                         resolveCommentCriteriaStatus(stepName),
-                        "Webhook payload accepted",
+                        buildPayloadAcceptedEvidence(webhookExecution),
                         resolveReviewEvidence(stepName, exception),
                         resolveCommentEvidence(stepName, exception)
                 )
@@ -245,6 +324,7 @@ public class AgentRuntimeService {
                         webhookExecution.getTaskKey(),
                         issueNumber,
                         webhookExecution.getExecutionKey(),
+                        webhookExecution.getExecutionStartType(),
                         AgentRole.ORCHESTRATOR,
                         stepName,
                         AgentExecutionStatus.FAILED,
@@ -304,7 +384,7 @@ public class AgentRuntimeService {
                 taskKey,
                 CRITERIA_PAYLOAD_ACCEPTED,
                 CriteriaCategory.REQUIRED,
-                "Webhook payload can be parsed into repository, pull request, and installation context.",
+                "Execution input can be resolved into repository, pull request, and installation context.",
                 payloadAcceptedStatus,
                 payloadEvidence
         ));
@@ -336,7 +416,7 @@ public class AgentRuntimeService {
                         CriteriaStatus.PASSED,
                         CriteriaStatus.PASSED,
                         CriteriaStatus.PASSED,
-                        "Webhook payload accepted",
+                        buildPayloadAcceptedEvidence(webhookExecution),
                         "Review generated successfully",
                         buildCommentEvidence(executionResult)
                 )
@@ -352,6 +432,7 @@ public class AgentRuntimeService {
                         webhookExecution.getTaskKey(),
                         issueNumber,
                         webhookExecution.getExecutionKey(),
+                        webhookExecution.getExecutionStartType(),
                         AgentRole.ORCHESTRATOR,
                         STEP_COMMENT_POSTED,
                         AgentExecutionStatus.SUCCEEDED,
@@ -426,12 +507,28 @@ public class AgentRuntimeService {
         return "EXECUTION:" + deliveryId;
     }
 
+    private String buildManualRerunExecutionKey(String manualRerunId) {
+        return "EXECUTION:MANUAL_RERUN:" + manualRerunId;
+    }
+
+    private String buildManualRerunDeliveryId(String manualRerunId) {
+        return "MANUAL_RERUN_DELIVERY:" + manualRerunId;
+    }
+
     private String buildTaskTitle(String repositoryName, int pullRequestNumber) {
         return "GitHub PR review for " + repositoryName + "#" + pullRequestNumber;
     }
 
     private String buildReviewEvidence(Review review) {
         return "bodyLength=" + review.getReviewBody().length() + ", inlineComments=" + review.getInlineComments().size();
+    }
+
+    private String buildPayloadAcceptedEvidence(WebhookExecution webhookExecution) {
+        if (webhookExecution.getExecutionStartType() == ExecutionStartType.MANUAL_RERUN) {
+            return "Manual rerun request accepted";
+        }
+
+        return "Webhook payload accepted";
     }
 
     private String buildCommentEvidence(GitHubCommentExecutionResult executionResult) {
@@ -469,8 +566,22 @@ public class AgentRuntimeService {
     private Map<String, Object> buildWebhookSnapshot(String deliveryId, GitHubEventServiceRequest request) {
         Map<String, Object> snapshot = new LinkedHashMap<>();
         snapshot.put("deliveryId", deliveryId);
+        snapshot.put("executionStartType", ExecutionStartType.WEBHOOK.name());
         snapshot.put("eventType", request.getGitHubEventType().name());
         snapshot.put("action", request.getAction());
+        snapshot.put("repositoryName", request.getRepositoryName());
+        snapshot.put("pullRequestNumber", request.getPullRequestNumber());
+        snapshot.put("installationId", request.getInstallationId());
+        snapshot.put("executionControlMode", request.getExecutionControlMode().name());
+        return snapshot;
+    }
+
+    private Map<String, Object> buildManualRerunSnapshot(ManualRerunServiceRequest request, String deliveryId) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("deliveryId", deliveryId);
+        snapshot.put("executionStartType", ExecutionStartType.MANUAL_RERUN.name());
+        snapshot.put("eventType", "PULL_REQUEST");
+        snapshot.put("action", "manual_rerun");
         snapshot.put("repositoryName", request.getRepositoryName());
         snapshot.put("pullRequestNumber", request.getPullRequestNumber());
         snapshot.put("installationId", request.getInstallationId());

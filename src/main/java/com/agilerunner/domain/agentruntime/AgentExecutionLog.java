@@ -13,6 +13,7 @@ public class AgentExecutionLog {
     private final String taskKey;
     private final Long issueNumber;
     private final String executionKey;
+    private final ExecutionStartType executionStartType;
     private final AgentRole agentRole;
     private final String stepName;
     private final AgentExecutionStatus status;
@@ -31,6 +32,7 @@ public class AgentExecutionLog {
     private AgentExecutionLog(String taskKey,
                               Long issueNumber,
                               String executionKey,
+                              ExecutionStartType executionStartType,
                               AgentRole agentRole,
                               String stepName,
                               AgentExecutionStatus status,
@@ -48,6 +50,7 @@ public class AgentExecutionLog {
         this.taskKey = taskKey;
         this.issueNumber = issueNumber;
         this.executionKey = executionKey;
+        this.executionStartType = executionStartType;
         this.agentRole = agentRole;
         this.stepName = stepName;
         this.status = status;
@@ -81,6 +84,43 @@ public class AgentExecutionLog {
                 taskKey,
                 issueNumber,
                 executionKey,
+                null,
+                agentRole,
+                stepName,
+                status,
+                inputSummary,
+                outputSummary,
+                errorMessage,
+                errorCode,
+                null,
+                null,
+                null,
+                null,
+                payloadJson,
+                startedAt,
+                endedAt
+        );
+    }
+
+    public static AgentExecutionLog of(String taskKey,
+                                       Long issueNumber,
+                                       String executionKey,
+                                       ExecutionStartType executionStartType,
+                                       AgentRole agentRole,
+                                       String stepName,
+                                       AgentExecutionStatus status,
+                                       String inputSummary,
+                                       String outputSummary,
+                                       String errorMessage,
+                                       ErrorCode errorCode,
+                                       String payloadJson,
+                                       LocalDateTime startedAt,
+                                       LocalDateTime endedAt) {
+        return new AgentExecutionLog(
+                taskKey,
+                issueNumber,
+                executionKey,
+                executionStartType,
                 agentRole,
                 stepName,
                 status,
@@ -116,6 +156,44 @@ public class AgentExecutionLog {
                 taskKey,
                 issueNumber,
                 executionKey,
+                null,
+                agentRole,
+                stepName,
+                status,
+                inputSummary,
+                outputSummary,
+                errorMessage,
+                errorCode,
+                failureDisposition,
+                null,
+                null,
+                null,
+                payloadJson,
+                startedAt,
+                endedAt
+        );
+    }
+
+    public static AgentExecutionLog of(String taskKey,
+                                       Long issueNumber,
+                                       String executionKey,
+                                       ExecutionStartType executionStartType,
+                                       AgentRole agentRole,
+                                       String stepName,
+                                       AgentExecutionStatus status,
+                                       String inputSummary,
+                                       String outputSummary,
+                                       String errorMessage,
+                                       ErrorCode errorCode,
+                                       FailureDisposition failureDisposition,
+                                       String payloadJson,
+                                       LocalDateTime startedAt,
+                                       LocalDateTime endedAt) {
+        return new AgentExecutionLog(
+                taskKey,
+                issueNumber,
+                executionKey,
+                executionStartType,
                 agentRole,
                 stepName,
                 status,
@@ -140,6 +218,30 @@ public class AgentExecutionLog {
                 taskKey,
                 issueNumber,
                 executionKey,
+                executionStartType,
+                agentRole,
+                stepName,
+                status,
+                inputSummary,
+                outputSummary,
+                errorMessage,
+                errorCode,
+                failureDisposition,
+                executionControlMode,
+                writePerformed,
+                writeSkipReason,
+                payloadJson,
+                startedAt,
+                endedAt
+        );
+    }
+
+    public AgentExecutionLog withExecutionStartType(ExecutionStartType executionStartType) {
+        return new AgentExecutionLog(
+                taskKey,
+                issueNumber,
+                executionKey,
+                executionStartType,
                 agentRole,
                 stepName,
                 status,

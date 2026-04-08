@@ -36,12 +36,12 @@ class ManualRerunControllerTest {
     @MockitoBean
     private ManualRerunService manualRerunService;
 
-    @DisplayName("수동 재실행 요청은 execution key, 실행 제어 모드, 쓰기 여부를 응답으로 반환한다.")
+    @DisplayName("수동 재실행 요청은 runtime evidence 조회에 사용할 execution key, 실행 제어 모드, 쓰기 여부를 응답으로 반환한다.")
     @Test
     void rerun_returnsResponseContract() throws Exception {
         // given
         ManualRerunServiceResponse response = ManualRerunServiceResponse.of(
-                "MANUAL_RERUN:owner/repo#12:1",
+                "EXECUTION:MANUAL_RERUN:owner/repo#12:1",
                 ExecutionControlMode.DRY_RUN,
                 false
         );
@@ -57,7 +57,7 @@ class ManualRerunControllerTest {
                                 "executionControlMode", "DRY_RUN"
                         ))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.executionKey").value("MANUAL_RERUN:owner/repo#12:1"))
+                .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:owner/repo#12:1"))
                 .andExpect(jsonPath("$.executionControlMode").value("DRY_RUN"))
                 .andExpect(jsonPath("$.writePerformed").value(false));
 
