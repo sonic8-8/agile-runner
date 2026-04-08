@@ -14,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,7 +37,7 @@ class ManualRerunControllerTest {
     @MockitoBean
     private ManualRerunService manualRerunService;
 
-    @DisplayName("수동 재실행 요청은 runtime evidence 조회에 사용할 execution key, 실행 제어 모드, 쓰기 여부를 응답으로 반환한다.")
+    @DisplayName("수동 재실행 요청은 선택 파일 경로를 service request로 전달하고 기존 응답 계약을 유지한다.")
     @Test
     void rerun_returnsResponseContract() throws Exception {
         // given
@@ -54,7 +55,8 @@ class ManualRerunControllerTest {
                                 "repositoryName", "owner/repo",
                                 "pullRequestNumber", 12,
                                 "installationId", 100L,
-                                "executionControlMode", "DRY_RUN"
+                                "executionControlMode", "DRY_RUN",
+                                "selectedPaths", List.of("src/main/App.java", "src/test/AppTest.java")
                         ))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:owner/repo#12:1"))
@@ -67,5 +69,9 @@ class ManualRerunControllerTest {
         assertThat(requestCaptor.getValue().getPullRequestNumber()).isEqualTo(12);
         assertThat(requestCaptor.getValue().getInstallationId()).isEqualTo(100L);
         assertThat(requestCaptor.getValue().getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
+        assertThat(requestCaptor.getValue().getSelectedPaths()).containsExactly(
+                "src/main/App.java",
+                "src/test/AppTest.java"
+        );
     }
 }

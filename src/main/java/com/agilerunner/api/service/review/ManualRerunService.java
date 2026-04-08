@@ -78,7 +78,8 @@ public class ManualRerunService {
                 PULL_REQUEST,
                 buildPayload(request),
                 request.getInstallationId(),
-                request.getExecutionControlMode()
+                request.getExecutionControlMode(),
+                request.getSelectedPaths()
         );
     }
 
