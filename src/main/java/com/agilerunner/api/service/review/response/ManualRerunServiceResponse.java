@@ -6,6 +6,7 @@ import lombok.Getter;
 @Getter
 public class ManualRerunServiceResponse {
     private static final String PENDING_EXECUTION_KEY = "MANUAL_RERUN:PENDING";
+    private static final String PENDING_RUNTIME_EXECUTION_KEY = "MANUAL_RERUN:PENDING_RUNTIME_KEY";
 
     private final String executionKey;
     private final ExecutionControlMode executionControlMode;
@@ -30,6 +31,15 @@ public class ManualRerunServiceResponse {
                 PENDING_EXECUTION_KEY,
                 executionControlMode,
                 false
+        );
+    }
+
+    public static ManualRerunServiceResponse awaitingRuntimeEvidence(ExecutionControlMode executionControlMode,
+                                                                     boolean writePerformed) {
+        return new ManualRerunServiceResponse(
+                PENDING_RUNTIME_EXECUTION_KEY,
+                executionControlMode,
+                writePerformed
         );
     }
 }
