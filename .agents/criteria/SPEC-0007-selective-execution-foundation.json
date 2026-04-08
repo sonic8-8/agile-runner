@@ -1,0 +1,35 @@
+{
+  "spec_id": "SPEC-0007",
+  "spec_name": "선택 실행 기능 기반 마련",
+  "spec_version": 1,
+  "criteria": [
+    {
+      "key": "webhook-and-rerun-contract-preserved-during-selective-execution",
+      "target": "선택 실행 도입 중 기존 webhook 및 manual rerun 계약 유지",
+      "test_view": "컨트롤러/서비스 통합 관점",
+      "pass_condition": "선택 실행 기능을 추가한 이후에도 `/webhook/github`의 성공 응답, 같은 delivery_id 조기 종료, `pull_request` 외 이벤트 조기 종료와 `POST /reviews/rerun`의 기존 성공 응답 계약이 유지된다.",
+      "fail_condition": "선택 실행 기능 도입 때문에 `/webhook/github`나 `POST /reviews/rerun`의 응답 본문, 상태, 조기 종료 동작이 바뀌거나 기존 회귀 테스트가 깨진다."
+    },
+    {
+      "key": "selection-input-resolved-consistently",
+      "target": "선택 실행 입력 해석 일관성",
+      "test_view": "입력 모델/서비스 경계 관점",
+      "pass_condition": "manual rerun 요청과 service request는 선택 파일 경로 목록을 같은 의미로 전달하고 해석한다. 선택 파일 경로 목록이 비어 있으면 기존 전체 실행으로 일관되게 해석한다.",
+      "fail_condition": "같은 선택 입력이 controller와 service request 경계에서 다르게 해석되거나, 선택 파일 경로가 비어 있을 때 전체 실행 기본 해석이 깨진다."
+    },
+    {
+      "key": "selected-paths-limit-review-and-comment-scope",
+      "target": "선택 파일 경로 기준 리뷰 입력 및 경로 기반 코멘트 범위 제한",
+      "test_view": "실행 결과/외부 side effect 관점",
+      "pass_condition": "선택 파일 경로 목록이 주어지면 리뷰 생성 입력과 경로 기반 inline comment 대상은 해당 경로만 기준으로 제한된다. 선택 파일 경로 목록이 비어 있으면 기존 전체 경로 실행을 유지한다. 선택 파일 경로가 PR diff와 하나도 매칭되지 않으면 리뷰 입력과 경로 기반 inline comment 대상은 빈 상태로 처리된다.",
+      "fail_condition": "선택 파일 경로 목록이 있어도 비선택 경로의 리뷰 입력 또는 경로 기반 inline comment 대상이 그대로 남거나, 선택 조건이 비어 있는데도 전체 실행 경로가 깨진다. 또는 선택 경로가 하나도 매칭되지 않을 때 성공 계약 대신 예기치 않은 실패로 바뀐다."
+    },
+    {
+      "key": "runtime-evidence-records-selection-scope",
+      "target": "선택 실행 범위의 runtime evidence 적재",
+      "test_view": "저장소/H2 실제 검증 관점",
+      "pass_condition": "로컬 프로필 실제 앱 기동 후 대표 선택 실행 응답의 `executionKey`를 기준으로 runtime evidence에 선택 실행 여부와 정렬된 파일 경로 목록 요약 문자열이 남고, H2 파일 DB에서 이를 확인할 수 있다.",
+      "fail_condition": "선택 실행 여부나 정렬된 파일 경로 목록 요약 문자열이 runtime evidence에 남지 않거나, 대표 선택 실행 응답의 `executionKey` 기준으로 실제 앱/H2 적재를 확인할 수 없다."
+    }
+  ]
+}
