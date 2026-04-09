@@ -3,11 +3,14 @@ package com.agilerunner.api.controller.review;
 import com.agilerunner.api.service.review.ManualRerunService;
 import com.agilerunner.api.service.review.ManualRerunQueryService;
 import com.agilerunner.api.service.review.ManualRerunExecutionListService;
+import com.agilerunner.api.service.review.ManualRerunControlActionService;
 import com.agilerunner.api.service.review.ManualRerunRetryService;
+import com.agilerunner.api.service.review.request.ManualRerunControlActionServiceRequest;
 import com.agilerunner.api.service.review.request.ManualRerunExecutionListServiceRequest;
 import com.agilerunner.api.service.review.request.ManualRerunServiceRequest;
 import com.agilerunner.api.service.review.request.ManualRerunQueryServiceRequest;
 import com.agilerunner.api.service.review.request.ManualRerunRetryServiceRequest;
+import com.agilerunner.api.service.review.response.ManualRerunControlActionServiceResponse;
 import com.agilerunner.api.service.review.response.ManualRerunExecutionListServiceResponse;
 import com.agilerunner.api.service.review.response.ManualRerunServiceResponse;
 import com.agilerunner.api.service.review.response.ManualRerunQueryServiceResponse;
@@ -21,6 +24,8 @@ import com.agilerunner.domain.agentruntime.ExecutionStartType;
 import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
 import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
 import com.agilerunner.domain.review.ManualRerunAvailableAction;
+import com.agilerunner.domain.review.ManualRerunControlAction;
+import com.agilerunner.domain.review.ManualRerunControlActionStatus;
 import com.agilerunner.domain.review.RerunExecutionStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -65,6 +70,9 @@ class ManualRerunControllerTest {
 
     @MockitoBean
     private ManualRerunExecutionListService manualRerunExecutionListService;
+
+    @MockitoBean
+    private ManualRerunControlActionService manualRerunControlActionService;
 
     @DisplayName("수동 재실행 요청은 선택 파일 경로를 service request로 전달하고 확장된 응답 계약을 유지한다.")
     @Test
@@ -260,6 +268,41 @@ class ManualRerunControllerTest {
         assertThat(requestCaptor.getValue().getExecutionStartType()).isNull();
         assertThat(requestCaptor.getValue().getExecutionStatus()).isNull();
         assertThat(requestCaptor.getValue().getFailureDisposition()).isNull();
+    }
+
+    @DisplayName("관리자 제어 액션 요청은 executionKey와 note를 service request로 전달하고 최소 성공 응답 계약을 유지한다.")
+    @Test
+    void executeAction_returnsResponseContract() throws Exception {
+        // given
+        ManualRerunControlActionServiceResponse response = ManualRerunControlActionServiceResponse.of(
+                "EXECUTION:MANUAL_RERUN:action-1",
+                ManualRerunControlAction.ACKNOWLEDGE,
+                ManualRerunControlActionStatus.APPLIED,
+                List.of(),
+                "운영자 확인 완료"
+        );
+        when(manualRerunControlActionService.execute(any(ManualRerunControlActionServiceRequest.class))).thenReturn(response);
+
+        // when & then
+        mockMvc.perform(post("/reviews/rerun/{executionKey}/actions", "EXECUTION:MANUAL_RERUN:action-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "action", "ACKNOWLEDGE",
+                                "note", "운영자 확인 완료"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:action-1"))
+                .andExpect(jsonPath("$.action").value("ACKNOWLEDGE"))
+                .andExpect(jsonPath("$.actionStatus").value("APPLIED"))
+                .andExpect(jsonPath("$.availableActions").isArray())
+                .andExpect(jsonPath("$.note").value("운영자 확인 완료"));
+
+        ArgumentCaptor<ManualRerunControlActionServiceRequest> requestCaptor =
+                ArgumentCaptor.forClass(ManualRerunControlActionServiceRequest.class);
+        verify(manualRerunControlActionService).execute(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:action-1");
+        assertThat(requestCaptor.getValue().getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
+        assertThat(requestCaptor.getValue().getNote()).isEqualTo("운영자 확인 완료");
     }
 
     @DisplayName("존재하지 않는 executionKey 조회는 404와 executionKey, message를 반환한다.")
