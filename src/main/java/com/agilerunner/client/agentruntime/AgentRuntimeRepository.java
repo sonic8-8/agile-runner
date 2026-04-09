@@ -142,6 +142,12 @@ public class AgentRuntimeRepository {
             FROM WEBHOOK_EXECUTION
             WHERE execution_key = :executionKey
             """;
+    private static final String FIND_MANUAL_RERUN_EXECUTIONS_SQL = """
+            SELECT execution_key, task_key, delivery_id, retry_source_execution_key, repository_name, pull_request_number, event_type, action, status, error_message, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed, write_skip_reason, selection_applied, selected_paths_summary, started_at, finished_at
+            FROM WEBHOOK_EXECUTION
+            WHERE execution_start_type = :executionStartType
+            ORDER BY started_at DESC, execution_key DESC
+            """;
     private static final String INSERT_AGENT_EXECUTION_LOG_SQL = """
             INSERT INTO AGENT_EXECUTION_LOG (
                 task_key,
@@ -257,6 +263,14 @@ public class AgentRuntimeRepository {
         }
 
         return Optional.of(webhookExecutions.getFirst());
+    }
+
+    public List<WebhookExecution> findManualRerunExecutions() {
+        return namedParameterJdbcTemplate.query(
+                FIND_MANUAL_RERUN_EXECUTIONS_SQL,
+                new MapSqlParameterSource("executionStartType", ExecutionStartType.MANUAL_RERUN.name()),
+                this::mapWebhookExecution
+        );
     }
 
     public void appendExecutionLog(AgentExecutionLog executionLog) {

@@ -2,10 +2,13 @@ package com.agilerunner.api.controller.review;
 
 import com.agilerunner.api.service.review.ManualRerunService;
 import com.agilerunner.api.service.review.ManualRerunQueryService;
+import com.agilerunner.api.service.review.ManualRerunExecutionListService;
 import com.agilerunner.api.service.review.ManualRerunRetryService;
+import com.agilerunner.api.service.review.request.ManualRerunExecutionListServiceRequest;
 import com.agilerunner.api.service.review.request.ManualRerunServiceRequest;
 import com.agilerunner.api.service.review.request.ManualRerunQueryServiceRequest;
 import com.agilerunner.api.service.review.request.ManualRerunRetryServiceRequest;
+import com.agilerunner.api.service.review.response.ManualRerunExecutionListServiceResponse;
 import com.agilerunner.api.service.review.response.ManualRerunServiceResponse;
 import com.agilerunner.api.service.review.response.ManualRerunQueryServiceResponse;
 import com.agilerunner.api.service.review.response.ManualRerunRetryServiceResponse;
@@ -14,6 +17,8 @@ import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.domain.exception.FailureDisposition;
 import com.agilerunner.domain.exception.ManualRerunRetryConflictException;
 import com.agilerunner.domain.exception.ManualRerunRetryNotFoundException;
+import com.agilerunner.domain.agentruntime.ExecutionStartType;
+import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
 import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
 import com.agilerunner.domain.review.RerunExecutionStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -56,6 +61,9 @@ class ManualRerunControllerTest {
 
     @MockitoBean
     private ManualRerunRetryService manualRerunRetryService;
+
+    @MockitoBean
+    private ManualRerunExecutionListService manualRerunExecutionListService;
 
     @DisplayName("수동 재실행 요청은 선택 파일 경로를 service request로 전달하고 확장된 응답 계약을 유지한다.")
     @Test
@@ -161,6 +169,61 @@ class ManualRerunControllerTest {
         ArgumentCaptor<ManualRerunQueryServiceRequest> requestCaptor = ArgumentCaptor.forClass(ManualRerunQueryServiceRequest.class);
         verify(manualRerunQueryService).find(requestCaptor.capture());
         assertThat(requestCaptor.getValue().getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:2b5fe092-4365-4e94-a291-0b89e9184c9d");
+    }
+
+    @DisplayName("목록 조회 요청은 필터 입력을 service request로 전달하고 기본 응답 계약을 유지한다.")
+    @Test
+    void listExecutions_returnsResponseContract() throws Exception {
+        // given
+        ManualRerunExecutionListServiceResponse response = ManualRerunExecutionListServiceResponse.of(
+                List.of(
+                        ManualRerunExecutionListServiceResponse.ExecutionSummary.of("EXECUTION:MANUAL_RERUN:100"),
+                        ManualRerunExecutionListServiceResponse.ExecutionSummary.of("EXECUTION:MANUAL_RERUN:101")
+                )
+        );
+        when(manualRerunExecutionListService.list(any(ManualRerunExecutionListServiceRequest.class))).thenReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/reviews/rerun/executions")
+                        .queryParam("repositoryName", "owner/repo")
+                        .queryParam("pullRequestNumber", "12")
+                        .queryParam("executionStartType", "MANUAL_RERUN")
+                        .queryParam("executionStatus", "FAILED")
+                        .queryParam("failureDisposition", "RETRYABLE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.executions[0].executionKey").value("EXECUTION:MANUAL_RERUN:100"))
+                .andExpect(jsonPath("$.executions[1].executionKey").value("EXECUTION:MANUAL_RERUN:101"));
+
+        ArgumentCaptor<ManualRerunExecutionListServiceRequest> requestCaptor =
+                ArgumentCaptor.forClass(ManualRerunExecutionListServiceRequest.class);
+        verify(manualRerunExecutionListService).list(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().getRepositoryName()).isEqualTo("owner/repo");
+        assertThat(requestCaptor.getValue().getPullRequestNumber()).isEqualTo(12);
+        assertThat(requestCaptor.getValue().getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+        assertThat(requestCaptor.getValue().getExecutionStatus()).isEqualTo(WebhookExecutionStatus.FAILED);
+        assertThat(requestCaptor.getValue().getFailureDisposition()).isEqualTo(FailureDisposition.RETRYABLE);
+    }
+
+    @DisplayName("목록 조회 요청에 query param이 없으면 service request의 필터는 모두 미적용으로 해석한다.")
+    @Test
+    void listExecutions_treatsMissingQueryParamsAsNoFilters() throws Exception {
+        // given
+        ManualRerunExecutionListServiceResponse response = ManualRerunExecutionListServiceResponse.of(List.of());
+        when(manualRerunExecutionListService.list(any(ManualRerunExecutionListServiceRequest.class))).thenReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/reviews/rerun/executions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.executions").isArray());
+
+        ArgumentCaptor<ManualRerunExecutionListServiceRequest> requestCaptor =
+                ArgumentCaptor.forClass(ManualRerunExecutionListServiceRequest.class);
+        verify(manualRerunExecutionListService).list(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().getRepositoryName()).isNull();
+        assertThat(requestCaptor.getValue().getPullRequestNumber()).isNull();
+        assertThat(requestCaptor.getValue().getExecutionStartType()).isNull();
+        assertThat(requestCaptor.getValue().getExecutionStatus()).isNull();
+        assertThat(requestCaptor.getValue().getFailureDisposition()).isNull();
     }
 
     @DisplayName("존재하지 않는 executionKey 조회는 404와 executionKey, message를 반환한다.")

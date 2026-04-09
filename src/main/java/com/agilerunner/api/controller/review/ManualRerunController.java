@@ -1,16 +1,20 @@
 package com.agilerunner.api.controller.review;
 
 import com.agilerunner.api.controller.review.request.ManualRerunRequest;
+import com.agilerunner.api.controller.review.request.ManualRerunExecutionListRequest;
 import com.agilerunner.api.controller.review.request.ManualRerunRetryRequest;
+import com.agilerunner.api.controller.review.response.ManualRerunExecutionListResponse;
 import com.agilerunner.api.controller.review.response.ManualRerunQueryNotFoundResponse;
 import com.agilerunner.api.controller.review.response.ManualRerunQueryResponse;
 import com.agilerunner.api.controller.review.response.ManualRerunResponse;
 import com.agilerunner.api.controller.review.response.ManualRerunRetryConflictResponse;
 import com.agilerunner.api.controller.review.response.ManualRerunRetryNotFoundResponse;
 import com.agilerunner.api.controller.review.response.ManualRerunRetryResponse;
+import com.agilerunner.api.service.review.ManualRerunExecutionListService;
 import com.agilerunner.api.service.review.ManualRerunQueryService;
 import com.agilerunner.api.service.review.ManualRerunService;
 import com.agilerunner.api.service.review.ManualRerunRetryService;
+import com.agilerunner.api.service.review.response.ManualRerunExecutionListServiceResponse;
 import com.agilerunner.api.service.review.request.ManualRerunQueryServiceRequest;
 import com.agilerunner.api.service.review.response.ManualRerunQueryServiceResponse;
 import com.agilerunner.api.service.review.response.ManualRerunServiceResponse;
@@ -34,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ManualRerunController {
 
     private final ManualRerunService manualRerunService;
+    private final ManualRerunExecutionListService manualRerunExecutionListService;
     private final ManualRerunQueryService manualRerunQueryService;
     private final ManualRerunRetryService manualRerunRetryService;
 
@@ -41,6 +46,12 @@ public class ManualRerunController {
     public ResponseEntity<ManualRerunResponse> rerun(@RequestBody ManualRerunRequest request) {
         ManualRerunServiceResponse response = manualRerunService.rerun(request.toServiceRequest());
         return ResponseEntity.ok(ManualRerunResponse.from(response));
+    }
+
+    @GetMapping("/executions")
+    public ResponseEntity<ManualRerunExecutionListResponse> listExecutions(ManualRerunExecutionListRequest request) {
+        ManualRerunExecutionListServiceResponse response = manualRerunExecutionListService.list(request.toServiceRequest());
+        return ResponseEntity.ok(ManualRerunExecutionListResponse.from(response));
     }
 
     @GetMapping("/{executionKey}")
