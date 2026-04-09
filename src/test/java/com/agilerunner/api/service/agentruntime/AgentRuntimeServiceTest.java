@@ -515,6 +515,86 @@ class AgentRuntimeServiceTest {
         assertThat(executionLog.getFailureDisposition()).isEqualTo(FailureDisposition.RETRYABLE);
     }
 
+    @DisplayName("manual rerun 실패 증거는 실행 상태와 쓰기 여부를 함께 남긴다.")
+    @Test
+    void recordFailure_forManualRerun_preservesFailureMeaningAndWriteState() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        when(repository.findTaskRuntimeState("PR_REVIEW:sonic8-8:agile-runner#41"))
+                .thenReturn(Optional.of(TaskRuntimeState.of(
+                        "PR_REVIEW:sonic8-8:agile-runner#41",
+                        41L,
+                        "GitHub PR review for sonic8-8/agile-runner#41",
+                        TaskRuntimeStatus.IN_PROGRESS,
+                        0,
+                        null,
+                        LocalDateTime.of(2026, 4, 9, 10, 0),
+                        null
+                )));
+        AgentRuntimeService service = new AgentRuntimeService(repository, new ObjectMapper());
+        WebhookExecution runtimeExecution = WebhookExecution.start(
+                "EXECUTION:MANUAL_RERUN:delivery-41",
+                "PR_REVIEW:sonic8-8:agile-runner#41",
+                "manual-rerun-delivery-41",
+                "sonic8-8/agile-runner",
+                41,
+                "PULL_REQUEST",
+                "manual_rerun",
+                LocalDateTime.of(2026, 4, 9, 10, 1)
+        ).withExecutionStartType(
+                ExecutionStartType.MANUAL_RERUN
+        ).withExecutionControl(
+                ExecutionControlMode.DRY_RUN,
+                false,
+                GitHubWriteSkipReason.DRY_RUN
+        ).withSelectionScope(
+                true,
+                "src/Main.java"
+        );
+
+        // when
+        service.recordFailure(
+                runtimeExecution,
+                AgentRuntimeService.STEP_REVIEW_GENERATED,
+                new AgileRunnerException(
+                        ErrorCode.GITHUB_APP_CONFIGURATION_MISSING,
+                        "github app config missing"
+                )
+        );
+
+        // then
+        ArgumentCaptor<WebhookExecution> executionCaptor = ArgumentCaptor.forClass(WebhookExecution.class);
+        ArgumentCaptor<AgentExecutionLog> logCaptor = ArgumentCaptor.forClass(AgentExecutionLog.class);
+
+        verify(repository).upsertWebhookExecution(executionCaptor.capture());
+        verify(repository).appendExecutionLog(logCaptor.capture());
+
+        WebhookExecution savedExecution = executionCaptor.getValue();
+        assertThat(savedExecution.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:delivery-41");
+        assertThat(savedExecution.getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+        assertThat(savedExecution.getStatus()).isEqualTo(WebhookExecutionStatus.FAILED);
+        assertThat(savedExecution.getErrorCode()).isEqualTo(ErrorCode.GITHUB_APP_CONFIGURATION_MISSING);
+        assertThat(savedExecution.getFailureDisposition()).isEqualTo(FailureDisposition.MANUAL_ACTION_REQUIRED);
+        assertThat(savedExecution.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
+        assertThat(savedExecution.getWritePerformed()).isFalse();
+        assertThat(savedExecution.getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
+        assertThat(savedExecution.getSelectionApplied()).isTrue();
+        assertThat(savedExecution.getSelectedPathsSummary()).isEqualTo("src/Main.java");
+
+        AgentExecutionLog executionLog = logCaptor.getValue();
+        assertThat(executionLog.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:delivery-41");
+        assertThat(executionLog.getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+        assertThat(executionLog.getStepName()).isEqualTo(AgentRuntimeService.STEP_REVIEW_GENERATED);
+        assertThat(executionLog.getStatus()).isEqualTo(AgentExecutionStatus.FAILED);
+        assertThat(executionLog.getErrorCode()).isEqualTo(ErrorCode.GITHUB_APP_CONFIGURATION_MISSING);
+        assertThat(executionLog.getFailureDisposition()).isEqualTo(FailureDisposition.MANUAL_ACTION_REQUIRED);
+        assertThat(executionLog.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
+        assertThat(executionLog.getWritePerformed()).isFalse();
+        assertThat(executionLog.getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
+        assertThat(executionLog.getSelectionApplied()).isTrue();
+        assertThat(executionLog.getSelectedPathsSummary()).isEqualTo("src/Main.java");
+    }
+
     private Map<String, Object> buildPayload(String repositoryName, int pullRequestNumber, String action) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("action", action);

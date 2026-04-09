@@ -471,4 +471,93 @@ class AgentRuntimeRepositoryTest {
             assertThat(foundLogs.getFirst().getSelectedPathsSummary()).isEqualTo("src/Main.java|src/Test.java");
         });
     }
+
+    @DisplayName("manual rerun 실패 execution과 실행 로그를 같은 execution key로 저장하고 다시 조회할 수 있다.")
+    @Test
+    void upsertManualRerunFailureExecutionAndLog_andFind() {
+        contextRunner.run(context -> {
+            // given
+            AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
+            WebhookExecution runtimeExecution = WebhookExecution.start(
+                    "EXECUTION:MANUAL_RERUN:401",
+                    "TASK-401",
+                    "manual-rerun-delivery-401",
+                    "sonic8-8/agile-runner",
+                    401,
+                    "PULL_REQUEST",
+                    "manual_rerun",
+                    LocalDateTime.of(2026, 4, 9, 11, 0)
+            ).withExecutionStartType(
+                    ExecutionStartType.MANUAL_RERUN
+            ).withExecutionControl(
+                    ExecutionControlMode.DRY_RUN,
+                    false,
+                    GitHubWriteSkipReason.DRY_RUN
+            ).withSelectionScope(
+                    true,
+                    "src/Main.java"
+            ).complete(
+                    WebhookExecutionStatus.FAILED,
+                    "GitHub App ID missing",
+                    ErrorCode.GITHUB_APP_CONFIGURATION_MISSING,
+                    FailureDisposition.MANUAL_ACTION_REQUIRED,
+                    LocalDateTime.of(2026, 4, 9, 11, 2)
+            );
+            AgentExecutionLog executionLog = AgentExecutionLog.of(
+                    "TASK-401",
+                    401L,
+                    "EXECUTION:MANUAL_RERUN:401",
+                    ExecutionStartType.MANUAL_RERUN,
+                    AgentRole.ORCHESTRATOR,
+                    "review-generated",
+                    AgentExecutionStatus.FAILED,
+                    "manual rerun request accepted",
+                    null,
+                    "GitHub App ID missing",
+                    ErrorCode.GITHUB_APP_CONFIGURATION_MISSING,
+                    FailureDisposition.MANUAL_ACTION_REQUIRED,
+                    "{\"manualRerun\":true}",
+                    LocalDateTime.of(2026, 4, 9, 11, 1),
+                    LocalDateTime.of(2026, 4, 9, 11, 2)
+            ).withExecutionControl(
+                    ExecutionControlMode.DRY_RUN,
+                    false,
+                    GitHubWriteSkipReason.DRY_RUN
+            ).withSelectionScope(
+                    true,
+                    "src/Main.java"
+            );
+
+            // when
+            repository.upsertWebhookExecution(runtimeExecution);
+            repository.appendExecutionLog(executionLog);
+            Optional<WebhookExecution> foundExecution = repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:401");
+            List<AgentExecutionLog> foundLogs = repository.findExecutionLogs("TASK-401");
+
+            // then
+            assertThat(foundExecution).isPresent();
+            assertThat(foundExecution.get().getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:401");
+            assertThat(foundExecution.get().getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+            assertThat(foundExecution.get().getStatus()).isEqualTo(WebhookExecutionStatus.FAILED);
+            assertThat(foundExecution.get().getErrorCode()).isEqualTo(ErrorCode.GITHUB_APP_CONFIGURATION_MISSING);
+            assertThat(foundExecution.get().getFailureDisposition()).isEqualTo(FailureDisposition.MANUAL_ACTION_REQUIRED);
+            assertThat(foundExecution.get().getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
+            assertThat(foundExecution.get().getWritePerformed()).isFalse();
+            assertThat(foundExecution.get().getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
+            assertThat(foundExecution.get().getSelectionApplied()).isTrue();
+            assertThat(foundExecution.get().getSelectedPathsSummary()).isEqualTo("src/Main.java");
+
+            assertThat(foundLogs).hasSize(1);
+            assertThat(foundLogs.getFirst().getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:401");
+            assertThat(foundLogs.getFirst().getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+            assertThat(foundLogs.getFirst().getStatus()).isEqualTo(AgentExecutionStatus.FAILED);
+            assertThat(foundLogs.getFirst().getErrorCode()).isEqualTo(ErrorCode.GITHUB_APP_CONFIGURATION_MISSING);
+            assertThat(foundLogs.getFirst().getFailureDisposition()).isEqualTo(FailureDisposition.MANUAL_ACTION_REQUIRED);
+            assertThat(foundLogs.getFirst().getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
+            assertThat(foundLogs.getFirst().getWritePerformed()).isFalse();
+            assertThat(foundLogs.getFirst().getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
+            assertThat(foundLogs.getFirst().getSelectionApplied()).isTrue();
+            assertThat(foundLogs.getFirst().getSelectedPathsSummary()).isEqualTo("src/Main.java");
+        });
+    }
 }
