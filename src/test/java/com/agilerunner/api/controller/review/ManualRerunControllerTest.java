@@ -132,11 +132,11 @@ class ManualRerunControllerTest {
         // given
         ManualRerunQueryServiceResponse response = ManualRerunQueryServiceResponse.of(
                 "EXECUTION:MANUAL_RERUN:2b5fe092-4365-4e94-a291-0b89e9184c9d",
-                null,
+                ExecutionControlMode.DRY_RUN,
                 false,
-                null,
-                null,
-                null
+                RerunExecutionStatus.FAILED,
+                ErrorCode.GITHUB_APP_CONFIGURATION_MISSING,
+                FailureDisposition.MANUAL_ACTION_REQUIRED
         );
         when(manualRerunQueryService.find(any(ManualRerunQueryServiceRequest.class))).thenReturn(response);
 
@@ -145,10 +145,10 @@ class ManualRerunControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:2b5fe092-4365-4e94-a291-0b89e9184c9d"))
                 .andExpect(jsonPath("$.writePerformed").value(false))
-                .andExpect(jsonPath("$.executionControlMode").value(nullValue()))
-                .andExpect(jsonPath("$.executionStatus").value(nullValue()))
-                .andExpect(jsonPath("$.errorCode").value(nullValue()))
-                .andExpect(jsonPath("$.failureDisposition").value(nullValue()));
+                .andExpect(jsonPath("$.executionControlMode").value("DRY_RUN"))
+                .andExpect(jsonPath("$.executionStatus").value("FAILED"))
+                .andExpect(jsonPath("$.errorCode").value("GITHUB_APP_CONFIGURATION_MISSING"))
+                .andExpect(jsonPath("$.failureDisposition").value("MANUAL_ACTION_REQUIRED"));
 
         ArgumentCaptor<ManualRerunQueryServiceRequest> requestCaptor = ArgumentCaptor.forClass(ManualRerunQueryServiceRequest.class);
         verify(manualRerunQueryService).find(requestCaptor.capture());
