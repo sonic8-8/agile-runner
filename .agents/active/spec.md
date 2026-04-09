@@ -6,99 +6,104 @@
 
 ## 현재 활성 Spec
 ### ID
-SPEC-0010
-
-### 이름
-재실행 재시도 정책 정교화
-
-### 목표
-- `failureDisposition`과 이전 실행 결과를 기준으로 수동 재시도 허용 여부를 명확히 고정한다.
-- 내부/관리자용 재시도 요청 진입점에서 어떤 경우에 새 재실행을 시작하고, 어떤 경우에 거부하는지 일관된 정책을 만든다.
-- 새 재시도 응답과 runtime evidence에 원본 execution과 새 execution의 관계를 함께 남겨 추적 가능하게 만든다.
-
-### 대상 문제
-- 현재는 `GET /reviews/rerun/{executionKey}`로 이전 실행의 `failureDisposition`을 읽을 수 있지만, 운영자가 그 값만으로 재시도 가능 여부를 바로 판단하거나 요청할 수는 없다.
-- `RETRYABLE`, `NON_RETRYABLE`, `MANUAL_ACTION_REQUIRED`가 runtime evidence에는 남지만, 실제 수동 재시도 요청 정책으로 연결되지 않았다.
-- 새 재시도가 만들어져도 어떤 이전 execution에서 파생된 것인지 응답과 runtime evidence에서 직접 읽을 수 없다.
-
-### 범위
-- 내부/관리자용 `POST /reviews/rerun/{executionKey}/retry` 최소 재시도 진입점을 도입한다.
-- 재시도 허용 기준은 최소한 아래를 따른다.
-  - 이전 execution이 `MANUAL_RERUN` 시작 유형이다.
-  - 이전 execution 상태가 `FAILED`다.
-  - 이전 execution의 `failureDisposition`이 `RETRYABLE`이다.
-- 재시도 입력은 최소한 `installationId`, `executionControlMode`, `selectedPaths`를 받고, repository/pullRequest 컨텍스트는 source execution에서 읽어 재사용한다.
-- `selectedPaths`가 비어 있으면 source execution의 선택 경로를 재사용하지 않고 전체 실행으로 해석한다. 선택 경로를 제한하려면 retry 입력에서 명시적으로 다시 전달한다.
-- 존재하지 않는 `executionKey`는 `404 Not Found + executionKey + message`로 정리한다.
-- 재시도가 허용되지 않는 source execution은 `409 Conflict + executionKey + failureDisposition + message` 기준으로 정리한다.
-- 재시도 성공 응답은 최소한 `executionKey`, `retrySourceExecutionKey`, `executionControlMode`, `writePerformed`, `executionStatus`, `errorCode`, `failureDisposition`를 포함한다.
-- 로컬 프로필 실제 앱/H2 기준으로 대표 retryable failure execution 1건을 source로 재시도 요청을 수행하고, 새 응답과 runtime evidence의 source 관계를 검증한다.
-
-### 비대상
-- 자동 재시도 스케줄러
-- bulk retry
-- 운영 대시보드 구축
-- webhook 실행 재시도
-- 장기 저장소 도입
-
-### 외부 계약
-- `/webhook/github` 계약은 유지한다.
-- `POST /reviews/rerun`과 `GET /reviews/rerun/{executionKey}` 기존 계약은 유지한다.
-- `POST /reviews/rerun/{executionKey}/retry`는 내부/관리자용 최소 재시도 진입점으로만 사용한다.
-- 재시도 응답은 기존 rerun 응답과 모순되지 않아야 하고, source execution 및 새 runtime evidence와 같은 의미를 가져야 한다.
-
-### 핵심 시나리오
-1. 재시도 정책 안전망 고정
-   - 현재 rerun query 응답, failure disposition, 기존 rerun 계약이 유지된다는 점을 먼저 테스트로 고정한다.
-   - 재시도 기능 추가가 webhook 계약에 영향을 주지 않는다는 점도 같이 고정한다.
-2. 재시도 가능 여부 정책 도입
-   - source execution의 `executionStatus`와 `failureDisposition`을 기준으로 재시도 허용/거부 기준을 도입한다.
-   - 이 단계는 policy 또는 service 경계의 판단까지 닫고, `409 Conflict` controller 계약은 다음 단계에서 고정한다.
-3. 재시도 요청 경로 연결
-   - `executionKey` 기반 retry request 경계와 controller/service 진입점을 연다.
-   - source execution에서 repository/pullRequest 컨텍스트를 읽어 기존 manual rerun 흐름을 재사용한다.
-   - `retrySourceExecutionKey`는 이 단계에서 응답 필드로 먼저 고정하고, runtime evidence 관계 적재는 마지막 단계에서 닫는다.
-4. 재시도 응답과 실행 이력 관계 검증
-   - representative retryable failure execution 1건을 source로 실제 앱에서 retry 요청을 수행한 뒤, 응답과 H2 evidence에 `retrySourceExecutionKey` 관계가 일치하는지 확인한다.
-
-### Task 분해 기준
-- `TASK-0001` 재시도 정책 안전망 고정
-- `TASK-0002` 재시도 가능 여부 정책 도입
-- `TASK-0003` 재시도 요청 경로 연결
-- `TASK-0004` 재시도 응답과 실행 이력 관계 검증
-
-### 연결될 ValidationCriteria
-- `manual-rerun-retry-contract-preserved`
-- `manual-rerun-retry-eligibility-defined`
-- `manual-rerun-retry-request-reuses-source-context`
-- `manual-rerun-retry-response-links-source-execution`
-
-### 필수 테스트 시나리오
-- 재시도 기능을 추가해도 `/webhook/github`, `POST /reviews/rerun`, `GET /reviews/rerun/{executionKey}` 기존 계약은 유지된다.
-- source execution이 `FAILED + RETRYABLE`일 때만 retry 요청이 허용된다.
-- 존재하지 않는 `executionKey`는 `404 Not Found + executionKey + message`로 읽을 수 있어야 한다.
-- 재시도가 허용되지 않는 source execution은 `409 Conflict + executionKey + failureDisposition + message`로 읽을 수 있어야 한다.
-- 허용된 재시도 요청은 source execution의 repository/pullRequest 컨텍스트를 재사용해 새 rerun execution을 시작하고, `selectedPaths`가 비어 있으면 전체 실행으로 해석한다.
-- representative retry 요청 1건의 응답과 runtime evidence에서 `retrySourceExecutionKey`와 새 `executionKey`가 같은 의미로 남아 있다.
-- representative 검증은 `retryable source execution 준비 -> 같은 executionKey로 retry 요청 -> HTTP 결과 확인 -> 앱 종료 -> H2 조회` 순서를 따른다.
-
-## 후속 Spec 후보
-### ID
 SPEC-0011
 
 ### 이름
 운영용 조회와 관리자 제어 기능 확장
 
+### 목표
+- 운영자가 manual rerun execution 이력을 목록으로 조회하고, 필요한 필터를 적용해 좁혀 볼 수 있게 만든다.
+- 각 execution row에서 현재 상태와 failure disposition을 바탕으로 어떤 관리자 제어가 가능한지 읽을 수 있게 만든다.
+- 목록 응답과 runtime evidence가 같은 의미를 가지도록 정리해 이후 관리자 제어 액션 확장의 기준으로 삼는다.
+
+### 대상 문제
+- 현재는 `GET /reviews/rerun/{executionKey}` 단건 조회만 가능해서 운영자가 전체 execution 흐름을 한 번에 보기가 어렵다.
+- source execution과 파생 execution 관계는 추적 가능해졌지만, 어떤 execution이 재시도 가능한지 목록 관점에서 바로 읽을 수는 없다.
+- 다음 단계의 관리자 제어 액션을 붙이려면, 먼저 목록 조회 응답에서 상태와 허용 가능한 제어 정보를 안정적으로 읽을 수 있어야 한다.
+
+### 범위
+- 내부/관리자용 `GET /reviews/rerun/executions` 목록 조회 진입점을 도입한다.
+- 목록 조회 입력은 최소한 아래를 받는다.
+  - `repositoryName`
+  - `pullRequestNumber`
+  - `executionStartType`
+  - `executionStatus`
+  - `failureDisposition`
+- 필터 값이 비어 있으면 해당 조건은 미적용으로 해석한다.
+- 목록 응답 row는 최소한 아래를 포함한다.
+  - `executionKey`
+  - `retrySourceExecutionKey`
+  - `executionStartType`
+  - `executionStatus`
+  - `executionControlMode`
+  - `writePerformed`
+  - `errorCode`
+  - `failureDisposition`
+  - `availableActions`
+- `availableActions`는 우선 `RETRY` 하나만 지원하고, 현재 execution이 manual rerun retry 정책상 재시도 가능할 때만 포함한다.
+- 로컬 프로필 실제 앱/H2 기준으로 representative execution 2건 이상을 준비한 뒤, 목록 조회 응답의 필터 결과와 `availableActions` 의미가 runtime evidence와 같은지 확인한다.
+
+### 비대상
+- 사용자용 UI
+- bulk action 실행
+- 자동 재시도 스케줄러
+- 장기 저장소 도입
+- webhook 실행 제어
+
+### 외부 계약
+- `/webhook/github`, `POST /reviews/rerun`, `GET /reviews/rerun/{executionKey}`, `POST /reviews/rerun/{executionKey}/retry` 기존 계약은 유지한다.
+- `GET /reviews/rerun/executions`는 내부/관리자용 목록 조회 진입점으로만 사용한다.
+- 목록 응답의 상태와 제어 가능 여부는 기존 query/retry 정책과 모순되지 않아야 한다.
+
+### 핵심 시나리오
+1. 목록 조회 안전망 고정
+   - 기존 rerun 단건 query와 retry 정책 계약이 유지된다는 점을 먼저 테스트로 고정한다.
+   - 목록 조회 기능이 webhook과 기존 rerun 흐름에 영향을 주지 않는다는 점도 같이 고정한다.
+2. 목록 조회 입력 모델과 진입점 도입
+   - 필터 입력 DTO와 controller/service 진입점을 도입한다.
+   - 이 단계는 입력 해석과 기본 목록 응답 경계까지만 닫고, `availableActions` 의미 매핑은 다음 단계에서 고정한다.
+3. 목록 응답과 관리자 제어 상태 연결
+   - runtime evidence를 목록 응답 row로 매핑하고, `availableActions`에 `RETRY` 포함 여부를 eligibility policy 기준으로 연결한다.
+   - 필터 조합에 따른 목록 축소와 응답 의미를 controller/service black-box 테스트로 고정한다.
+4. 목록 응답과 실행 근거 정합성 검증
+   - representative execution 여러 건을 local H2에 준비한 뒤 실제 앱에서 목록 조회를 호출하고, 응답 row와 H2 evidence의 `executionStatus`, `failureDisposition`, `availableActions` 의미가 같은지 확인한다.
+
+### Task 분해 기준
+- `TASK-0001` 목록 조회 안전망 고정
+- `TASK-0002` 목록 조회 입력 모델과 진입점 도입
+- `TASK-0003` 목록 응답과 관리자 제어 상태 연결
+- `TASK-0004` 목록 응답과 실행 근거 정합성 검증
+
+### 연결될 ValidationCriteria
+- `manual-rerun-list-contract-preserved`
+- `manual-rerun-list-filter-defined`
+- `manual-rerun-list-response-maps-control-state`
+- `manual-rerun-list-runtime-evidence-aligned`
+
+### 필수 테스트 시나리오
+- 목록 조회 기능을 추가해도 `/webhook/github`, `POST /reviews/rerun`, `GET /reviews/rerun/{executionKey}`, `POST /reviews/rerun/{executionKey}/retry` 기존 계약은 유지된다.
+- 목록 조회 필터는 비어 있는 값은 무시하고, 값이 있는 조건만 적용한다.
+- 목록 응답 row는 runtime evidence의 `executionStartType`, `executionStatus`, `executionControlMode`, `writePerformed`, `errorCode`, `failureDisposition`, `retrySourceExecutionKey`를 같은 의미로 반환한다.
+- `availableActions`의 `RETRY` 포함 여부는 기존 manual rerun retry eligibility 정책과 같은 기준으로 해석된다.
+- representative 목록 조회 1건 이상에서 응답 row와 H2 evidence가 같은 필터 결과와 제어 가능 상태를 가진다.
+
+## 후속 Spec 후보
+### ID
+SPEC-0012
+
+### 이름
+운영용 관리자 제어 액션 확장
+
 ### 시작 조건
-- `현재 활성 Spec`이 완료되고, 수동 재시도 요청 정책과 source execution 관계가 안정적으로 닫힌 뒤 시작한다.
+- `현재 활성 Spec`이 완료되고, 운영용 execution 목록 조회와 `availableActions` 해석이 안정적으로 닫힌 뒤 시작한다.
 
 ### 목표
-- 운영자가 execution 이력과 재시도 결과를 더 폭넓게 조회하고 제어할 수 있는 관리 기능을 확장한다.
+- 운영자가 목록 조회 결과를 바탕으로 실제 관리자 제어 액션을 더 넓게 수행할 수 있게 만든다.
 
 ### 후속 변경 범위
-- execution 목록 조회
-- 필터/상태 기반 조회
-- 관리자용 제어 액션 확장
+- retry 외 관리자 제어 액션 추가
+- 관리자 제어 액션 결과 응답 정교화
+- 제어 액션별 audit evidence 확장
 
 ### 후속 변경 비대상
 - 사용자용 UI
@@ -106,5 +111,5 @@ SPEC-0011
 - 자동 스케줄러 도입
 
 ### 후속 검증 방향
-- 조회 API와 관리자 제어 기능이 기존 rerun/query/retry 계약과 충돌하지 않는다.
-- 운영자가 source execution과 파생 execution 관계를 일관되게 읽을 수 있다.
+- 목록 응답과 관리자 제어 액션이 기존 rerun/query/retry 계약과 충돌하지 않는다.
+- 운영자가 execution 상태와 가능한 제어 액션을 일관되게 읽고 실행할 수 있다.

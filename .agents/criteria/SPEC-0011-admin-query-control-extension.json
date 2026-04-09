@@ -1,0 +1,35 @@
+{
+  "spec_id": "SPEC-0011",
+  "spec_name": "운영용 조회와 관리자 제어 기능 확장",
+  "spec_version": 1,
+  "criteria": [
+    {
+      "key": "manual-rerun-list-contract-preserved",
+      "target": "운영용 목록 조회 기능 추가 중 기존 rerun, query, retry, webhook 계약 유지",
+      "test_view": "컨트롤러/서비스 통합 관점",
+      "pass_condition": "목록 조회 기능을 추가한 이후에도 `/webhook/github`, `POST /reviews/rerun`, `GET /reviews/rerun/{executionKey}`, `POST /reviews/rerun/{executionKey}/retry`의 기존 계약이 유지된다.",
+      "fail_condition": "목록 조회 기능 도입 때문에 기존 rerun, retry, webhook 계약이 흔들리거나 응답 의미가 달라진다."
+    },
+    {
+      "key": "manual-rerun-list-filter-defined",
+      "target": "운영용 execution 목록 조회 필터 정의",
+      "test_view": "컨트롤러/서비스 black-box 관점",
+      "pass_condition": "목록 조회는 `repositoryName`, `pullRequestNumber`, `executionStartType`, `executionStatus`, `failureDisposition` 필터를 읽고, 비어 있는 값은 미적용으로 해석한다. 값이 있는 조건만 적용돼 목록이 일관되게 줄어든다.",
+      "fail_condition": "필터 입력이 일부만 적용되거나, 빈 값 처리 기준이 모호하거나, 같은 입력이 경계마다 다르게 해석된다."
+    },
+    {
+      "key": "manual-rerun-list-response-maps-control-state",
+      "target": "운영용 execution 목록 응답과 관리자 제어 상태 매핑",
+      "test_view": "서비스/컨트롤러 black-box 관점",
+      "pass_condition": "목록 응답 row는 `executionKey`, `retrySourceExecutionKey`, `executionStartType`, `executionStatus`, `executionControlMode`, `writePerformed`, `errorCode`, `failureDisposition`, `availableActions`를 같은 의미로 반환한다. `availableActions`의 `RETRY` 포함 여부는 기존 manual rerun retry eligibility 정책과 같은 기준으로 해석된다.",
+      "fail_condition": "목록 응답 row의 상태 필드가 runtime evidence와 다르게 읽히거나, `availableActions` 해석이 기존 retry 정책과 충돌한다."
+    },
+    {
+      "key": "manual-rerun-list-runtime-evidence-aligned",
+      "target": "운영용 execution 목록 응답과 runtime evidence 정합성",
+      "test_view": "저장소/H2 실제 검증 관점",
+      "pass_condition": "로컬 프로필 실제 앱 기동 후 representative execution 여러 건을 기준으로 목록 조회를 수행했을 때, 응답 row의 필터 결과와 `executionStatus`, `failureDisposition`, `availableActions` 의미가 H2 runtime evidence와 같은 결과를 가진다.",
+      "fail_condition": "대표 목록 조회 응답의 필터 결과나 제어 가능 상태가 H2 `WEBHOOK_EXECUTION`, `AGENT_EXECUTION_LOG` evidence와 다른 의미를 가진다."
+    }
+  ]
+}
