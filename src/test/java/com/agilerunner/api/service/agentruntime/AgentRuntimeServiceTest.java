@@ -116,6 +116,7 @@ class AgentRuntimeServiceTest {
         assertThat(savedExecution.getExecutionKey()).startsWith("EXECUTION:MANUAL_RERUN:");
         assertThat(savedExecution.getTaskKey()).isEqualTo("PR_REVIEW:sonic8-8:agile-runner#21");
         assertThat(savedExecution.getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+        assertThat(savedExecution.getRetrySourceExecutionKey()).isNull();
         assertThat(savedExecution.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
         assertThat(savedExecution.getWritePerformed()).isFalse();
         assertThat(savedExecution.getSelectionApplied()).isTrue();
@@ -124,6 +125,7 @@ class AgentRuntimeServiceTest {
         AgentExecutionLog executionLog = logCaptor.getValue();
         assertThat(executionLog.getExecutionKey()).isEqualTo(savedExecution.getExecutionKey());
         assertThat(executionLog.getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+        assertThat(executionLog.getRetrySourceExecutionKey()).isNull();
         assertThat(executionLog.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
         assertThat(executionLog.getWritePerformed()).isFalse();
         assertThat(executionLog.getSelectionApplied()).isTrue();
@@ -133,6 +135,41 @@ class AgentRuntimeServiceTest {
         assertThat(runtimeExecution.getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
         assertThat(runtimeExecution.getSelectionApplied()).isTrue();
         assertThat(runtimeExecution.getSelectedPathsSummary()).isEqualTo("src/Main.java|src/Test.java");
+    }
+
+    @DisplayName("manual rerun execution 시작 시 재시도 원본 execution key를 함께 저장한다.")
+    @Test
+    void startManualRerunExecution_withRetrySourceExecutionKey_persistsSourceRelation() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        when(repository.findTaskRuntimeState("PR_REVIEW:sonic8-8:agile-runner#24")).thenReturn(Optional.empty());
+        AgentRuntimeService service = new AgentRuntimeService(repository, new ObjectMapper());
+        ManualRerunServiceRequest request = ManualRerunServiceRequest.of(
+                "sonic8-8/agile-runner",
+                24,
+                999L,
+                ExecutionControlMode.DRY_RUN,
+                List.of("src/Test.java"),
+                "EXECUTION:MANUAL_RERUN:source-24"
+        );
+
+        // when
+        WebhookExecution runtimeExecution = service.startManualRerunExecution(request);
+
+        // then
+        ArgumentCaptor<WebhookExecution> executionCaptor = ArgumentCaptor.forClass(WebhookExecution.class);
+        ArgumentCaptor<AgentExecutionLog> logCaptor = ArgumentCaptor.forClass(AgentExecutionLog.class);
+
+        verify(repository).upsertWebhookExecution(executionCaptor.capture());
+        verify(repository).appendExecutionLog(logCaptor.capture());
+
+        WebhookExecution savedExecution = executionCaptor.getValue();
+        assertThat(savedExecution.getRetrySourceExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:source-24");
+
+        AgentExecutionLog executionLog = logCaptor.getValue();
+        assertThat(executionLog.getRetrySourceExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:source-24");
+
+        assertThat(runtimeExecution.getRetrySourceExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:source-24");
     }
 
     @DisplayName("manual rerun execution 시작 시 선택 경로는 공백 제거, 중복 제거, 정렬 후 요약 문자열로 저장한다.")
@@ -593,6 +630,66 @@ class AgentRuntimeServiceTest {
         assertThat(executionLog.getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
         assertThat(executionLog.getSelectionApplied()).isTrue();
         assertThat(executionLog.getSelectedPathsSummary()).isEqualTo("src/Main.java");
+    }
+
+    @DisplayName("재시도 원본 execution key가 있으면 manual rerun 실패 증거에도 같은 관계를 남긴다.")
+    @Test
+    void recordFailure_forRetryManualRerun_preservesRetrySourceExecutionKey() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        when(repository.findTaskRuntimeState("PR_REVIEW:sonic8-8:agile-runner#42"))
+                .thenReturn(Optional.of(TaskRuntimeState.of(
+                        "PR_REVIEW:sonic8-8:agile-runner#42",
+                        42L,
+                        "GitHub PR review for sonic8-8/agile-runner#42",
+                        TaskRuntimeStatus.IN_PROGRESS,
+                        0,
+                        null,
+                        LocalDateTime.of(2026, 4, 9, 11, 0),
+                        null
+                )));
+        AgentRuntimeService service = new AgentRuntimeService(repository, new ObjectMapper());
+        WebhookExecution runtimeExecution = WebhookExecution.start(
+                "EXECUTION:MANUAL_RERUN:delivery-42",
+                "PR_REVIEW:sonic8-8:agile-runner#42",
+                "manual-rerun-delivery-42",
+                "sonic8-8/agile-runner",
+                42,
+                "PULL_REQUEST",
+                "manual_rerun",
+                LocalDateTime.of(2026, 4, 9, 11, 1)
+        ).withExecutionStartType(
+                ExecutionStartType.MANUAL_RERUN
+        ).withExecutionControl(
+                ExecutionControlMode.DRY_RUN,
+                false,
+                GitHubWriteSkipReason.DRY_RUN
+        ).withSelectionScope(
+                true,
+                "src/Main.java"
+        ).withRetrySourceExecutionKey(
+                "EXECUTION:MANUAL_RERUN:source-42"
+        );
+
+        // when
+        service.recordFailure(
+                runtimeExecution,
+                AgentRuntimeService.STEP_REVIEW_GENERATED,
+                new AgileRunnerException(
+                        ErrorCode.GITHUB_APP_CONFIGURATION_MISSING,
+                        "github app config missing"
+                )
+        );
+
+        // then
+        ArgumentCaptor<WebhookExecution> executionCaptor = ArgumentCaptor.forClass(WebhookExecution.class);
+        ArgumentCaptor<AgentExecutionLog> logCaptor = ArgumentCaptor.forClass(AgentExecutionLog.class);
+
+        verify(repository).upsertWebhookExecution(executionCaptor.capture());
+        verify(repository).appendExecutionLog(logCaptor.capture());
+
+        assertThat(executionCaptor.getValue().getRetrySourceExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:source-42");
+        assertThat(logCaptor.getValue().getRetrySourceExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:source-42");
     }
 
     private Map<String, Object> buildPayload(String repositoryName, int pullRequestNumber, String action) {

@@ -12,17 +12,20 @@ public class ManualRerunServiceRequest {
     private final long installationId;
     private final ExecutionControlMode executionControlMode;
     private final List<String> selectedPaths;
+    private final String retrySourceExecutionKey;
 
     private ManualRerunServiceRequest(String repositoryName,
                                       int pullRequestNumber,
                                       long installationId,
                                       ExecutionControlMode executionControlMode,
-                                      List<String> selectedPaths) {
+                                      List<String> selectedPaths,
+                                      String retrySourceExecutionKey) {
         this.repositoryName = repositoryName;
         this.pullRequestNumber = pullRequestNumber;
         this.installationId = installationId;
         this.executionControlMode = executionControlMode;
         this.selectedPaths = List.copyOf(selectedPaths);
+        this.retrySourceExecutionKey = retrySourceExecutionKey;
     }
 
     public static ManualRerunServiceRequest of(String repositoryName,
@@ -30,12 +33,22 @@ public class ManualRerunServiceRequest {
                                                long installationId,
                                                ExecutionControlMode executionControlMode,
                                                List<String> selectedPaths) {
+        return of(repositoryName, pullRequestNumber, installationId, executionControlMode, selectedPaths, null);
+    }
+
+    public static ManualRerunServiceRequest of(String repositoryName,
+                                               int pullRequestNumber,
+                                               long installationId,
+                                               ExecutionControlMode executionControlMode,
+                                               List<String> selectedPaths,
+                                               String retrySourceExecutionKey) {
         return new ManualRerunServiceRequest(
                 repositoryName,
                 pullRequestNumber,
                 installationId,
                 executionControlMode,
-                normalizeSelectedPaths(selectedPaths)
+                normalizeSelectedPaths(selectedPaths),
+                retrySourceExecutionKey
         );
     }
 

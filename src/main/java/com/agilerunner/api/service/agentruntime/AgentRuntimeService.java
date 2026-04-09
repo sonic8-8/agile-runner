@@ -153,6 +153,7 @@ public class AgentRuntimeService {
                 "manual_rerun",
                 now
         ).withExecutionStartType(ExecutionStartType.MANUAL_RERUN)
+                .withRetrySourceExecutionKey(request.getRetrySourceExecutionKey())
                 .withExecutionControl(request.getExecutionControlMode(), false, null)
                 .withSelectionScope(selectionScope.selectionApplied(), selectionScope.selectedPathsSummary());
 
@@ -203,6 +204,7 @@ public class AgentRuntimeService {
                         now,
                         now
                 ).withExecutionControl(request.getExecutionControlMode(), false, null)
+                        .withRetrySourceExecutionKey(request.getRetrySourceExecutionKey())
                         .withSelectionScope(selectionScope.selectionApplied(), selectionScope.selectedPathsSummary())
         );
 
@@ -246,6 +248,7 @@ public class AgentRuntimeService {
                         now,
                         now
                 ).withExecutionControl(webhookExecution.getExecutionControlMode(), webhookExecution.getWritePerformed(), webhookExecution.getWriteSkipReason())
+                        .withRetrySourceExecutionKey(webhookExecution.getRetrySourceExecutionKey())
                         .withSelectionScope(webhookExecution.getSelectionApplied(), webhookExecution.getSelectedPathsSummary())
         );
     }
@@ -347,6 +350,8 @@ public class AgentRuntimeService {
                         webhookExecution.getExecutionControlMode(),
                         webhookExecution.getWritePerformed(),
                         webhookExecution.getWriteSkipReason()
+                ).withRetrySourceExecutionKey(
+                        webhookExecution.getRetrySourceExecutionKey()
                 ).withSelectionScope(
                         webhookExecution.getSelectionApplied(),
                         webhookExecution.getSelectedPathsSummary()
@@ -457,6 +462,8 @@ public class AgentRuntimeService {
                         executionResult.getExecutionControlMode(),
                         executionResult.isWritePerformed(),
                         executionResult.getWriteSkipReason()
+                ).withRetrySourceExecutionKey(
+                        webhookExecution.getRetrySourceExecutionKey()
                 ).withSelectionScope(
                         webhookExecution.getSelectionApplied(),
                         webhookExecution.getSelectedPathsSummary()
@@ -619,6 +626,7 @@ public class AgentRuntimeService {
         snapshot.put("pullRequestNumber", request.getPullRequestNumber());
         snapshot.put("installationId", request.getInstallationId());
         snapshot.put("executionControlMode", request.getExecutionControlMode().name());
+        snapshot.put("retrySourceExecutionKey", request.getRetrySourceExecutionKey());
         return snapshot;
     }
 

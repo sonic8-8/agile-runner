@@ -456,6 +456,7 @@ class AgentRuntimeRepositoryTest {
             // then
             assertThat(foundExecution).isPresent();
             assertThat(foundExecution.get().getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+            assertThat(foundExecution.get().getRetrySourceExecutionKey()).isNull();
             assertThat(foundExecution.get().getExecutionControlMode()).isEqualTo(ExecutionControlMode.NORMAL);
             assertThat(foundExecution.get().getWritePerformed()).isTrue();
             assertThat(foundExecution.get().getWriteSkipReason()).isNull();
@@ -464,6 +465,7 @@ class AgentRuntimeRepositoryTest {
 
             assertThat(foundLogs).hasSize(1);
             assertThat(foundLogs.getFirst().getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+            assertThat(foundLogs.getFirst().getRetrySourceExecutionKey()).isNull();
             assertThat(foundLogs.getFirst().getExecutionControlMode()).isEqualTo(ExecutionControlMode.NORMAL);
             assertThat(foundLogs.getFirst().getWritePerformed()).isTrue();
             assertThat(foundLogs.getFirst().getWriteSkipReason()).isNull();
@@ -558,6 +560,80 @@ class AgentRuntimeRepositoryTest {
             assertThat(foundLogs.getFirst().getWriteSkipReason()).isEqualTo(GitHubWriteSkipReason.DRY_RUN);
             assertThat(foundLogs.getFirst().getSelectionApplied()).isTrue();
             assertThat(foundLogs.getFirst().getSelectedPathsSummary()).isEqualTo("src/Main.java");
+        });
+    }
+
+    @DisplayName("재시도 원본 execution key가 있는 manual rerun execution과 실행 로그를 저장하고 다시 조회할 수 있다.")
+    @Test
+    void upsertManualRerunRetryExecutionAndLog_andFind() {
+        contextRunner.run(context -> {
+            // given
+            AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
+            WebhookExecution runtimeExecution = WebhookExecution.start(
+                    "EXECUTION:MANUAL_RERUN:501",
+                    "TASK-501",
+                    "manual-rerun-delivery-501",
+                    "sonic8-8/agile-runner",
+                    501,
+                    "PULL_REQUEST",
+                    "manual_rerun",
+                    LocalDateTime.of(2026, 4, 9, 15, 0)
+            ).withExecutionStartType(
+                    ExecutionStartType.MANUAL_RERUN
+            ).withRetrySourceExecutionKey(
+                    "EXECUTION:MANUAL_RERUN:source-501"
+            ).withExecutionControl(
+                    ExecutionControlMode.DRY_RUN,
+                    false,
+                    GitHubWriteSkipReason.DRY_RUN
+            ).withSelectionScope(
+                    true,
+                    "src/Main.java"
+            ).complete(
+                    WebhookExecutionStatus.FAILED,
+                    "GitHub App ID missing",
+                    ErrorCode.GITHUB_APP_CONFIGURATION_MISSING,
+                    FailureDisposition.MANUAL_ACTION_REQUIRED,
+                    LocalDateTime.of(2026, 4, 9, 15, 2)
+            );
+            AgentExecutionLog executionLog = AgentExecutionLog.of(
+                    "TASK-501",
+                    501L,
+                    "EXECUTION:MANUAL_RERUN:501",
+                    ExecutionStartType.MANUAL_RERUN,
+                    AgentRole.ORCHESTRATOR,
+                    "review-generated",
+                    AgentExecutionStatus.FAILED,
+                    "manual rerun request accepted",
+                    null,
+                    "GitHub App ID missing",
+                    ErrorCode.GITHUB_APP_CONFIGURATION_MISSING,
+                    FailureDisposition.MANUAL_ACTION_REQUIRED,
+                    "{\"manualRerun\":true}",
+                    LocalDateTime.of(2026, 4, 9, 15, 1),
+                    LocalDateTime.of(2026, 4, 9, 15, 2)
+            ).withRetrySourceExecutionKey(
+                    "EXECUTION:MANUAL_RERUN:source-501"
+            ).withExecutionControl(
+                    ExecutionControlMode.DRY_RUN,
+                    false,
+                    GitHubWriteSkipReason.DRY_RUN
+            ).withSelectionScope(
+                    true,
+                    "src/Main.java"
+            );
+
+            // when
+            repository.upsertWebhookExecution(runtimeExecution);
+            repository.appendExecutionLog(executionLog);
+            Optional<WebhookExecution> foundExecution = repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:501");
+            List<AgentExecutionLog> foundLogs = repository.findExecutionLogs("TASK-501");
+
+            // then
+            assertThat(foundExecution).isPresent();
+            assertThat(foundExecution.get().getRetrySourceExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:source-501");
+            assertThat(foundLogs).hasSize(1);
+            assertThat(foundLogs.getFirst().getRetrySourceExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:source-501");
         });
     }
 }

@@ -14,6 +14,7 @@ public class WebhookExecution {
     private final String taskKey;
     private final String deliveryId;
     private final ExecutionStartType executionStartType;
+    private final String retrySourceExecutionKey;
     private final String repositoryName;
     private final int pullRequestNumber;
     private final String eventType;
@@ -34,6 +35,7 @@ public class WebhookExecution {
                       String taskKey,
                       String deliveryId,
                       ExecutionStartType executionStartType,
+                      String retrySourceExecutionKey,
                       String repositoryName,
                       int pullRequestNumber,
                       String eventType,
@@ -53,6 +55,7 @@ public class WebhookExecution {
         this.taskKey = taskKey;
         this.deliveryId = deliveryId;
         this.executionStartType = executionStartType;
+        this.retrySourceExecutionKey = retrySourceExecutionKey;
         this.repositoryName = repositoryName;
         this.pullRequestNumber = pullRequestNumber;
         this.eventType = eventType;
@@ -83,6 +86,7 @@ public class WebhookExecution {
                 taskKey,
                 deliveryId,
                 null,
+                null,
                 repositoryName,
                 pullRequestNumber,
                 eventType,
@@ -109,6 +113,7 @@ public class WebhookExecution {
                 taskKey,
                 deliveryId,
                 executionStartType,
+                retrySourceExecutionKey,
                 repositoryName,
                 pullRequestNumber,
                 eventType,
@@ -133,6 +138,7 @@ public class WebhookExecution {
                 taskKey,
                 deliveryId,
                 executionStartType,
+                retrySourceExecutionKey,
                 repositoryName,
                 pullRequestNumber,
                 eventType,
@@ -157,6 +163,7 @@ public class WebhookExecution {
                 taskKey,
                 deliveryId,
                 executionStartType,
+                retrySourceExecutionKey,
                 repositoryName,
                 pullRequestNumber,
                 eventType,
@@ -192,6 +199,32 @@ public class WebhookExecution {
                 taskKey,
                 deliveryId,
                 executionStartType,
+                retrySourceExecutionKey,
+                repositoryName,
+                pullRequestNumber,
+                eventType,
+                action,
+                status,
+                errorMessage,
+                errorCode,
+                failureDisposition,
+                executionControlMode,
+                writePerformed,
+                writeSkipReason,
+                selectionApplied,
+                selectedPathsSummary,
+                startedAt,
+                finishedAt
+        );
+    }
+
+    public WebhookExecution withRetrySourceExecutionKey(String retrySourceExecutionKey) {
+        return new WebhookExecution(
+                executionKey,
+                taskKey,
+                deliveryId,
+                executionStartType,
+                retrySourceExecutionKey,
                 repositoryName,
                 pullRequestNumber,
                 eventType,

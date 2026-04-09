@@ -94,6 +94,7 @@ public class AgentRuntimeRepository {
                 execution_key,
                 task_key,
                 delivery_id,
+                retry_source_execution_key,
                 repository_name,
                 pull_request_number,
                 event_type,
@@ -116,6 +117,7 @@ public class AgentRuntimeRepository {
                 :executionKey,
                 :taskKey,
                 :deliveryId,
+                :retrySourceExecutionKey,
                 :repositoryName,
                 :pullRequestNumber,
                 :eventType,
@@ -136,7 +138,7 @@ public class AgentRuntimeRepository {
             )
             """;
     private static final String FIND_WEBHOOK_EXECUTION_SQL = """
-            SELECT execution_key, task_key, delivery_id, repository_name, pull_request_number, event_type, action, status, error_message, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed, write_skip_reason, selection_applied, selected_paths_summary, started_at, finished_at
+            SELECT execution_key, task_key, delivery_id, retry_source_execution_key, repository_name, pull_request_number, event_type, action, status, error_message, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed, write_skip_reason, selection_applied, selected_paths_summary, started_at, finished_at
             FROM WEBHOOK_EXECUTION
             WHERE execution_key = :executionKey
             """;
@@ -145,6 +147,7 @@ public class AgentRuntimeRepository {
                 task_key,
                 issue_number,
                 execution_key,
+                retry_source_execution_key,
                 agent_role,
                 step_name,
                 status,
@@ -166,6 +169,7 @@ public class AgentRuntimeRepository {
                 :taskKey,
                 :issueNumber,
                 :executionKey,
+                :retrySourceExecutionKey,
                 :agentRole,
                 :stepName,
                 :status,
@@ -186,7 +190,7 @@ public class AgentRuntimeRepository {
             )
             """;
     private static final String FIND_AGENT_EXECUTION_LOGS_SQL = """
-            SELECT task_key, issue_number, execution_key, agent_role, step_name, status, input_summary, output_summary, error_message, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed, write_skip_reason, selection_applied, selected_paths_summary, payload_json, started_at, ended_at
+            SELECT task_key, issue_number, execution_key, retry_source_execution_key, agent_role, step_name, status, input_summary, output_summary, error_message, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed, write_skip_reason, selection_applied, selected_paths_summary, payload_json, started_at, ended_at
             FROM AGENT_EXECUTION_LOG
             WHERE task_key = :taskKey
             ORDER BY id ASC
@@ -294,6 +298,7 @@ public class AgentRuntimeRepository {
                 .addValue("executionKey", webhookExecution.getExecutionKey())
                 .addValue("taskKey", webhookExecution.getTaskKey())
                 .addValue("deliveryId", webhookExecution.getDeliveryId())
+                .addValue("retrySourceExecutionKey", webhookExecution.getRetrySourceExecutionKey())
                 .addValue("repositoryName", webhookExecution.getRepositoryName())
                 .addValue("pullRequestNumber", webhookExecution.getPullRequestNumber())
                 .addValue("eventType", webhookExecution.getEventType())
@@ -317,6 +322,7 @@ public class AgentRuntimeRepository {
                 .addValue("taskKey", executionLog.getTaskKey())
                 .addValue("issueNumber", executionLog.getIssueNumber())
                 .addValue("executionKey", executionLog.getExecutionKey())
+                .addValue("retrySourceExecutionKey", executionLog.getRetrySourceExecutionKey())
                 .addValue("agentRole", executionLog.getAgentRole().name())
                 .addValue("stepName", executionLog.getStepName())
                 .addValue("status", executionLog.getStatus().name())
@@ -370,6 +376,8 @@ public class AgentRuntimeRepository {
                 resultSet.getString("event_type"),
                 resultSet.getString("action"),
                 getLocalDateTime(resultSet, "started_at")
+        ).withRetrySourceExecutionKey(
+                resultSet.getString("retry_source_execution_key")
         ).withExecutionStartType(
                 getExecutionStartType(resultSet.getString("execution_start_type"))
         ).withExecutionControl(
@@ -405,6 +413,8 @@ public class AgentRuntimeRepository {
                 resultSet.getString("payload_json"),
                 getLocalDateTime(resultSet, "started_at"),
                 getLocalDateTime(resultSet, "ended_at")
+        ).withRetrySourceExecutionKey(
+                resultSet.getString("retry_source_execution_key")
         ).withExecutionControl(
                 getExecutionControlMode(resultSet.getString("execution_control_mode")),
                 getNullableBoolean(resultSet, "write_performed"),

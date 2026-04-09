@@ -43,7 +43,8 @@ public class ManualRerunRetryService {
                         sourceExecution.getPullRequestNumber(),
                         request.getInstallationId(),
                         request.getExecutionControlMode(),
-                        request.getSelectedPaths()
+                        request.getSelectedPaths(),
+                        request.getSourceExecutionKey()
                 )
         );
 

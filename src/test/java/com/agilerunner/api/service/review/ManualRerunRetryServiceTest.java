@@ -75,6 +75,7 @@ class ManualRerunRetryServiceTest {
                 "src/main/App.java",
                 "src/test/AppTest.java"
         );
+        assertThat(requestCaptor.getValue().getRetrySourceExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:source-1");
 
         assertThat(response.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:retry-1");
         assertThat(response.getRetrySourceExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:source-1");

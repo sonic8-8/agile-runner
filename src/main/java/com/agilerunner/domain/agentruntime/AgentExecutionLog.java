@@ -14,6 +14,7 @@ public class AgentExecutionLog {
     private final Long issueNumber;
     private final String executionKey;
     private final ExecutionStartType executionStartType;
+    private final String retrySourceExecutionKey;
     private final AgentRole agentRole;
     private final String stepName;
     private final AgentExecutionStatus status;
@@ -35,6 +36,7 @@ public class AgentExecutionLog {
                               Long issueNumber,
                               String executionKey,
                               ExecutionStartType executionStartType,
+                              String retrySourceExecutionKey,
                               AgentRole agentRole,
                               String stepName,
                               AgentExecutionStatus status,
@@ -55,6 +57,7 @@ public class AgentExecutionLog {
         this.issueNumber = issueNumber;
         this.executionKey = executionKey;
         this.executionStartType = executionStartType;
+        this.retrySourceExecutionKey = retrySourceExecutionKey;
         this.agentRole = agentRole;
         this.stepName = stepName;
         this.status = status;
@@ -91,6 +94,7 @@ public class AgentExecutionLog {
                 issueNumber,
                 executionKey,
                 null,
+                null,
                 agentRole,
                 stepName,
                 status,
@@ -129,6 +133,7 @@ public class AgentExecutionLog {
                 issueNumber,
                 executionKey,
                 executionStartType,
+                null,
                 agentRole,
                 stepName,
                 status,
@@ -166,6 +171,7 @@ public class AgentExecutionLog {
                 taskKey,
                 issueNumber,
                 executionKey,
+                null,
                 null,
                 agentRole,
                 stepName,
@@ -206,6 +212,7 @@ public class AgentExecutionLog {
                 issueNumber,
                 executionKey,
                 executionStartType,
+                null,
                 agentRole,
                 stepName,
                 status,
@@ -233,6 +240,7 @@ public class AgentExecutionLog {
                 issueNumber,
                 executionKey,
                 executionStartType,
+                retrySourceExecutionKey,
                 agentRole,
                 stepName,
                 status,
@@ -258,6 +266,7 @@ public class AgentExecutionLog {
                 issueNumber,
                 executionKey,
                 executionStartType,
+                retrySourceExecutionKey,
                 agentRole,
                 stepName,
                 status,
@@ -283,6 +292,33 @@ public class AgentExecutionLog {
                 issueNumber,
                 executionKey,
                 executionStartType,
+                retrySourceExecutionKey,
+                agentRole,
+                stepName,
+                status,
+                inputSummary,
+                outputSummary,
+                errorMessage,
+                errorCode,
+                failureDisposition,
+                executionControlMode,
+                writePerformed,
+                writeSkipReason,
+                selectionApplied,
+                selectedPathsSummary,
+                payloadJson,
+                startedAt,
+                endedAt
+        );
+    }
+
+    public AgentExecutionLog withRetrySourceExecutionKey(String retrySourceExecutionKey) {
+        return new AgentExecutionLog(
+                taskKey,
+                issueNumber,
+                executionKey,
+                executionStartType,
+                retrySourceExecutionKey,
                 agentRole,
                 stepName,
                 status,
