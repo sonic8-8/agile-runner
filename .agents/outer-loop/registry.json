@@ -2,9 +2,9 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0011",
-    "task_id": "TASK-0003",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0011/TASK-0003-list-response-control-state.md",
-    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0010/SPEC-0010-summary.md"
+    "task_id": "TASK-0004",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0011/TASK-0004-list-runtime-evidence-alignment.md",
+    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0011/SPEC-0011-summary.md"
   },
   "proposals": [
     {
