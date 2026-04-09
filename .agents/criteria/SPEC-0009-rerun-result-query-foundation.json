@@ -1,0 +1,35 @@
+{
+  "spec_id": "SPEC-0009",
+  "spec_name": "재실행 결과 조회 기능 기반 마련",
+  "spec_version": 1,
+  "criteria": [
+    {
+      "key": "manual-rerun-query-contract-preserved",
+      "target": "재실행 결과 조회 도입 중 기존 rerun 및 webhook 계약 유지",
+      "test_view": "컨트롤러/서비스 통합 관점",
+      "pass_condition": "조회 기능을 추가한 이후에도 `POST /reviews/rerun`의 기존 `200 OK`와 응답 필드 계약이 유지되고 `/webhook/github` 계약에는 영향이 없다.",
+      "fail_condition": "조회 기능 도입 때문에 `POST /reviews/rerun` 또는 `/webhook/github`의 기존 계약이 흔들린다."
+    },
+    {
+      "key": "manual-rerun-query-input-and-not-found-policy-defined",
+      "target": "재실행 결과 조회 입력 모델과 not found 정책 정의",
+      "test_view": "컨트롤러 black-box 관점",
+      "pass_condition": "`executionKey` 기반 조회 요청이 controller/service 경계에서 명확히 해석되고, 존재하지 않는 key에 대해서는 `404 Not Found`와 최소 본문 `executionKey`, `message`가 일관되게 반환된다.",
+      "fail_condition": "조회 입력 경계가 모호하거나, 존재하지 않는 key에 대한 응답 정책이 `404 Not Found + executionKey + message` 기준으로 고정되지 않는다."
+    },
+    {
+      "key": "manual-rerun-query-response-matches-rerun-meaning",
+      "target": "재실행 결과 조회 응답과 rerun 응답의 공통 의미 일치",
+      "test_view": "서비스/컨트롤러 black-box 관점",
+      "pass_condition": "조회 응답은 `executionKey`, `executionControlMode`, `writePerformed`, `executionStatus`, `errorCode`, `failureDisposition`를 포함하고, 같은 execution key의 rerun 응답과 같은 의미로 읽힌다.",
+      "fail_condition": "조회 응답이 rerun 응답과 공통 필드를 다르게 해석하거나, 실패 상태와 쓰기 여부를 같은 의미로 읽을 수 없다."
+    },
+    {
+      "key": "manual-rerun-query-response-matches-runtime-evidence",
+      "target": "재실행 결과 조회 응답과 runtime evidence의 같은 의미 유지",
+      "test_view": "저장소/H2 실제 검증 관점",
+      "pass_condition": "로컬 프로필 실제 앱 기동 후 대표 manual rerun 1건을 실행하고, 같은 `executionKey`로 조회한 응답과 runtime evidence의 `executionStatus`, `errorCode`, `failureDisposition`, `writePerformed`가 같은 의미로 남아 있다. representative 검증은 `manual rerun 생성 -> GET 조회 -> 앱 종료 -> H2 조회` 순서로 진행된다.",
+      "fail_condition": "대표 manual rerun 1건의 `executionKey`로 조회한 응답과 runtime evidence의 의미가 다르거나, 필요한 failure/write 정보가 빠져 있다. 또는 representative 검증이 기준 순서와 다른 방식으로 진행됐는데 근거가 남지 않는다."
+    }
+  ]
+}
