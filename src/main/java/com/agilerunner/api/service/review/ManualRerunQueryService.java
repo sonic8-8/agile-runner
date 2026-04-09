@@ -7,6 +7,9 @@ import com.agilerunner.domain.agentruntime.ExecutionStartType;
 import com.agilerunner.domain.agentruntime.WebhookExecution;
 import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
 import com.agilerunner.domain.exception.ManualRerunQueryNotFoundException;
+import com.agilerunner.domain.review.ManualRerunAvailableAction;
+import com.agilerunner.domain.review.ManualRerunAvailableActionPolicy;
+import com.agilerunner.domain.review.ManualRerunControlAction;
 import com.agilerunner.domain.review.RerunExecutionStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.lang.Nullable;
@@ -14,6 +17,7 @@ import org.springframework.lang.Nullable;
 @Service
 public class ManualRerunQueryService {
     private final AgentRuntimeRepository agentRuntimeRepository;
+    private final ManualRerunAvailableActionPolicy availableActionPolicy = new ManualRerunAvailableActionPolicy();
 
     public ManualRerunQueryService(@Nullable AgentRuntimeRepository agentRuntimeRepository) {
         this.agentRuntimeRepository = agentRuntimeRepository;
@@ -40,7 +44,8 @@ public class ManualRerunQueryService {
                 Boolean.TRUE.equals(webhookExecution.getWritePerformed()),
                 toRerunExecutionStatus(webhookExecution),
                 webhookExecution.getErrorCode(),
-                webhookExecution.getFailureDisposition()
+                webhookExecution.getFailureDisposition(),
+                resolveAvailableActions(webhookExecution)
         );
     }
 
@@ -54,5 +59,13 @@ public class ManualRerunQueryService {
         }
 
         return RerunExecutionStatus.SUCCEEDED;
+    }
+
+    private java.util.List<ManualRerunAvailableAction> resolveAvailableActions(WebhookExecution webhookExecution) {
+        boolean acknowledgeApplied = agentRuntimeRepository.hasAppliedManualRerunControlAction(
+                webhookExecution.getExecutionKey(),
+                ManualRerunControlAction.ACKNOWLEDGE
+        );
+        return availableActionPolicy.resolve(webhookExecution, acknowledgeApplied);
     }
 }

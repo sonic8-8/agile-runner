@@ -18,6 +18,8 @@ import com.agilerunner.api.service.review.response.ManualRerunRetryServiceRespon
 import com.agilerunner.domain.exception.ManualRerunQueryNotFoundException;
 import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.domain.exception.FailureDisposition;
+import com.agilerunner.domain.exception.ManualRerunControlActionConflictException;
+import com.agilerunner.domain.exception.ManualRerunControlActionNotFoundException;
 import com.agilerunner.domain.exception.ManualRerunRetryConflictException;
 import com.agilerunner.domain.exception.ManualRerunRetryNotFoundException;
 import com.agilerunner.domain.agentruntime.ExecutionStartType;
@@ -161,7 +163,8 @@ class ManualRerunControllerTest {
                 false,
                 RerunExecutionStatus.FAILED,
                 ErrorCode.GITHUB_APP_CONFIGURATION_MISSING,
-                FailureDisposition.MANUAL_ACTION_REQUIRED
+                FailureDisposition.MANUAL_ACTION_REQUIRED,
+                List.of(ManualRerunAvailableAction.ACKNOWLEDGE)
         );
         when(manualRerunQueryService.find(any(ManualRerunQueryServiceRequest.class))).thenReturn(response);
 
@@ -173,7 +176,8 @@ class ManualRerunControllerTest {
                 .andExpect(jsonPath("$.executionControlMode").value("DRY_RUN"))
                 .andExpect(jsonPath("$.executionStatus").value("FAILED"))
                 .andExpect(jsonPath("$.errorCode").value("GITHUB_APP_CONFIGURATION_MISSING"))
-                .andExpect(jsonPath("$.failureDisposition").value("MANUAL_ACTION_REQUIRED"));
+                .andExpect(jsonPath("$.failureDisposition").value("MANUAL_ACTION_REQUIRED"))
+                .andExpect(jsonPath("$.availableActions[0]").value("ACKNOWLEDGE"));
 
         ArgumentCaptor<ManualRerunQueryServiceRequest> requestCaptor = ArgumentCaptor.forClass(ManualRerunQueryServiceRequest.class);
         verify(manualRerunQueryService).find(requestCaptor.capture());
@@ -303,6 +307,52 @@ class ManualRerunControllerTest {
         assertThat(requestCaptor.getValue().getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:action-1");
         assertThat(requestCaptor.getValue().getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
         assertThat(requestCaptor.getValue().getNote()).isEqualTo("운영자 확인 완료");
+    }
+
+    @DisplayName("존재하지 않는 executionKey의 관리자 제어 액션 요청은 404와 executionKey, message를 반환한다.")
+    @Test
+    void executeAction_returnsNotFoundPolicy() throws Exception {
+        // given
+        when(manualRerunControlActionService.execute(any(ManualRerunControlActionServiceRequest.class)))
+                .thenThrow(new ManualRerunControlActionNotFoundException(
+                        "EXECUTION:MANUAL_RERUN:missing",
+                        "관리자 제어 액션 대상 실행을 찾을 수 없습니다."
+                ));
+
+        // when & then
+        mockMvc.perform(post("/reviews/rerun/{executionKey}/actions", "EXECUTION:MANUAL_RERUN:missing")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "action", "ACKNOWLEDGE",
+                                "note", "운영자 확인 완료"
+                        ))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:missing"))
+                .andExpect(jsonPath("$.message").value("관리자 제어 액션 대상 실행을 찾을 수 없습니다."));
+    }
+
+    @DisplayName("허용되지 않은 관리자 제어 액션 요청은 409와 failureDisposition, message를 반환한다.")
+    @Test
+    void executeAction_returnsConflictPolicy() throws Exception {
+        // given
+        when(manualRerunControlActionService.execute(any(ManualRerunControlActionServiceRequest.class)))
+                .thenThrow(new ManualRerunControlActionConflictException(
+                        "EXECUTION:MANUAL_RERUN:conflict",
+                        FailureDisposition.MANUAL_ACTION_REQUIRED,
+                        "이미 확인 완료 처리된 실행입니다."
+                ));
+
+        // when & then
+        mockMvc.perform(post("/reviews/rerun/{executionKey}/actions", "EXECUTION:MANUAL_RERUN:conflict")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "action", "ACKNOWLEDGE",
+                                "note", "운영자 확인 완료"
+                        ))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:conflict"))
+                .andExpect(jsonPath("$.failureDisposition").value("MANUAL_ACTION_REQUIRED"))
+                .andExpect(jsonPath("$.message").value("이미 확인 완료 처리된 실행입니다."));
     }
 
     @DisplayName("존재하지 않는 executionKey 조회는 404와 executionKey, message를 반환한다.")

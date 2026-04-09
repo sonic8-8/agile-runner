@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0012",
-    "task_id": "TASK-0002",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0012/TASK-0002-control-action-input-model.md",
+    "task_id": "TASK-0003",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0012/TASK-0003-control-action-audit-state.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0011/SPEC-0011-summary.md"
   },
   "proposals": [
@@ -58,6 +58,10 @@
     {
       "proposal_id": "WORKFLOW-PROP-0011",
       "path": ".agents/outer-loop/proposals/WORKFLOW/WORKFLOW-PROP-0011-from-SPEC-0010-TASK-0004.md"
+    },
+    {
+      "proposal_id": "WORKFLOW-PROP-0012",
+      "path": ".agents/outer-loop/proposals/WORKFLOW/WORKFLOW-PROP-0012-from-SPEC-0012-TASK-0003.md"
     }
   ]
 }

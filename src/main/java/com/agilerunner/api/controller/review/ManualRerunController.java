@@ -5,6 +5,8 @@ import com.agilerunner.api.controller.review.request.ManualRerunExecutionListReq
 import com.agilerunner.api.controller.review.request.ManualRerunControlActionRequest;
 import com.agilerunner.api.controller.review.request.ManualRerunRetryRequest;
 import com.agilerunner.api.controller.review.response.ManualRerunControlActionResponse;
+import com.agilerunner.api.controller.review.response.ManualRerunControlActionConflictResponse;
+import com.agilerunner.api.controller.review.response.ManualRerunControlActionNotFoundResponse;
 import com.agilerunner.api.controller.review.response.ManualRerunExecutionListResponse;
 import com.agilerunner.api.controller.review.response.ManualRerunQueryNotFoundResponse;
 import com.agilerunner.api.controller.review.response.ManualRerunQueryResponse;
@@ -24,6 +26,8 @@ import com.agilerunner.api.service.review.response.ManualRerunQueryServiceRespon
 import com.agilerunner.api.service.review.response.ManualRerunServiceResponse;
 import com.agilerunner.api.service.review.response.ManualRerunRetryServiceResponse;
 import com.agilerunner.domain.exception.ManualRerunQueryNotFoundException;
+import com.agilerunner.domain.exception.ManualRerunControlActionConflictException;
+import com.agilerunner.domain.exception.ManualRerunControlActionNotFoundException;
 import com.agilerunner.domain.exception.ManualRerunRetryConflictException;
 import com.agilerunner.domain.exception.ManualRerunRetryNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -66,6 +70,28 @@ public class ManualRerunController {
                 request.toServiceRequest(executionKey)
         );
         return ResponseEntity.ok(ManualRerunControlActionResponse.from(response));
+    }
+
+    @ExceptionHandler(ManualRerunControlActionNotFoundException.class)
+    public ResponseEntity<ManualRerunControlActionNotFoundResponse> handleManualRerunControlActionNotFound(
+            ManualRerunControlActionNotFoundException exception
+    ) {
+        return ResponseEntity.status(404).body(
+                ManualRerunControlActionNotFoundResponse.of(exception.getExecutionKey(), exception.getMessage())
+        );
+    }
+
+    @ExceptionHandler(ManualRerunControlActionConflictException.class)
+    public ResponseEntity<ManualRerunControlActionConflictResponse> handleManualRerunControlActionConflict(
+            ManualRerunControlActionConflictException exception
+    ) {
+        return ResponseEntity.status(409).body(
+                ManualRerunControlActionConflictResponse.of(
+                        exception.getExecutionKey(),
+                        exception.getFailureDisposition(),
+                        exception.getMessage()
+                )
+        );
     }
 
     @GetMapping("/{executionKey}")

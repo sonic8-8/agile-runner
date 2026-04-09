@@ -16,6 +16,8 @@ import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
 import com.agilerunner.domain.executioncontrol.GitHubWriteSkipReason;
 import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.domain.exception.FailureDisposition;
+import com.agilerunner.domain.review.ManualRerunControlAction;
+import com.agilerunner.domain.review.ManualRerunControlActionAudit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -356,6 +358,44 @@ class AgentRuntimeRepositoryTest {
             assertThat(storedWriteSkipReason).isEqualTo("DRY_RUN");
             assertThat(storedSelectionApplied).isTrue();
             assertThat(storedSelectedPathsSummary).isEqualTo("src/Main.java|src/Test.java");
+        });
+    }
+
+    @DisplayName("manual rerun control action audit를 저장하고 적용 여부를 다시 조회할 수 있다.")
+    @Test
+    void appendManualRerunControlActionAudit_andHasApplied() {
+        contextRunner.run(context -> {
+            // given
+            AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
+            NamedParameterJdbcTemplate jdbcTemplate = context.getBean(NamedParameterJdbcTemplate.class);
+            ManualRerunControlActionAudit audit = ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:ack-1",
+                    ManualRerunControlAction.ACKNOWLEDGE,
+                    "운영자 확인 완료",
+                    LocalDateTime.of(2026, 4, 10, 11, 0)
+            );
+
+            // when
+            repository.appendManualRerunControlActionAudit(audit);
+            boolean applied = repository.hasAppliedManualRerunControlAction(
+                    "EXECUTION:MANUAL_RERUN:ack-1",
+                    ManualRerunControlAction.ACKNOWLEDGE
+            );
+            String storedAction = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT action FROM MANUAL_RERUN_CONTROL_ACTION_AUDIT WHERE execution_key = 'EXECUTION:MANUAL_RERUN:ack-1'",
+                            String.class
+                    );
+            String storedStatus = jdbcTemplate.getJdbcTemplate()
+                    .queryForObject(
+                            "SELECT action_status FROM MANUAL_RERUN_CONTROL_ACTION_AUDIT WHERE execution_key = 'EXECUTION:MANUAL_RERUN:ack-1'",
+                            String.class
+                    );
+
+            // then
+            assertThat(applied).isTrue();
+            assertThat(storedAction).isEqualTo("ACKNOWLEDGE");
+            assertThat(storedStatus).isEqualTo("APPLIED");
         });
     }
 

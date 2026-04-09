@@ -10,6 +10,7 @@ import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.domain.exception.FailureDisposition;
 import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
 import com.agilerunner.domain.review.ManualRerunAvailableAction;
+import com.agilerunner.domain.review.ManualRerunControlAction;
 import com.agilerunner.domain.review.RerunExecutionStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -177,6 +178,51 @@ class ManualRerunExecutionListServiceTest {
         assertThat(completed.getErrorCode()).isNull();
         assertThat(completed.getFailureDisposition()).isNull();
         assertThat(completed.getAvailableActions()).isEmpty();
+    }
+
+    @DisplayName("목록 조회 응답은 MANUAL_ACTION_REQUIRED 실행에 ACKNOWLEDGE 가능 여부를 반영한다.")
+    @Test
+    void list_mapsAcknowledgeAvailability() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        ManualRerunExecutionListService service = new ManualRerunExecutionListService(repository);
+        when(repository.findManualRerunExecutions()).thenReturn(List.of(
+                manualRerunExecution(
+                        "EXECUTION:MANUAL_RERUN:30",
+                        null,
+                        "owner/repo",
+                        30,
+                        WebhookExecutionStatus.FAILED,
+                        FailureDisposition.MANUAL_ACTION_REQUIRED,
+                        ExecutionControlMode.DRY_RUN,
+                        false
+                ),
+                manualRerunExecution(
+                        "EXECUTION:MANUAL_RERUN:31",
+                        null,
+                        "owner/repo",
+                        31,
+                        WebhookExecutionStatus.FAILED,
+                        FailureDisposition.MANUAL_ACTION_REQUIRED,
+                        ExecutionControlMode.DRY_RUN,
+                        false
+                )
+        ));
+        when(repository.hasAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:30", ManualRerunControlAction.ACKNOWLEDGE))
+                .thenReturn(false);
+        when(repository.hasAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:31", ManualRerunControlAction.ACKNOWLEDGE))
+                .thenReturn(true);
+
+        // when
+        ManualRerunExecutionListServiceResponse response = service.list(
+                ManualRerunExecutionListServiceRequest.of(null, null, null, null, null)
+        );
+
+        // then
+        assertThat(response.getExecutions()).hasSize(2);
+        assertThat(response.getExecutions().get(0).getAvailableActions())
+                .containsExactly(ManualRerunAvailableAction.ACKNOWLEDGE);
+        assertThat(response.getExecutions().get(1).getAvailableActions()).isEmpty();
     }
 
     private WebhookExecution manualRerunExecution(String executionKey,

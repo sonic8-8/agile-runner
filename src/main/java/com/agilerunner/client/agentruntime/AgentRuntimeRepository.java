@@ -15,6 +15,9 @@ import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
 import com.agilerunner.domain.executioncontrol.GitHubWriteSkipReason;
 import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.domain.exception.FailureDisposition;
+import com.agilerunner.domain.review.ManualRerunControlAction;
+import com.agilerunner.domain.review.ManualRerunControlActionAudit;
+import com.agilerunner.domain.review.ManualRerunControlActionStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -201,6 +204,28 @@ public class AgentRuntimeRepository {
             WHERE task_key = :taskKey
             ORDER BY id ASC
             """;
+    private static final String INSERT_MANUAL_RERUN_CONTROL_ACTION_AUDIT_SQL = """
+            INSERT INTO MANUAL_RERUN_CONTROL_ACTION_AUDIT (
+                execution_key,
+                action,
+                action_status,
+                note,
+                applied_at
+            ) VALUES (
+                :executionKey,
+                :action,
+                :actionStatus,
+                :note,
+                :appliedAt
+            )
+            """;
+    private static final String COUNT_APPLIED_MANUAL_RERUN_CONTROL_ACTION_SQL = """
+            SELECT COUNT(*)
+            FROM MANUAL_RERUN_CONTROL_ACTION_AUDIT
+            WHERE execution_key = :executionKey
+              AND action = :action
+              AND action_status = :actionStatus
+            """;
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
@@ -275,6 +300,26 @@ public class AgentRuntimeRepository {
 
     public void appendExecutionLog(AgentExecutionLog executionLog) {
         namedParameterJdbcTemplate.update(INSERT_AGENT_EXECUTION_LOG_SQL, toExecutionLogParameters(executionLog));
+    }
+
+    public void appendManualRerunControlActionAudit(ManualRerunControlActionAudit audit) {
+        namedParameterJdbcTemplate.update(
+                INSERT_MANUAL_RERUN_CONTROL_ACTION_AUDIT_SQL,
+                toManualRerunControlActionAuditParameters(audit)
+        );
+    }
+
+    public boolean hasAppliedManualRerunControlAction(String executionKey, ManualRerunControlAction action) {
+        Integer count = namedParameterJdbcTemplate.queryForObject(
+                COUNT_APPLIED_MANUAL_RERUN_CONTROL_ACTION_SQL,
+                new MapSqlParameterSource()
+                        .addValue("executionKey", executionKey)
+                        .addValue("action", action.name())
+                        .addValue("actionStatus", ManualRerunControlActionStatus.APPLIED.name()),
+                Integer.class
+        );
+
+        return count != null && count > 0;
     }
 
     public List<AgentExecutionLog> findExecutionLogs(String taskKey) {
@@ -354,6 +399,15 @@ public class AgentRuntimeRepository {
                 .addValue("payloadJson", executionLog.getPayloadJson())
                 .addValue("startedAt", executionLog.getStartedAt())
                 .addValue("endedAt", executionLog.getEndedAt());
+    }
+
+    private MapSqlParameterSource toManualRerunControlActionAuditParameters(ManualRerunControlActionAudit audit) {
+        return new MapSqlParameterSource()
+                .addValue("executionKey", audit.getExecutionKey())
+                .addValue("action", audit.getAction().name())
+                .addValue("actionStatus", audit.getActionStatus().name())
+                .addValue("note", audit.getNote())
+                .addValue("appliedAt", audit.getAppliedAt());
     }
 
     private TaskRuntimeState mapTaskRuntimeState(ResultSet resultSet, int rowNum) throws SQLException {

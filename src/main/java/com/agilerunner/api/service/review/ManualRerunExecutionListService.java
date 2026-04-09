@@ -6,8 +6,8 @@ import com.agilerunner.client.agentruntime.AgentRuntimeRepository;
 import com.agilerunner.domain.agentruntime.WebhookExecution;
 import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
 import com.agilerunner.domain.review.ManualRerunAvailableAction;
-import com.agilerunner.domain.review.ManualRerunRetryEligibility;
-import com.agilerunner.domain.review.ManualRerunRetryEligibilityPolicy;
+import com.agilerunner.domain.review.ManualRerunControlAction;
+import com.agilerunner.domain.review.ManualRerunAvailableActionPolicy;
 import com.agilerunner.domain.review.RerunExecutionStatus;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
@@ -17,7 +17,7 @@ import java.util.List;
 @Service
 public class ManualRerunExecutionListService {
     private final AgentRuntimeRepository agentRuntimeRepository;
-    private final ManualRerunRetryEligibilityPolicy retryEligibilityPolicy = new ManualRerunRetryEligibilityPolicy();
+    private final ManualRerunAvailableActionPolicy availableActionPolicy = new ManualRerunAvailableActionPolicy();
 
     public ManualRerunExecutionListService(@Nullable AgentRuntimeRepository agentRuntimeRepository) {
         this.agentRuntimeRepository = agentRuntimeRepository;
@@ -104,11 +104,14 @@ public class ManualRerunExecutionListService {
     }
 
     private List<ManualRerunAvailableAction> resolveAvailableActions(WebhookExecution execution) {
-        ManualRerunRetryEligibility eligibility = retryEligibilityPolicy.evaluate(execution);
-        if (!eligibility.isRetryAllowed()) {
+        if (agentRuntimeRepository == null) {
             return List.of();
         }
 
-        return List.of(ManualRerunAvailableAction.RETRY);
+        boolean acknowledgeApplied = agentRuntimeRepository.hasAppliedManualRerunControlAction(
+                execution.getExecutionKey(),
+                ManualRerunControlAction.ACKNOWLEDGE
+        );
+        return availableActionPolicy.resolve(execution, acknowledgeApplied);
     }
 }
