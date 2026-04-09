@@ -82,4 +82,28 @@ class ManualRerunQueryServiceTest {
                 .isInstanceOf(ManualRerunQueryNotFoundException.class)
                 .hasMessage("재실행 결과를 찾을 수 없습니다.");
     }
+
+    @DisplayName("manual rerun이 아닌 execution key는 조회 대상이 아니므로 not found 예외를 던진다.")
+    @Test
+    void find_throwsNotFoundWhenExecutionIsNotManualRerun() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        ManualRerunQueryService service = new ManualRerunQueryService(repository);
+        WebhookExecution webhookExecution = WebhookExecution.start(
+                "EXECUTION:delivery-99",
+                "PR_REVIEW:owner/repo#12",
+                "delivery-99",
+                "owner/repo",
+                12,
+                "PULL_REQUEST",
+                "opened",
+                LocalDateTime.of(2026, 4, 9, 12, 30)
+        ).withExecutionStartType(ExecutionStartType.WEBHOOK);
+        when(repository.findWebhookExecution("EXECUTION:delivery-99")).thenReturn(Optional.of(webhookExecution));
+
+        // when & then
+        assertThatThrownBy(() -> service.find(ManualRerunQueryServiceRequest.of("EXECUTION:delivery-99")))
+                .isInstanceOf(ManualRerunQueryNotFoundException.class)
+                .hasMessage("재실행 결과를 찾을 수 없습니다.");
+    }
 }

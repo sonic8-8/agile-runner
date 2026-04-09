@@ -1,0 +1,35 @@
+{
+  "spec_id": "SPEC-0010",
+  "spec_name": "재실행 재시도 정책 정교화",
+  "spec_version": 1,
+  "criteria": [
+    {
+      "key": "manual-rerun-retry-contract-preserved",
+      "target": "재실행 재시도 기능 도입 중 기존 rerun, query, webhook 계약 유지",
+      "test_view": "컨트롤러/서비스 통합 관점",
+      "pass_condition": "재시도 기능을 추가한 이후에도 `POST /reviews/rerun`, `GET /reviews/rerun/{executionKey}`, `/webhook/github`의 기존 계약이 유지되고, failure disposition 의미도 기존과 같은 방식으로 읽힌다.",
+      "fail_condition": "재시도 기능 도입 때문에 기존 rerun, query, webhook 계약이 흔들리거나, failure disposition 의미가 다르게 해석된다."
+    },
+    {
+      "key": "manual-rerun-retry-eligibility-defined",
+      "target": "재실행 재시도 허용/거부 정책 정의",
+      "test_view": "정책/서비스 관점",
+      "pass_condition": "source execution이 `MANUAL_RERUN + FAILED + RETRYABLE`일 때만 재시도가 허용되고, `FAILED + MANUAL_ACTION_REQUIRED`, `FAILED + NON_RETRYABLE`, `SUCCEEDED` 조합은 재시도 불가로 일관되게 해석된다.",
+      "fail_condition": "재시도 허용/거부 기준이 모호하거나, 같은 source execution 상태와 `failureDisposition` 조합이 경계마다 다르게 해석된다."
+    },
+    {
+      "key": "manual-rerun-retry-request-reuses-source-context",
+      "target": "재실행 재시도 요청의 source execution 컨텍스트 재사용",
+      "test_view": "서비스/컨트롤러 black-box 관점",
+      "pass_condition": "허용된 retry 요청은 source execution의 `repositoryName`, `pullRequestNumber`를 재사용하고, 현재 입력의 `installationId`, `executionControlMode`, `selectedPaths`를 사용해 새 manual rerun execution을 시작한다. `selectedPaths`가 비어 있으면 전체 실행으로 해석된다. 존재하지 않는 source execution은 `404 Not Found + executionKey + message`, 허용되지 않는 source execution은 `409 Conflict + executionKey + failureDisposition + message`로 일관되게 반환된다. retry 응답은 최소한 `executionKey`, `retrySourceExecutionKey`, `executionControlMode`, `writePerformed`, `executionStatus`, `errorCode`, `failureDisposition`를 같은 의미로 반환한다.",
+      "fail_condition": "retry 요청이 source execution의 컨텍스트를 재사용하지 못하거나, 새 rerun execution을 시작하지 못하거나, `selectedPaths` 공백 의미가 모호하거나, `404/409` 정책 또는 retry 응답 필드 의미가 기존 rerun 응답과 충돌한다."
+    },
+    {
+      "key": "manual-rerun-retry-response-links-source-execution",
+      "target": "재실행 재시도 응답과 runtime evidence의 source execution 관계 유지",
+      "test_view": "저장소/H2 실제 검증 관점",
+      "pass_condition": "로컬 프로필 실제 앱 기동 후 대표 retryable source execution 1건을 준비하고 같은 `executionKey`로 retry 요청을 수행했을 때, retry 응답과 runtime evidence에 새 `executionKey`, `retrySourceExecutionKey`, `executionStatus`, `errorCode`, `failureDisposition`, `writePerformed`가 같은 의미로 남아 있다. representative 검증은 `source execution 준비 -> retry 요청 -> 앱 종료 -> H2 조회` 순서로 진행된다.",
+      "fail_condition": "대표 retry 요청의 응답과 runtime evidence에서 source/new execution 관계가 다르거나, 필요한 failure/write/source relation 정보가 빠져 있다. 또는 representative 검증이 기준 순서와 다른 방식으로 진행됐는데 근거가 남지 않는다."
+    }
+  ]
+}
