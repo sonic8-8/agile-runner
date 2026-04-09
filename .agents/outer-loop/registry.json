@@ -2,9 +2,9 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0010",
-    "task_id": "TASK-0003",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0010/TASK-0003-retry-request-path.md",
-    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0009/SPEC-0009-summary.md"
+    "task_id": "TASK-0004",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0010/TASK-0004-retry-response-runtime-relation.md",
+    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0010/SPEC-0010-summary.md"
   },
   "proposals": [
     {
@@ -54,6 +54,10 @@
     {
       "proposal_id": "WORKFLOW-PROP-0010",
       "path": ".agents/outer-loop/proposals/WORKFLOW/WORKFLOW-PROP-0010-from-SPEC-0009-TASK-0003.md"
+    },
+    {
+      "proposal_id": "WORKFLOW-PROP-0011",
+      "path": ".agents/outer-loop/proposals/WORKFLOW/WORKFLOW-PROP-0011-from-SPEC-0010-TASK-0004.md"
     }
   ]
 }

@@ -52,6 +52,7 @@
 - 실제 앱/H2 대표 검증에 사용하는 `delivery_id`는 이전 검증과 겹치지 않는 새 값으로 정하고, 기존 local H2 row와 충돌하지 않게 관리한다.
 - 실제 앱/H2 대표 검증이 실패하면 schema 또는 runtime failure로 단정하기 전에 `delivery_id` 재사용 충돌 여부를 먼저 확인한다.
 - local H2 file DB를 외부에서 조회하는 실제 앱/H2 대표 검증은 기본적으로 `앱 기동 -> 새로운 delivery_id로 대표 검증 요청 1건 실행 -> HTTP 결과 확인 -> 앱 종료 -> H2 CLI 또는 SQL 조회 도구로 evidence 확인` 순서로 진행한다.
+- 실제 앱/H2 대표 검증이 synthetic source execution 또는 synthetic runtime evidence seed를 먼저 필요로 하고, 현재 task가 `agent-runtime` 물리 스키마를 바꾸면 seed 전에 현재 `schema.sql`을 local H2 file DB에 먼저 적용할지 우선 검토한다.
 - 애플리케이션 실행 중 H2 조회가 실패하면 schema 또는 runtime failure로 바로 단정하지 말고, 먼저 H2 file lock 여부를 확인한다.
 - 다른 순서로 검증하면 그 이유를 retrospective에 남긴다.
 - 실제 애플리케이션 검증이 불가하면 사유와 남은 위험을 retrospective에 남긴다.
