@@ -2,9 +2,9 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0008",
-    "task_id": "TASK-0003",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0008/TASK-0003-rerun-failure-state-response.md",
-    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0007/SPEC-0007-summary.md"
+    "task_id": "TASK-0004",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0008/TASK-0004-rerun-response-runtime-evidence.md",
+    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0008/SPEC-0008-summary.md"
   },
   "proposals": [
     {
