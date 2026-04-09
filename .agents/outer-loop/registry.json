@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0010",
-    "task_id": "TASK-0002",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0010/TASK-0002-retry-eligibility-policy.md",
+    "task_id": "TASK-0003",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0010/TASK-0003-retry-request-path.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0009/SPEC-0009-summary.md"
   },
   "proposals": [

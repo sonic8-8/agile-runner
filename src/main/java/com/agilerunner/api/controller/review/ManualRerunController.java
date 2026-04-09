@@ -1,15 +1,23 @@
 package com.agilerunner.api.controller.review;
 
 import com.agilerunner.api.controller.review.request.ManualRerunRequest;
+import com.agilerunner.api.controller.review.request.ManualRerunRetryRequest;
 import com.agilerunner.api.controller.review.response.ManualRerunQueryNotFoundResponse;
 import com.agilerunner.api.controller.review.response.ManualRerunQueryResponse;
 import com.agilerunner.api.controller.review.response.ManualRerunResponse;
+import com.agilerunner.api.controller.review.response.ManualRerunRetryConflictResponse;
+import com.agilerunner.api.controller.review.response.ManualRerunRetryNotFoundResponse;
+import com.agilerunner.api.controller.review.response.ManualRerunRetryResponse;
 import com.agilerunner.api.service.review.ManualRerunQueryService;
 import com.agilerunner.api.service.review.ManualRerunService;
+import com.agilerunner.api.service.review.ManualRerunRetryService;
 import com.agilerunner.api.service.review.request.ManualRerunQueryServiceRequest;
 import com.agilerunner.api.service.review.response.ManualRerunQueryServiceResponse;
 import com.agilerunner.api.service.review.response.ManualRerunServiceResponse;
+import com.agilerunner.api.service.review.response.ManualRerunRetryServiceResponse;
 import com.agilerunner.domain.exception.ManualRerunQueryNotFoundException;
+import com.agilerunner.domain.exception.ManualRerunRetryConflictException;
+import com.agilerunner.domain.exception.ManualRerunRetryNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -27,6 +35,7 @@ public class ManualRerunController {
 
     private final ManualRerunService manualRerunService;
     private final ManualRerunQueryService manualRerunQueryService;
+    private final ManualRerunRetryService manualRerunRetryService;
 
     @PostMapping
     public ResponseEntity<ManualRerunResponse> rerun(@RequestBody ManualRerunRequest request) {
@@ -42,12 +51,41 @@ public class ManualRerunController {
         return ResponseEntity.ok(ManualRerunQueryResponse.from(response));
     }
 
+    @PostMapping("/{executionKey}/retry")
+    public ResponseEntity<ManualRerunRetryResponse> retry(@PathVariable String executionKey,
+                                                          @RequestBody ManualRerunRetryRequest request) {
+        ManualRerunRetryServiceResponse response = manualRerunRetryService.retry(request.toServiceRequest(executionKey));
+        return ResponseEntity.ok(ManualRerunRetryResponse.from(response));
+    }
+
     @ExceptionHandler(ManualRerunQueryNotFoundException.class)
     public ResponseEntity<ManualRerunQueryNotFoundResponse> handleManualRerunQueryNotFound(
             ManualRerunQueryNotFoundException exception
     ) {
         return ResponseEntity.status(404).body(
                 ManualRerunQueryNotFoundResponse.of(exception.getExecutionKey(), exception.getMessage())
+        );
+    }
+
+    @ExceptionHandler(ManualRerunRetryNotFoundException.class)
+    public ResponseEntity<ManualRerunRetryNotFoundResponse> handleManualRerunRetryNotFound(
+            ManualRerunRetryNotFoundException exception
+    ) {
+        return ResponseEntity.status(404).body(
+                ManualRerunRetryNotFoundResponse.of(exception.getExecutionKey(), exception.getMessage())
+        );
+    }
+
+    @ExceptionHandler(ManualRerunRetryConflictException.class)
+    public ResponseEntity<ManualRerunRetryConflictResponse> handleManualRerunRetryConflict(
+            ManualRerunRetryConflictException exception
+    ) {
+        return ResponseEntity.status(409).body(
+                ManualRerunRetryConflictResponse.of(
+                        exception.getExecutionKey(),
+                        exception.getFailureDisposition(),
+                        exception.getMessage()
+                )
         );
     }
 }

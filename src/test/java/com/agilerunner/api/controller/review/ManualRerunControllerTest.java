@@ -2,13 +2,18 @@ package com.agilerunner.api.controller.review;
 
 import com.agilerunner.api.service.review.ManualRerunService;
 import com.agilerunner.api.service.review.ManualRerunQueryService;
+import com.agilerunner.api.service.review.ManualRerunRetryService;
 import com.agilerunner.api.service.review.request.ManualRerunServiceRequest;
 import com.agilerunner.api.service.review.request.ManualRerunQueryServiceRequest;
+import com.agilerunner.api.service.review.request.ManualRerunRetryServiceRequest;
 import com.agilerunner.api.service.review.response.ManualRerunServiceResponse;
 import com.agilerunner.api.service.review.response.ManualRerunQueryServiceResponse;
+import com.agilerunner.api.service.review.response.ManualRerunRetryServiceResponse;
 import com.agilerunner.domain.exception.ManualRerunQueryNotFoundException;
 import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.domain.exception.FailureDisposition;
+import com.agilerunner.domain.exception.ManualRerunRetryConflictException;
+import com.agilerunner.domain.exception.ManualRerunRetryNotFoundException;
 import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
 import com.agilerunner.domain.review.RerunExecutionStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -48,6 +53,9 @@ class ManualRerunControllerTest {
 
     @MockitoBean
     private ManualRerunQueryService manualRerunQueryService;
+
+    @MockitoBean
+    private ManualRerunRetryService manualRerunRetryService;
 
     @DisplayName("수동 재실행 요청은 선택 파일 경로를 service request로 전달하고 확장된 응답 계약을 유지한다.")
     @Test
@@ -170,5 +178,97 @@ class ManualRerunControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:missing"))
                 .andExpect(jsonPath("$.message").value("재실행 결과를 찾을 수 없습니다."));
+    }
+
+    @DisplayName("재실행 재시도 요청은 source execution과 새 execution 정보를 함께 반환한다.")
+    @Test
+    void retry_returnsSuccessResponseContract() throws Exception {
+        // given
+        ManualRerunRetryServiceResponse response = ManualRerunRetryServiceResponse.of(
+                "EXECUTION:MANUAL_RERUN:retry-1",
+                "EXECUTION:MANUAL_RERUN:source-1",
+                ExecutionControlMode.DRY_RUN,
+                false,
+                RerunExecutionStatus.SUCCEEDED,
+                null,
+                null
+        );
+        when(manualRerunRetryService.retry(any(ManualRerunRetryServiceRequest.class))).thenReturn(response);
+
+        // when & then
+        mockMvc.perform(post("/reviews/rerun/{executionKey}/retry", "EXECUTION:MANUAL_RERUN:source-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "installationId", 200L,
+                                "executionControlMode", "DRY_RUN",
+                                "selectedPaths", List.of("src/main/App.java", "src/test/AppTest.java")
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:retry-1"))
+                .andExpect(jsonPath("$.retrySourceExecutionKey").value("EXECUTION:MANUAL_RERUN:source-1"))
+                .andExpect(jsonPath("$.executionControlMode").value("DRY_RUN"))
+                .andExpect(jsonPath("$.writePerformed").value(false))
+                .andExpect(jsonPath("$.executionStatus").value("SUCCEEDED"))
+                .andExpect(jsonPath("$.errorCode").value(nullValue()))
+                .andExpect(jsonPath("$.failureDisposition").value(nullValue()));
+
+        ArgumentCaptor<ManualRerunRetryServiceRequest> requestCaptor =
+                ArgumentCaptor.forClass(ManualRerunRetryServiceRequest.class);
+        verify(manualRerunRetryService).retry(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().getSourceExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:source-1");
+        assertThat(requestCaptor.getValue().getInstallationId()).isEqualTo(200L);
+        assertThat(requestCaptor.getValue().getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
+        assertThat(requestCaptor.getValue().getSelectedPaths()).containsExactly(
+                "src/main/App.java",
+                "src/test/AppTest.java"
+        );
+    }
+
+    @DisplayName("존재하지 않는 source execution 재시도 요청은 404와 executionKey, message를 반환한다.")
+    @Test
+    void retry_returnsNotFoundPolicy() throws Exception {
+        // given
+        when(manualRerunRetryService.retry(any(ManualRerunRetryServiceRequest.class)))
+                .thenThrow(new ManualRerunRetryNotFoundException(
+                        "EXECUTION:MANUAL_RERUN:missing",
+                        "재시도 대상 실행을 찾을 수 없습니다."
+                ));
+
+        // when & then
+        mockMvc.perform(post("/reviews/rerun/{executionKey}/retry", "EXECUTION:MANUAL_RERUN:missing")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "installationId", 200L,
+                                "executionControlMode", "DRY_RUN",
+                                "selectedPaths", List.of()
+                        ))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:missing"))
+                .andExpect(jsonPath("$.message").value("재시도 대상 실행을 찾을 수 없습니다."));
+    }
+
+    @DisplayName("재시도 불가 source execution은 409와 failureDisposition, message를 반환한다.")
+    @Test
+    void retry_returnsConflictPolicy() throws Exception {
+        // given
+        when(manualRerunRetryService.retry(any(ManualRerunRetryServiceRequest.class)))
+                .thenThrow(new ManualRerunRetryConflictException(
+                        "EXECUTION:MANUAL_RERUN:source-2",
+                        FailureDisposition.MANUAL_ACTION_REQUIRED,
+                        "수동 조치가 필요한 실행은 바로 재시도할 수 없습니다."
+                ));
+
+        // when & then
+        mockMvc.perform(post("/reviews/rerun/{executionKey}/retry", "EXECUTION:MANUAL_RERUN:source-2")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "installationId", 200L,
+                                "executionControlMode", "NORMAL",
+                                "selectedPaths", List.of()
+                        ))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:source-2"))
+                .andExpect(jsonPath("$.failureDisposition").value("MANUAL_ACTION_REQUIRED"))
+                .andExpect(jsonPath("$.message").value("수동 조치가 필요한 실행은 바로 재시도할 수 없습니다."));
     }
 }
