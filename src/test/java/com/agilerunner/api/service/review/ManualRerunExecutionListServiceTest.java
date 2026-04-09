@@ -9,6 +9,8 @@ import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
 import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.domain.exception.FailureDisposition;
 import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
+import com.agilerunner.domain.review.ManualRerunAvailableAction;
+import com.agilerunner.domain.review.RerunExecutionStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -28,9 +30,36 @@ class ManualRerunExecutionListServiceTest {
         AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
         ManualRerunExecutionListService service = new ManualRerunExecutionListService(repository);
         when(repository.findManualRerunExecutions()).thenReturn(List.of(
-                manualRerunExecution("EXECUTION:MANUAL_RERUN:1", "owner/repo", 12, WebhookExecutionStatus.FAILED, FailureDisposition.RETRYABLE),
-                manualRerunExecution("EXECUTION:MANUAL_RERUN:2", "owner/repo", 12, WebhookExecutionStatus.FAILED, FailureDisposition.MANUAL_ACTION_REQUIRED),
-                manualRerunExecution("EXECUTION:MANUAL_RERUN:3", "other/repo", 99, WebhookExecutionStatus.SUCCEEDED, null)
+                manualRerunExecution(
+                        "EXECUTION:MANUAL_RERUN:1",
+                        null,
+                        "owner/repo",
+                        12,
+                        WebhookExecutionStatus.FAILED,
+                        FailureDisposition.RETRYABLE,
+                        ExecutionControlMode.DRY_RUN,
+                        false
+                ),
+                manualRerunExecution(
+                        "EXECUTION:MANUAL_RERUN:2",
+                        null,
+                        "owner/repo",
+                        12,
+                        WebhookExecutionStatus.FAILED,
+                        FailureDisposition.MANUAL_ACTION_REQUIRED,
+                        ExecutionControlMode.DRY_RUN,
+                        false
+                ),
+                manualRerunExecution(
+                        "EXECUTION:MANUAL_RERUN:3",
+                        null,
+                        "other/repo",
+                        99,
+                        WebhookExecutionStatus.SUCCEEDED,
+                        null,
+                        ExecutionControlMode.NORMAL,
+                        true
+                )
         ));
 
         // when
@@ -57,8 +86,26 @@ class ManualRerunExecutionListServiceTest {
         AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
         ManualRerunExecutionListService service = new ManualRerunExecutionListService(repository);
         when(repository.findManualRerunExecutions()).thenReturn(List.of(
-                manualRerunExecution("EXECUTION:MANUAL_RERUN:10", "owner/repo", 10, WebhookExecutionStatus.FAILED, FailureDisposition.RETRYABLE),
-                manualRerunExecution("EXECUTION:MANUAL_RERUN:11", "owner/repo", 11, WebhookExecutionStatus.SUCCEEDED, null)
+                manualRerunExecution(
+                        "EXECUTION:MANUAL_RERUN:10",
+                        null,
+                        "owner/repo",
+                        10,
+                        WebhookExecutionStatus.FAILED,
+                        FailureDisposition.RETRYABLE,
+                        ExecutionControlMode.DRY_RUN,
+                        false
+                ),
+                manualRerunExecution(
+                        "EXECUTION:MANUAL_RERUN:11",
+                        null,
+                        "owner/repo",
+                        11,
+                        WebhookExecutionStatus.SUCCEEDED,
+                        null,
+                        ExecutionControlMode.NORMAL,
+                        true
+                )
         ));
 
         // when
@@ -72,11 +119,74 @@ class ManualRerunExecutionListServiceTest {
                 .containsExactly("EXECUTION:MANUAL_RERUN:10", "EXECUTION:MANUAL_RERUN:11");
     }
 
+    @DisplayName("목록 조회 응답 row는 runtime 상태 필드와 RETRY 가능 여부를 함께 반환한다.")
+    @Test
+    void list_mapsRuntimeFieldsAndAvailableActions() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        ManualRerunExecutionListService service = new ManualRerunExecutionListService(repository);
+        when(repository.findManualRerunExecutions()).thenReturn(List.of(
+                manualRerunExecution(
+                        "EXECUTION:MANUAL_RERUN:20",
+                        "EXECUTION:MANUAL_RERUN:source-20",
+                        "owner/repo",
+                        20,
+                        WebhookExecutionStatus.FAILED,
+                        FailureDisposition.RETRYABLE,
+                        ExecutionControlMode.DRY_RUN,
+                        false
+                ),
+                manualRerunExecution(
+                        "EXECUTION:MANUAL_RERUN:21",
+                        null,
+                        "owner/repo",
+                        21,
+                        WebhookExecutionStatus.SUCCEEDED,
+                        null,
+                        ExecutionControlMode.NORMAL,
+                        true
+                )
+        ));
+
+        // when
+        ManualRerunExecutionListServiceResponse response = service.list(
+                ManualRerunExecutionListServiceRequest.of(null, null, null, null, null)
+        );
+
+        // then
+        assertThat(response.getExecutions()).hasSize(2);
+
+        ManualRerunExecutionListServiceResponse.ExecutionSummary retryable = response.getExecutions().get(0);
+        assertThat(retryable.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:20");
+        assertThat(retryable.getRetrySourceExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:source-20");
+        assertThat(retryable.getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+        assertThat(retryable.getExecutionStatus()).isEqualTo(RerunExecutionStatus.FAILED);
+        assertThat(retryable.getExecutionControlMode()).isEqualTo(ExecutionControlMode.DRY_RUN);
+        assertThat(retryable.isWritePerformed()).isFalse();
+        assertThat(retryable.getErrorCode()).isEqualTo(ErrorCode.GITHUB_COMMENT_POST_FAILED);
+        assertThat(retryable.getFailureDisposition()).isEqualTo(FailureDisposition.RETRYABLE);
+        assertThat(retryable.getAvailableActions()).containsExactly(ManualRerunAvailableAction.RETRY);
+
+        ManualRerunExecutionListServiceResponse.ExecutionSummary completed = response.getExecutions().get(1);
+        assertThat(completed.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:21");
+        assertThat(completed.getRetrySourceExecutionKey()).isNull();
+        assertThat(completed.getExecutionStartType()).isEqualTo(ExecutionStartType.MANUAL_RERUN);
+        assertThat(completed.getExecutionStatus()).isEqualTo(RerunExecutionStatus.SUCCEEDED);
+        assertThat(completed.getExecutionControlMode()).isEqualTo(ExecutionControlMode.NORMAL);
+        assertThat(completed.isWritePerformed()).isTrue();
+        assertThat(completed.getErrorCode()).isNull();
+        assertThat(completed.getFailureDisposition()).isNull();
+        assertThat(completed.getAvailableActions()).isEmpty();
+    }
+
     private WebhookExecution manualRerunExecution(String executionKey,
+                                                  String retrySourceExecutionKey,
                                                   String repositoryName,
                                                   int pullRequestNumber,
                                                   WebhookExecutionStatus status,
-                                                  FailureDisposition failureDisposition) {
+                                                  FailureDisposition failureDisposition,
+                                                  ExecutionControlMode executionControlMode,
+                                                  boolean writePerformed) {
         return WebhookExecution.start(
                 executionKey,
                 "PR_REVIEW:" + repositoryName + "#" + pullRequestNumber,
@@ -86,11 +196,13 @@ class ManualRerunExecutionListServiceTest {
                 "PULL_REQUEST",
                 "manual_rerun",
                 LocalDateTime.of(2026, 4, 9, 18, 0)
+        ).withRetrySourceExecutionKey(
+                retrySourceExecutionKey
         ).withExecutionStartType(
                 ExecutionStartType.MANUAL_RERUN
         ).withExecutionControl(
-                ExecutionControlMode.DRY_RUN,
-                false,
+                executionControlMode,
+                writePerformed,
                 null
         ).complete(
                 status,

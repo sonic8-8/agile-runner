@@ -4,6 +4,11 @@ import com.agilerunner.api.service.review.request.ManualRerunExecutionListServic
 import com.agilerunner.api.service.review.response.ManualRerunExecutionListServiceResponse;
 import com.agilerunner.client.agentruntime.AgentRuntimeRepository;
 import com.agilerunner.domain.agentruntime.WebhookExecution;
+import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
+import com.agilerunner.domain.review.ManualRerunAvailableAction;
+import com.agilerunner.domain.review.ManualRerunRetryEligibility;
+import com.agilerunner.domain.review.ManualRerunRetryEligibilityPolicy;
+import com.agilerunner.domain.review.RerunExecutionStatus;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 
@@ -12,6 +17,7 @@ import java.util.List;
 @Service
 public class ManualRerunExecutionListService {
     private final AgentRuntimeRepository agentRuntimeRepository;
+    private final ManualRerunRetryEligibilityPolicy retryEligibilityPolicy = new ManualRerunRetryEligibilityPolicy();
 
     public ManualRerunExecutionListService(@Nullable AgentRuntimeRepository agentRuntimeRepository) {
         this.agentRuntimeRepository = agentRuntimeRepository;
@@ -29,9 +35,7 @@ public class ManualRerunExecutionListService {
                         .filter(execution -> matchesExecutionStartType(request, execution))
                         .filter(execution -> matchesExecutionStatus(request, execution))
                         .filter(execution -> matchesFailureDisposition(request, execution))
-                        .map(execution -> ManualRerunExecutionListServiceResponse.ExecutionSummary.of(
-                                execution.getExecutionKey()
-                        ))
+                        .map(this::toExecutionSummary)
                         .toList();
 
         return ManualRerunExecutionListServiceResponse.of(executions);
@@ -75,5 +79,36 @@ public class ManualRerunExecutionListService {
         }
 
         return request.getFailureDisposition() == execution.getFailureDisposition();
+    }
+
+    private ManualRerunExecutionListServiceResponse.ExecutionSummary toExecutionSummary(WebhookExecution execution) {
+        return ManualRerunExecutionListServiceResponse.ExecutionSummary.of(
+                execution.getExecutionKey(),
+                execution.getRetrySourceExecutionKey(),
+                execution.getExecutionStartType(),
+                toRerunExecutionStatus(execution),
+                execution.getExecutionControlMode(),
+                Boolean.TRUE.equals(execution.getWritePerformed()),
+                execution.getErrorCode(),
+                execution.getFailureDisposition(),
+                resolveAvailableActions(execution)
+        );
+    }
+
+    private RerunExecutionStatus toRerunExecutionStatus(WebhookExecution execution) {
+        if (execution.getStatus() == WebhookExecutionStatus.FAILED) {
+            return RerunExecutionStatus.FAILED;
+        }
+
+        return RerunExecutionStatus.SUCCEEDED;
+    }
+
+    private List<ManualRerunAvailableAction> resolveAvailableActions(WebhookExecution execution) {
+        ManualRerunRetryEligibility eligibility = retryEligibilityPolicy.evaluate(execution);
+        if (!eligibility.isRetryAllowed()) {
+            return List.of();
+        }
+
+        return List.of(ManualRerunAvailableAction.RETRY);
     }
 }

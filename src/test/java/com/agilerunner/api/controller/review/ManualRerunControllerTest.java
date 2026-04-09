@@ -20,6 +20,7 @@ import com.agilerunner.domain.exception.ManualRerunRetryNotFoundException;
 import com.agilerunner.domain.agentruntime.ExecutionStartType;
 import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
 import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
+import com.agilerunner.domain.review.ManualRerunAvailableAction;
 import com.agilerunner.domain.review.RerunExecutionStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -171,14 +172,34 @@ class ManualRerunControllerTest {
         assertThat(requestCaptor.getValue().getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:2b5fe092-4365-4e94-a291-0b89e9184c9d");
     }
 
-    @DisplayName("목록 조회 요청은 필터 입력을 service request로 전달하고 기본 응답 계약을 유지한다.")
+    @DisplayName("목록 조회 요청은 응답 row 상태와 availableActions를 함께 반환한다.")
     @Test
     void listExecutions_returnsResponseContract() throws Exception {
         // given
         ManualRerunExecutionListServiceResponse response = ManualRerunExecutionListServiceResponse.of(
                 List.of(
-                        ManualRerunExecutionListServiceResponse.ExecutionSummary.of("EXECUTION:MANUAL_RERUN:100"),
-                        ManualRerunExecutionListServiceResponse.ExecutionSummary.of("EXECUTION:MANUAL_RERUN:101")
+                        ManualRerunExecutionListServiceResponse.ExecutionSummary.of(
+                                "EXECUTION:MANUAL_RERUN:100",
+                                "EXECUTION:MANUAL_RERUN:source-100",
+                                ExecutionStartType.MANUAL_RERUN,
+                                RerunExecutionStatus.FAILED,
+                                ExecutionControlMode.DRY_RUN,
+                                false,
+                                ErrorCode.GITHUB_COMMENT_POST_FAILED,
+                                FailureDisposition.RETRYABLE,
+                                List.of(ManualRerunAvailableAction.RETRY)
+                        ),
+                        ManualRerunExecutionListServiceResponse.ExecutionSummary.of(
+                                "EXECUTION:MANUAL_RERUN:101",
+                                null,
+                                ExecutionStartType.MANUAL_RERUN,
+                                RerunExecutionStatus.SUCCEEDED,
+                                ExecutionControlMode.NORMAL,
+                                true,
+                                null,
+                                null,
+                                List.of()
+                        )
                 )
         );
         when(manualRerunExecutionListService.list(any(ManualRerunExecutionListServiceRequest.class))).thenReturn(response);
@@ -192,7 +213,22 @@ class ManualRerunControllerTest {
                         .queryParam("failureDisposition", "RETRYABLE"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.executions[0].executionKey").value("EXECUTION:MANUAL_RERUN:100"))
-                .andExpect(jsonPath("$.executions[1].executionKey").value("EXECUTION:MANUAL_RERUN:101"));
+                .andExpect(jsonPath("$.executions[0].retrySourceExecutionKey").value("EXECUTION:MANUAL_RERUN:source-100"))
+                .andExpect(jsonPath("$.executions[0].executionStartType").value("MANUAL_RERUN"))
+                .andExpect(jsonPath("$.executions[0].executionStatus").value("FAILED"))
+                .andExpect(jsonPath("$.executions[0].executionControlMode").value("DRY_RUN"))
+                .andExpect(jsonPath("$.executions[0].writePerformed").value(false))
+                .andExpect(jsonPath("$.executions[0].errorCode").value("GITHUB_COMMENT_POST_FAILED"))
+                .andExpect(jsonPath("$.executions[0].failureDisposition").value("RETRYABLE"))
+                .andExpect(jsonPath("$.executions[0].availableActions[0]").value("RETRY"))
+                .andExpect(jsonPath("$.executions[1].executionKey").value("EXECUTION:MANUAL_RERUN:101"))
+                .andExpect(jsonPath("$.executions[1].retrySourceExecutionKey").value(nullValue()))
+                .andExpect(jsonPath("$.executions[1].executionStatus").value("SUCCEEDED"))
+                .andExpect(jsonPath("$.executions[1].executionControlMode").value("NORMAL"))
+                .andExpect(jsonPath("$.executions[1].writePerformed").value(true))
+                .andExpect(jsonPath("$.executions[1].errorCode").value(nullValue()))
+                .andExpect(jsonPath("$.executions[1].failureDisposition").value(nullValue()))
+                .andExpect(jsonPath("$.executions[1].availableActions").isArray());
 
         ArgumentCaptor<ManualRerunExecutionListServiceRequest> requestCaptor =
                 ArgumentCaptor.forClass(ManualRerunExecutionListServiceRequest.class);
