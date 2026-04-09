@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0009",
-    "task_id": "TASK-0001",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0009/TASK-0001-rerun-query-safety-net.md",
+    "task_id": "TASK-0002",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0009/TASK-0002-rerun-query-input-model.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0008/SPEC-0008-summary.md"
   },
   "proposals": [

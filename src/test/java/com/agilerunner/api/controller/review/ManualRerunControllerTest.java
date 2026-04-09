@@ -1,8 +1,12 @@
 package com.agilerunner.api.controller.review;
 
 import com.agilerunner.api.service.review.ManualRerunService;
+import com.agilerunner.api.service.review.ManualRerunQueryService;
 import com.agilerunner.api.service.review.request.ManualRerunServiceRequest;
+import com.agilerunner.api.service.review.request.ManualRerunQueryServiceRequest;
 import com.agilerunner.api.service.review.response.ManualRerunServiceResponse;
+import com.agilerunner.api.service.review.response.ManualRerunQueryServiceResponse;
+import com.agilerunner.domain.exception.ManualRerunQueryNotFoundException;
 import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.domain.exception.FailureDisposition;
 import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
@@ -25,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -40,6 +45,9 @@ class ManualRerunControllerTest {
 
     @MockitoBean
     private ManualRerunService manualRerunService;
+
+    @MockitoBean
+    private ManualRerunQueryService manualRerunQueryService;
 
     @DisplayName("수동 재실행 요청은 선택 파일 경로를 service request로 전달하고 확장된 응답 계약을 유지한다.")
     @Test
@@ -116,5 +124,51 @@ class ManualRerunControllerTest {
                 .andExpect(jsonPath("$.executionStatus").value("FAILED"))
                 .andExpect(jsonPath("$.errorCode").value("GITHUB_COMMENT_POST_FAILED"))
                 .andExpect(jsonPath("$.failureDisposition").value("RETRYABLE"));
+    }
+
+    @DisplayName("재실행 결과 조회 요청은 executionKey를 service request로 전달하고 최소 조회 응답 계약을 유지한다.")
+    @Test
+    void getRerunResult_returnsResponseContract() throws Exception {
+        // given
+        ManualRerunQueryServiceResponse response = ManualRerunQueryServiceResponse.of(
+                "EXECUTION:MANUAL_RERUN:2b5fe092-4365-4e94-a291-0b89e9184c9d",
+                null,
+                false,
+                null,
+                null,
+                null
+        );
+        when(manualRerunQueryService.find(any(ManualRerunQueryServiceRequest.class))).thenReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/reviews/rerun/{executionKey}", "EXECUTION:MANUAL_RERUN:2b5fe092-4365-4e94-a291-0b89e9184c9d"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:2b5fe092-4365-4e94-a291-0b89e9184c9d"))
+                .andExpect(jsonPath("$.writePerformed").value(false))
+                .andExpect(jsonPath("$.executionControlMode").value(nullValue()))
+                .andExpect(jsonPath("$.executionStatus").value(nullValue()))
+                .andExpect(jsonPath("$.errorCode").value(nullValue()))
+                .andExpect(jsonPath("$.failureDisposition").value(nullValue()));
+
+        ArgumentCaptor<ManualRerunQueryServiceRequest> requestCaptor = ArgumentCaptor.forClass(ManualRerunQueryServiceRequest.class);
+        verify(manualRerunQueryService).find(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:2b5fe092-4365-4e94-a291-0b89e9184c9d");
+    }
+
+    @DisplayName("존재하지 않는 executionKey 조회는 404와 executionKey, message를 반환한다.")
+    @Test
+    void getRerunResult_returnsNotFoundPolicy() throws Exception {
+        // given
+        when(manualRerunQueryService.find(any(ManualRerunQueryServiceRequest.class)))
+                .thenThrow(new ManualRerunQueryNotFoundException(
+                        "EXECUTION:MANUAL_RERUN:missing",
+                        "재실행 결과를 찾을 수 없습니다."
+                ));
+
+        // when & then
+        mockMvc.perform(get("/reviews/rerun/{executionKey}", "EXECUTION:MANUAL_RERUN:missing"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:missing"))
+                .andExpect(jsonPath("$.message").value("재실행 결과를 찾을 수 없습니다."));
     }
 }
