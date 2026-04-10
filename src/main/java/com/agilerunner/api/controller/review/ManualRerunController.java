@@ -4,6 +4,7 @@ import com.agilerunner.api.controller.review.request.ManualRerunRequest;
 import com.agilerunner.api.controller.review.request.ManualRerunExecutionListRequest;
 import com.agilerunner.api.controller.review.request.ManualRerunControlActionRequest;
 import com.agilerunner.api.controller.review.request.ManualRerunRetryRequest;
+import com.agilerunner.api.controller.review.response.ManualRerunControlActionHistoryResponse;
 import com.agilerunner.api.controller.review.response.ManualRerunControlActionResponse;
 import com.agilerunner.api.controller.review.response.ManualRerunControlActionConflictResponse;
 import com.agilerunner.api.controller.review.response.ManualRerunControlActionNotFoundResponse;
@@ -15,11 +16,14 @@ import com.agilerunner.api.controller.review.response.ManualRerunRetryConflictRe
 import com.agilerunner.api.controller.review.response.ManualRerunRetryNotFoundResponse;
 import com.agilerunner.api.controller.review.response.ManualRerunRetryResponse;
 import com.agilerunner.api.service.review.ManualRerunExecutionListService;
+import com.agilerunner.api.service.review.ManualRerunControlActionHistoryService;
 import com.agilerunner.api.service.review.ManualRerunControlActionService;
 import com.agilerunner.api.service.review.ManualRerunQueryService;
 import com.agilerunner.api.service.review.ManualRerunService;
 import com.agilerunner.api.service.review.ManualRerunRetryService;
+import com.agilerunner.api.service.review.request.ManualRerunControlActionHistoryServiceRequest;
 import com.agilerunner.api.service.review.response.ManualRerunControlActionServiceResponse;
+import com.agilerunner.api.service.review.response.ManualRerunControlActionHistoryServiceResponse;
 import com.agilerunner.api.service.review.response.ManualRerunExecutionListServiceResponse;
 import com.agilerunner.api.service.review.request.ManualRerunQueryServiceRequest;
 import com.agilerunner.api.service.review.response.ManualRerunQueryServiceResponse;
@@ -47,6 +51,7 @@ public class ManualRerunController {
 
     private final ManualRerunService manualRerunService;
     private final ManualRerunExecutionListService manualRerunExecutionListService;
+    private final ManualRerunControlActionHistoryService manualRerunControlActionHistoryService;
     private final ManualRerunControlActionService manualRerunControlActionService;
     private final ManualRerunQueryService manualRerunQueryService;
     private final ManualRerunRetryService manualRerunRetryService;
@@ -61,6 +66,14 @@ public class ManualRerunController {
     public ResponseEntity<ManualRerunExecutionListResponse> listExecutions(ManualRerunExecutionListRequest request) {
         ManualRerunExecutionListServiceResponse response = manualRerunExecutionListService.list(request.toServiceRequest());
         return ResponseEntity.ok(ManualRerunExecutionListResponse.from(response));
+    }
+
+    @GetMapping("/{executionKey}/actions/history")
+    public ResponseEntity<ManualRerunControlActionHistoryResponse> getActionHistory(@PathVariable String executionKey) {
+        ManualRerunControlActionHistoryServiceResponse response = manualRerunControlActionHistoryService.find(
+                ManualRerunControlActionHistoryServiceRequest.of(executionKey)
+        );
+        return ResponseEntity.ok(ManualRerunControlActionHistoryResponse.from(response));
     }
 
     @PostMapping("/{executionKey}/actions")

@@ -3,13 +3,16 @@ package com.agilerunner.api.controller.review;
 import com.agilerunner.api.service.review.ManualRerunService;
 import com.agilerunner.api.service.review.ManualRerunQueryService;
 import com.agilerunner.api.service.review.ManualRerunExecutionListService;
+import com.agilerunner.api.service.review.ManualRerunControlActionHistoryService;
 import com.agilerunner.api.service.review.ManualRerunControlActionService;
 import com.agilerunner.api.service.review.ManualRerunRetryService;
+import com.agilerunner.api.service.review.request.ManualRerunControlActionHistoryServiceRequest;
 import com.agilerunner.api.service.review.request.ManualRerunControlActionServiceRequest;
 import com.agilerunner.api.service.review.request.ManualRerunExecutionListServiceRequest;
 import com.agilerunner.api.service.review.request.ManualRerunServiceRequest;
 import com.agilerunner.api.service.review.request.ManualRerunQueryServiceRequest;
 import com.agilerunner.api.service.review.request.ManualRerunRetryServiceRequest;
+import com.agilerunner.api.service.review.response.ManualRerunControlActionHistoryServiceResponse;
 import com.agilerunner.api.service.review.response.ManualRerunControlActionServiceResponse;
 import com.agilerunner.api.service.review.response.ManualRerunExecutionListServiceResponse;
 import com.agilerunner.api.service.review.response.ManualRerunServiceResponse;
@@ -39,6 +42,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -72,6 +76,9 @@ class ManualRerunControllerTest {
 
     @MockitoBean
     private ManualRerunExecutionListService manualRerunExecutionListService;
+
+    @MockitoBean
+    private ManualRerunControlActionHistoryService manualRerunControlActionHistoryService;
 
     @MockitoBean
     private ManualRerunControlActionService manualRerunControlActionService;
@@ -272,6 +279,40 @@ class ManualRerunControllerTest {
         assertThat(requestCaptor.getValue().getExecutionStartType()).isNull();
         assertThat(requestCaptor.getValue().getExecutionStatus()).isNull();
         assertThat(requestCaptor.getValue().getFailureDisposition()).isNull();
+    }
+
+    @DisplayName("관리자 액션 이력 조회 요청은 executionKey를 service request로 전달하고 최소 응답 계약을 유지한다.")
+    @Test
+    void getActionHistory_returnsResponseContract() throws Exception {
+        // given
+        LocalDateTime appliedAt = LocalDateTime.of(2026, 4, 10, 12, 15);
+        ManualRerunControlActionHistoryServiceResponse response = ManualRerunControlActionHistoryServiceResponse.of(
+                "EXECUTION:MANUAL_RERUN:history-1",
+                List.of(
+                        ManualRerunControlActionHistoryServiceResponse.ActionHistorySummary.of(
+                                ManualRerunControlAction.ACKNOWLEDGE,
+                                ManualRerunControlActionStatus.APPLIED,
+                                "운영자 확인 완료",
+                                appliedAt
+                        )
+                )
+        );
+        when(manualRerunControlActionHistoryService.find(any(ManualRerunControlActionHistoryServiceRequest.class)))
+                .thenReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/reviews/rerun/{executionKey}/actions/history", "EXECUTION:MANUAL_RERUN:history-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:history-1"))
+                .andExpect(jsonPath("$.actions[0].action").value("ACKNOWLEDGE"))
+                .andExpect(jsonPath("$.actions[0].actionStatus").value("APPLIED"))
+                .andExpect(jsonPath("$.actions[0].note").value("운영자 확인 완료"))
+                .andExpect(jsonPath("$.actions[0].appliedAt").value("2026-04-10T12:15:00"));
+
+        ArgumentCaptor<ManualRerunControlActionHistoryServiceRequest> requestCaptor =
+                ArgumentCaptor.forClass(ManualRerunControlActionHistoryServiceRequest.class);
+        verify(manualRerunControlActionHistoryService).find(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:history-1");
     }
 
     @DisplayName("관리자 제어 액션 요청은 executionKey와 note를 service request로 전달하고 최소 성공 응답 계약을 유지한다.")
