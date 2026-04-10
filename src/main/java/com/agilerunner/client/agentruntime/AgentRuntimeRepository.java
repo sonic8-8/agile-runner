@@ -227,6 +227,12 @@ public class AgentRuntimeRepository {
             ORDER BY applied_at DESC, id DESC
             FETCH FIRST 1 ROW ONLY
             """;
+    private static final String FIND_MANUAL_RERUN_CONTROL_ACTION_AUDITS_SQL = """
+            SELECT execution_key, action, action_status, note, applied_at
+            FROM MANUAL_RERUN_CONTROL_ACTION_AUDIT
+            WHERE execution_key = :executionKey
+            ORDER BY applied_at ASC, id ASC
+            """;
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
@@ -326,6 +332,14 @@ public class AgentRuntimeRepository {
         return Optional.of(actions.getFirst());
     }
 
+    public List<ManualRerunControlActionAudit> findManualRerunControlActionAudits(String executionKey) {
+        return namedParameterJdbcTemplate.query(
+                FIND_MANUAL_RERUN_CONTROL_ACTION_AUDITS_SQL,
+                new MapSqlParameterSource("executionKey", executionKey),
+                this::mapManualRerunControlActionAudit
+        );
+    }
+
     public List<AgentExecutionLog> findExecutionLogs(String taskKey) {
         return namedParameterJdbcTemplate.query(
                 FIND_AGENT_EXECUTION_LOGS_SQL,
@@ -412,6 +426,16 @@ public class AgentRuntimeRepository {
                 .addValue("actionStatus", audit.getActionStatus().name())
                 .addValue("note", audit.getNote())
                 .addValue("appliedAt", audit.getAppliedAt());
+    }
+
+    private ManualRerunControlActionAudit mapManualRerunControlActionAudit(ResultSet resultSet, int rowNum) throws SQLException {
+        return ManualRerunControlActionAudit.of(
+                resultSet.getString("execution_key"),
+                ManualRerunControlAction.valueOf(resultSet.getString("action")),
+                ManualRerunControlActionStatus.valueOf(resultSet.getString("action_status")),
+                resultSet.getString("note"),
+                getLocalDateTime(resultSet, "applied_at")
+        );
     }
 
     private TaskRuntimeState mapTaskRuntimeState(ResultSet resultSet, int rowNum) throws SQLException {

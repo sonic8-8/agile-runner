@@ -24,6 +24,20 @@ public class ManualRerunControlActionAudit {
         this.appliedAt = appliedAt;
     }
 
+    public static ManualRerunControlActionAudit of(String executionKey,
+                                                   ManualRerunControlAction action,
+                                                   ManualRerunControlActionStatus actionStatus,
+                                                   String note,
+                                                   LocalDateTime appliedAt) {
+        return new ManualRerunControlActionAudit(
+                executionKey,
+                action,
+                actionStatus,
+                note,
+                appliedAt
+        );
+    }
+
     public static ManualRerunControlActionAudit applied(String executionKey,
                                                         ManualRerunControlAction action,
                                                         String note,

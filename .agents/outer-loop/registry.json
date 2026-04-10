@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0014",
-    "task_id": "TASK-0002",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0014/TASK-0002-action-history-input-model.md",
+    "task_id": "TASK-0003",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0014/TASK-0003-action-history-audit-timeline.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0013/SPEC-0013-summary.md"
   },
   "proposals": [

@@ -18,6 +18,7 @@ import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.domain.exception.FailureDisposition;
 import com.agilerunner.domain.review.ManualRerunControlAction;
 import com.agilerunner.domain.review.ManualRerunControlActionAudit;
+import com.agilerunner.domain.review.ManualRerunControlActionStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -401,6 +402,44 @@ class AgentRuntimeRepositoryTest {
             assertThat(latestAction).contains(ManualRerunControlAction.UNACKNOWLEDGE);
             assertThat(storedAction).isEqualTo("UNACKNOWLEDGE");
             assertThat(storedStatus).isEqualTo("APPLIED");
+        });
+    }
+
+    @DisplayName("manual rerun control action audit history를 저장하고 시간 순서대로 다시 조회할 수 있다.")
+    @Test
+    void appendManualRerunControlActionAudit_andFindHistory() {
+        contextRunner.run(context -> {
+            // given
+            AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
+            ManualRerunControlActionAudit acknowledgeAudit = ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:history-1",
+                    ManualRerunControlAction.ACKNOWLEDGE,
+                    "운영자 확인 완료",
+                    LocalDateTime.of(2026, 4, 10, 11, 0)
+            );
+            ManualRerunControlActionAudit unacknowledgeAudit = ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:history-1",
+                    ManualRerunControlAction.UNACKNOWLEDGE,
+                    "운영자 확인 취소",
+                    LocalDateTime.of(2026, 4, 10, 11, 1)
+            );
+
+            // when
+            repository.appendManualRerunControlActionAudit(acknowledgeAudit);
+            repository.appendManualRerunControlActionAudit(unacknowledgeAudit);
+            List<ManualRerunControlActionAudit> history =
+                    repository.findManualRerunControlActionAudits("EXECUTION:MANUAL_RERUN:history-1");
+
+            // then
+            assertThat(history).hasSize(2);
+            assertThat(history.get(0).getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
+            assertThat(history.get(0).getActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);
+            assertThat(history.get(0).getNote()).isEqualTo("운영자 확인 완료");
+            assertThat(history.get(0).getAppliedAt()).isEqualTo(LocalDateTime.of(2026, 4, 10, 11, 0));
+            assertThat(history.get(1).getAction()).isEqualTo(ManualRerunControlAction.UNACKNOWLEDGE);
+            assertThat(history.get(1).getActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);
+            assertThat(history.get(1).getNote()).isEqualTo("운영자 확인 취소");
+            assertThat(history.get(1).getAppliedAt()).isEqualTo(LocalDateTime.of(2026, 4, 10, 11, 1));
         });
     }
 

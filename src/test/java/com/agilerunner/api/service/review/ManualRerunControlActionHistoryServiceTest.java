@@ -2,18 +2,68 @@ package com.agilerunner.api.service.review;
 
 import com.agilerunner.api.service.review.request.ManualRerunControlActionHistoryServiceRequest;
 import com.agilerunner.api.service.review.response.ManualRerunControlActionHistoryServiceResponse;
+import com.agilerunner.client.agentruntime.AgentRuntimeRepository;
+import com.agilerunner.domain.agentruntime.ExecutionStartType;
+import com.agilerunner.domain.agentruntime.WebhookExecution;
+import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
+import com.agilerunner.domain.exception.ManualRerunQueryNotFoundException;
+import com.agilerunner.domain.review.ManualRerunControlAction;
+import com.agilerunner.domain.review.ManualRerunControlActionAudit;
+import com.agilerunner.domain.review.ManualRerunControlActionStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class ManualRerunControlActionHistoryServiceTest {
 
-    @DisplayName("관리자 액션 이력 조회 서비스는 최소 응답으로 executionKey와 비어 있는 actions를 반환한다.")
+    @DisplayName("관리자 액션 이력 조회 서비스는 audit timeline을 시간 순서대로 응답에 연결한다.")
     @Test
-    void find_returnsEmptyHistoryResponse() {
+    void find_returnsHistoryResponseFromAuditTimeline() {
         // given
-        ManualRerunControlActionHistoryService service = new ManualRerunControlActionHistoryService();
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        ManualRerunControlActionHistoryService service = new ManualRerunControlActionHistoryService(repository);
+        WebhookExecution webhookExecution = WebhookExecution.start(
+                "EXECUTION:MANUAL_RERUN:history-1",
+                "PR_REVIEW:owner/repo#12",
+                "MANUAL_RERUN_DELIVERY:history-1",
+                "owner/repo",
+                12,
+                "PULL_REQUEST",
+                "manual_rerun",
+                LocalDateTime.of(2026, 4, 10, 12, 0)
+        ).withExecutionStartType(ExecutionStartType.MANUAL_RERUN).complete(
+                WebhookExecutionStatus.FAILED,
+                "failed",
+                null,
+                LocalDateTime.of(2026, 4, 10, 12, 1)
+        );
+        when(repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:history-1"))
+                .thenReturn(Optional.of(webhookExecution));
+        when(repository.findManualRerunControlActionAudits("EXECUTION:MANUAL_RERUN:history-1"))
+                .thenReturn(List.of(
+                        ManualRerunControlActionAudit.of(
+                                "EXECUTION:MANUAL_RERUN:history-1",
+                                ManualRerunControlAction.ACKNOWLEDGE,
+                                ManualRerunControlActionStatus.APPLIED,
+                                "운영자 확인 완료",
+                                LocalDateTime.of(2026, 4, 10, 12, 2)
+                        ),
+                        ManualRerunControlActionAudit.of(
+                                "EXECUTION:MANUAL_RERUN:history-1",
+                                ManualRerunControlAction.UNACKNOWLEDGE,
+                                ManualRerunControlActionStatus.APPLIED,
+                                "운영자 확인 취소",
+                                LocalDateTime.of(2026, 4, 10, 12, 3)
+                        )
+                ));
 
         // when
         ManualRerunControlActionHistoryServiceResponse response = service.find(
@@ -22,6 +72,75 @@ class ManualRerunControlActionHistoryServiceTest {
 
         // then
         assertThat(response.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:history-1");
+        assertThat(response.getActions()).hasSize(2);
+        assertThat(response.getActions().get(0).getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
+        assertThat(response.getActions().get(0).getActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);
+        assertThat(response.getActions().get(0).getNote()).isEqualTo("운영자 확인 완료");
+        assertThat(response.getActions().get(0).getAppliedAt()).isEqualTo(LocalDateTime.of(2026, 4, 10, 12, 2));
+        assertThat(response.getActions().get(1).getAction()).isEqualTo(ManualRerunControlAction.UNACKNOWLEDGE);
+        assertThat(response.getActions().get(1).getActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);
+        assertThat(response.getActions().get(1).getNote()).isEqualTo("운영자 확인 취소");
+        assertThat(response.getActions().get(1).getAppliedAt()).isEqualTo(LocalDateTime.of(2026, 4, 10, 12, 3));
+    }
+
+    @DisplayName("관리자 액션 이력은 execution이 존재하지만 audit row가 없으면 빈 actions로 반환한다.")
+    @Test
+    void find_returnsEmptyActionsWhenAuditDoesNotExist() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        ManualRerunControlActionHistoryService service = new ManualRerunControlActionHistoryService(repository);
+        WebhookExecution webhookExecution = WebhookExecution.start(
+                "EXECUTION:MANUAL_RERUN:history-empty",
+                "PR_REVIEW:owner/repo#14",
+                "MANUAL_RERUN_DELIVERY:history-empty",
+                "owner/repo",
+                14,
+                "PULL_REQUEST",
+                "manual_rerun",
+                LocalDateTime.of(2026, 4, 10, 12, 10)
+        ).withExecutionStartType(ExecutionStartType.MANUAL_RERUN);
+        when(repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:history-empty"))
+                .thenReturn(Optional.of(webhookExecution));
+        when(repository.findManualRerunControlActionAudits("EXECUTION:MANUAL_RERUN:history-empty"))
+                .thenReturn(List.of());
+
+        // when
+        ManualRerunControlActionHistoryServiceResponse response = service.find(
+                ManualRerunControlActionHistoryServiceRequest.of("EXECUTION:MANUAL_RERUN:history-empty")
+        );
+
+        // then
+        assertThat(response.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:history-empty");
         assertThat(response.getActions()).isEmpty();
+    }
+
+    @DisplayName("관리자 액션 이력은 execution이 없거나 manual rerun이 아니면 not found 예외를 던진다.")
+    @Test
+    void find_throwsNotFoundWhenExecutionIsMissingOrNotManualRerun() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        ManualRerunControlActionHistoryService service = new ManualRerunControlActionHistoryService(repository);
+        when(repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:missing")).thenReturn(Optional.empty());
+
+        WebhookExecution webhookExecution = WebhookExecution.start(
+                "EXECUTION:delivery-99",
+                "PR_REVIEW:owner/repo#12",
+                "delivery-99",
+                "owner/repo",
+                12,
+                "PULL_REQUEST",
+                "opened",
+                LocalDateTime.of(2026, 4, 10, 12, 30)
+        ).withExecutionStartType(ExecutionStartType.WEBHOOK);
+        when(repository.findWebhookExecution("EXECUTION:delivery-99")).thenReturn(Optional.of(webhookExecution));
+
+        // when & then
+        assertThatThrownBy(() -> service.find(ManualRerunControlActionHistoryServiceRequest.of("EXECUTION:MANUAL_RERUN:missing")))
+                .isInstanceOf(ManualRerunQueryNotFoundException.class)
+                .hasMessage("재실행 결과를 찾을 수 없습니다.");
+
+        assertThatThrownBy(() -> service.find(ManualRerunControlActionHistoryServiceRequest.of("EXECUTION:delivery-99")))
+                .isInstanceOf(ManualRerunQueryNotFoundException.class)
+                .hasMessage("재실행 결과를 찾을 수 없습니다.");
     }
 }

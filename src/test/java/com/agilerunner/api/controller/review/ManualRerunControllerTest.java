@@ -315,6 +315,23 @@ class ManualRerunControllerTest {
         assertThat(requestCaptor.getValue().getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:history-1");
     }
 
+    @DisplayName("관리자 액션 이력 조회에서 execution을 찾지 못하면 404 응답을 반환한다.")
+    @Test
+    void getActionHistory_returnsNotFoundWhenExecutionDoesNotExist() throws Exception {
+        // given
+        when(manualRerunControlActionHistoryService.find(any(ManualRerunControlActionHistoryServiceRequest.class)))
+                .thenThrow(new ManualRerunQueryNotFoundException(
+                        "EXECUTION:MANUAL_RERUN:missing-history",
+                        "재실행 결과를 찾을 수 없습니다."
+                ));
+
+        // when & then
+        mockMvc.perform(get("/reviews/rerun/{executionKey}/actions/history", "EXECUTION:MANUAL_RERUN:missing-history"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:missing-history"))
+                .andExpect(jsonPath("$.message").value("재실행 결과를 찾을 수 없습니다."));
+    }
+
     @DisplayName("관리자 제어 액션 요청은 executionKey와 note를 service request로 전달하고 최소 성공 응답 계약을 유지한다.")
     @Test
     void executeAction_returnsResponseContract() throws Exception {
