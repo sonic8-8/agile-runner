@@ -1,6 +1,6 @@
 ---
 proposal_id: WORKFLOW-PROP-0012
-status: proposed
+status: accepted
 source_spec: SPEC-0012
 source_tasks:
   - TASK-0003
@@ -8,7 +8,7 @@ source_retrospectives:
   - .agents/outer-loop/retrospectives/SPEC-0012/TASK-0003-control-action-audit-state.md
 target_document: AGENTS.md, .agents/skills/agile-runner-task-loop/SKILL.md
 target_version:
-decision_date:
+decision_date: 2026-04-10
 applied_commit:
 applied_pr:
 ---
