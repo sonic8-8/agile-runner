@@ -43,10 +43,8 @@ class ManualRerunControlActionServiceTest {
         );
         when(repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:action-1"))
                 .thenReturn(Optional.of(manualActionRequiredExecution("EXECUTION:MANUAL_RERUN:action-1")));
-        when(repository.hasAppliedManualRerunControlAction(
-                "EXECUTION:MANUAL_RERUN:action-1",
-                ManualRerunControlAction.ACKNOWLEDGE
-        )).thenReturn(false);
+        when(repository.findLatestAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:action-1"))
+                .thenReturn(Optional.empty());
 
         // when
         ManualRerunControlActionServiceResponse response = service.execute(request);
@@ -55,7 +53,7 @@ class ManualRerunControlActionServiceTest {
         assertThat(response.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:action-1");
         assertThat(response.getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
         assertThat(response.getActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);
-        assertThat(response.getAvailableActions()).isEmpty();
+        assertThat(response.getAvailableActions()).containsExactly(ManualRerunAvailableAction.UNACKNOWLEDGE);
         assertThat(response.getNote()).isEqualTo("운영자 확인 완료");
         verify(repository).appendManualRerunControlActionAudit(any(ManualRerunControlActionAudit.class));
     }
@@ -73,10 +71,8 @@ class ManualRerunControlActionServiceTest {
         );
         when(repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:action-2"))
                 .thenReturn(Optional.of(manualActionRequiredExecution("EXECUTION:MANUAL_RERUN:action-2")));
-        when(repository.hasAppliedManualRerunControlAction(
-                "EXECUTION:MANUAL_RERUN:action-2",
-                ManualRerunControlAction.ACKNOWLEDGE
-        )).thenReturn(false);
+        when(repository.findLatestAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:action-2"))
+                .thenReturn(Optional.of(ManualRerunControlAction.ACKNOWLEDGE));
 
         // when
         ManualRerunControlActionServiceResponse response = service.execute(request);
@@ -85,7 +81,7 @@ class ManualRerunControlActionServiceTest {
         assertThat(response.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:action-2");
         assertThat(response.getAction()).isEqualTo(ManualRerunControlAction.UNACKNOWLEDGE);
         assertThat(response.getActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);
-        assertThat(response.getAvailableActions()).isEmpty();
+        assertThat(response.getAvailableActions()).containsExactly(ManualRerunAvailableAction.ACKNOWLEDGE);
         assertThat(response.getNote()).isEqualTo("운영자 확인 취소");
         verify(repository).appendManualRerunControlActionAudit(any(ManualRerunControlActionAudit.class));
     }
@@ -122,10 +118,8 @@ class ManualRerunControlActionServiceTest {
         );
         when(repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:retryable"))
                 .thenReturn(Optional.of(retryableExecution("EXECUTION:MANUAL_RERUN:retryable")));
-        when(repository.hasAppliedManualRerunControlAction(
-                "EXECUTION:MANUAL_RERUN:retryable",
-                ManualRerunControlAction.ACKNOWLEDGE
-        )).thenReturn(false);
+        when(repository.findLatestAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:retryable"))
+                .thenReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> service.execute(request))
@@ -148,16 +142,39 @@ class ManualRerunControlActionServiceTest {
         );
         when(repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:acked"))
                 .thenReturn(Optional.of(manualActionRequiredExecution("EXECUTION:MANUAL_RERUN:acked")));
-        when(repository.hasAppliedManualRerunControlAction(
-                "EXECUTION:MANUAL_RERUN:acked",
-                ManualRerunControlAction.ACKNOWLEDGE
-        )).thenReturn(true);
+        when(repository.findLatestAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:acked"))
+                .thenReturn(Optional.of(ManualRerunControlAction.ACKNOWLEDGE));
 
         // when & then
         assertThatThrownBy(() -> service.execute(request))
                 .isInstanceOfSatisfying(ManualRerunControlActionConflictException.class, exception -> {
                     assertThat(exception.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:acked");
                     assertThat(exception.getFailureDisposition()).isEqualTo(FailureDisposition.MANUAL_ACTION_REQUIRED);
+                });
+    }
+
+    @DisplayName("ACKNOWLEDGE가 없는 실행의 UNACKNOWLEDGE 요청은 conflict 예외를 던진다.")
+    @Test
+    void execute_throwsConflictWhenUnacknowledgeWasNotEligible() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        ManualRerunControlActionService service = new ManualRerunControlActionService(repository);
+        ManualRerunControlActionServiceRequest request = ManualRerunControlActionServiceRequest.of(
+                "EXECUTION:MANUAL_RERUN:unack",
+                ManualRerunControlAction.UNACKNOWLEDGE,
+                "운영자 확인 취소"
+        );
+        when(repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:unack"))
+                .thenReturn(Optional.of(manualActionRequiredExecution("EXECUTION:MANUAL_RERUN:unack")));
+        when(repository.findLatestAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:unack"))
+                .thenReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> service.execute(request))
+                .isInstanceOfSatisfying(ManualRerunControlActionConflictException.class, exception -> {
+                    assertThat(exception.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:unack");
+                    assertThat(exception.getFailureDisposition()).isEqualTo(FailureDisposition.MANUAL_ACTION_REQUIRED);
+                    assertThat(exception.getMessage()).isEqualTo("확인 완료 처리된 실행만 확인 취소할 수 있습니다.");
                 });
     }
 

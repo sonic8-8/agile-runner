@@ -62,10 +62,9 @@ public class ManualRerunQueryService {
     }
 
     private java.util.List<ManualRerunAvailableAction> resolveAvailableActions(WebhookExecution webhookExecution) {
-        boolean acknowledgeApplied = agentRuntimeRepository.hasAppliedManualRerunControlAction(
-                webhookExecution.getExecutionKey(),
-                ManualRerunControlAction.ACKNOWLEDGE
-        );
-        return availableActionPolicy.resolve(webhookExecution, acknowledgeApplied);
+        ManualRerunControlAction latestAppliedAction = agentRuntimeRepository.findLatestAppliedManualRerunControlAction(
+                webhookExecution.getExecutionKey()
+        ).orElse(null);
+        return availableActionPolicy.resolve(webhookExecution, latestAppliedAction);
     }
 }

@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -208,10 +209,10 @@ class ManualRerunExecutionListServiceTest {
                         false
                 )
         ));
-        when(repository.hasAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:30", ManualRerunControlAction.ACKNOWLEDGE))
-                .thenReturn(false);
-        when(repository.hasAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:31", ManualRerunControlAction.ACKNOWLEDGE))
-                .thenReturn(true);
+        when(repository.findLatestAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:30"))
+                .thenReturn(Optional.empty());
+        when(repository.findLatestAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:31"))
+                .thenReturn(Optional.of(ManualRerunControlAction.ACKNOWLEDGE));
 
         // when
         ManualRerunExecutionListServiceResponse response = service.list(
@@ -222,7 +223,8 @@ class ManualRerunExecutionListServiceTest {
         assertThat(response.getExecutions()).hasSize(2);
         assertThat(response.getExecutions().get(0).getAvailableActions())
                 .containsExactly(ManualRerunAvailableAction.ACKNOWLEDGE);
-        assertThat(response.getExecutions().get(1).getAvailableActions()).isEmpty();
+        assertThat(response.getExecutions().get(1).getAvailableActions())
+                .containsExactly(ManualRerunAvailableAction.UNACKNOWLEDGE);
     }
 
     private WebhookExecution manualRerunExecution(String executionKey,

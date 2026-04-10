@@ -28,18 +28,16 @@ public class ManualRerunControlActionService {
 
     public ManualRerunControlActionServiceResponse execute(ManualRerunControlActionServiceRequest request) {
         WebhookExecution sourceExecution = findSourceExecution(request.getExecutionKey());
-        boolean acknowledgeApplied = agentRuntimeRepository.hasAppliedManualRerunControlAction(
-                request.getExecutionKey(),
-                ManualRerunControlAction.ACKNOWLEDGE
-        );
-        ManualRerunControlActionEligibility eligibility = availableActionPolicy.evaluateAcknowledge(
+        ManualRerunControlAction latestAppliedAction = findLatestAppliedAction(request.getExecutionKey());
+        ManualRerunControlActionEligibility eligibility = availableActionPolicy.evaluate(
                 sourceExecution,
-                acknowledgeApplied
+                request.getAction(),
+                latestAppliedAction
         );
 
         if (!eligibility.isActionAllowed()) {
             throw new ManualRerunControlActionConflictException(
-                    request.getExecutionKey(),
+                request.getExecutionKey(),
                     eligibility.getFailureDisposition(),
                     eligibility.getMessage()
             );
@@ -58,7 +56,7 @@ public class ManualRerunControlActionService {
                 request.getExecutionKey(),
                 request.getAction(),
                 ManualRerunControlActionStatus.APPLIED,
-                availableActionPolicy.resolve(sourceExecution, true),
+                availableActionPolicy.resolve(sourceExecution, request.getAction()),
                 request.getNote()
         );
     }
@@ -76,5 +74,14 @@ public class ManualRerunControlActionService {
                         executionKey,
                         "관리자 제어 액션 대상 실행을 찾을 수 없습니다."
                 ));
+    }
+
+    private ManualRerunControlAction findLatestAppliedAction(String executionKey) {
+        if (agentRuntimeRepository == null) {
+            return null;
+        }
+
+        return agentRuntimeRepository.findLatestAppliedManualRerunControlAction(executionKey)
+                .orElse(null);
     }
 }

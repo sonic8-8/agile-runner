@@ -56,10 +56,8 @@ class ManualRerunQueryServiceTest {
                 LocalDateTime.of(2026, 4, 9, 12, 1)
         );
         when(repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:query-1")).thenReturn(Optional.of(webhookExecution));
-        when(repository.hasAppliedManualRerunControlAction(
-                "EXECUTION:MANUAL_RERUN:query-1",
-                ManualRerunControlAction.ACKNOWLEDGE
-        )).thenReturn(false);
+        when(repository.findLatestAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:query-1"))
+                .thenReturn(Optional.empty());
 
         // when
         ManualRerunQueryServiceResponse response = service.find(
@@ -105,10 +103,8 @@ class ManualRerunQueryServiceTest {
                 LocalDateTime.of(2026, 4, 9, 12, 1)
         );
         when(repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:query-acknowledged")).thenReturn(Optional.of(webhookExecution));
-        when(repository.hasAppliedManualRerunControlAction(
-                "EXECUTION:MANUAL_RERUN:query-acknowledged",
-                ManualRerunControlAction.ACKNOWLEDGE
-        )).thenReturn(true);
+        when(repository.findLatestAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:query-acknowledged"))
+                .thenReturn(Optional.of(ManualRerunControlAction.ACKNOWLEDGE));
 
         // when
         ManualRerunQueryServiceResponse response = service.find(
@@ -116,7 +112,7 @@ class ManualRerunQueryServiceTest {
         );
 
         // then
-        assertThat(response.getAvailableActions()).isEmpty();
+        assertThat(response.getAvailableActions()).containsExactly(ManualRerunAvailableAction.UNACKNOWLEDGE);
     }
 
     @DisplayName("manual rerun execution이 없으면 조회는 not found 예외를 던진다.")

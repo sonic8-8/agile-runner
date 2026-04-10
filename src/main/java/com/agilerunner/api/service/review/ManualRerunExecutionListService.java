@@ -108,10 +108,9 @@ public class ManualRerunExecutionListService {
             return List.of();
         }
 
-        boolean acknowledgeApplied = agentRuntimeRepository.hasAppliedManualRerunControlAction(
-                execution.getExecutionKey(),
-                ManualRerunControlAction.ACKNOWLEDGE
-        );
-        return availableActionPolicy.resolve(execution, acknowledgeApplied);
+        ManualRerunControlAction latestAppliedAction = agentRuntimeRepository.findLatestAppliedManualRerunControlAction(
+                execution.getExecutionKey()
+        ).orElse(null);
+        return availableActionPolicy.resolve(execution, latestAppliedAction);
     }
 }

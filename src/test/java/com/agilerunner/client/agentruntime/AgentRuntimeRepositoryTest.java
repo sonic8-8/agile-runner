@@ -361,40 +361,45 @@ class AgentRuntimeRepositoryTest {
         });
     }
 
-    @DisplayName("manual rerun control action audit를 저장하고 적용 여부를 다시 조회할 수 있다.")
+    @DisplayName("manual rerun control action audit를 저장하고 마지막 applied action을 다시 조회할 수 있다.")
     @Test
-    void appendManualRerunControlActionAudit_andHasApplied() {
+    void appendManualRerunControlActionAudit_andFindLatestAppliedAction() {
         contextRunner.run(context -> {
             // given
             AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
             NamedParameterJdbcTemplate jdbcTemplate = context.getBean(NamedParameterJdbcTemplate.class);
-            ManualRerunControlActionAudit audit = ManualRerunControlActionAudit.applied(
+            ManualRerunControlActionAudit acknowledgeAudit = ManualRerunControlActionAudit.applied(
                     "EXECUTION:MANUAL_RERUN:ack-1",
                     ManualRerunControlAction.ACKNOWLEDGE,
                     "운영자 확인 완료",
                     LocalDateTime.of(2026, 4, 10, 11, 0)
             );
+            ManualRerunControlActionAudit unacknowledgeAudit = ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:ack-1",
+                    ManualRerunControlAction.UNACKNOWLEDGE,
+                    "운영자 확인 취소",
+                    LocalDateTime.of(2026, 4, 10, 11, 1)
+            );
 
             // when
-            repository.appendManualRerunControlActionAudit(audit);
-            boolean applied = repository.hasAppliedManualRerunControlAction(
-                    "EXECUTION:MANUAL_RERUN:ack-1",
-                    ManualRerunControlAction.ACKNOWLEDGE
-            );
+            repository.appendManualRerunControlActionAudit(acknowledgeAudit);
+            repository.appendManualRerunControlActionAudit(unacknowledgeAudit);
+            Optional<ManualRerunControlAction> latestAction =
+                    repository.findLatestAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:ack-1");
             String storedAction = jdbcTemplate.getJdbcTemplate()
                     .queryForObject(
-                            "SELECT action FROM MANUAL_RERUN_CONTROL_ACTION_AUDIT WHERE execution_key = 'EXECUTION:MANUAL_RERUN:ack-1'",
+                            "SELECT action FROM MANUAL_RERUN_CONTROL_ACTION_AUDIT WHERE execution_key = 'EXECUTION:MANUAL_RERUN:ack-1' ORDER BY applied_at DESC, id DESC FETCH FIRST 1 ROW ONLY",
                             String.class
                     );
             String storedStatus = jdbcTemplate.getJdbcTemplate()
                     .queryForObject(
-                            "SELECT action_status FROM MANUAL_RERUN_CONTROL_ACTION_AUDIT WHERE execution_key = 'EXECUTION:MANUAL_RERUN:ack-1'",
+                            "SELECT action_status FROM MANUAL_RERUN_CONTROL_ACTION_AUDIT WHERE execution_key = 'EXECUTION:MANUAL_RERUN:ack-1' ORDER BY applied_at DESC, id DESC FETCH FIRST 1 ROW ONLY",
                             String.class
                     );
 
             // then
-            assertThat(applied).isTrue();
-            assertThat(storedAction).isEqualTo("ACKNOWLEDGE");
+            assertThat(latestAction).contains(ManualRerunControlAction.UNACKNOWLEDGE);
+            assertThat(storedAction).isEqualTo("UNACKNOWLEDGE");
             assertThat(storedStatus).isEqualTo("APPLIED");
         });
     }
