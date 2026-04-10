@@ -1,6 +1,7 @@
 package com.agilerunner.api.controller.review.response;
 
 import com.agilerunner.api.service.review.response.ManualRerunControlActionServiceResponse;
+import com.agilerunner.domain.review.ManualRerunAvailableAction;
 import com.agilerunner.domain.review.ManualRerunControlAction;
 import com.agilerunner.domain.review.ManualRerunControlActionStatus;
 import org.junit.jupiter.api.DisplayName;
@@ -33,5 +34,28 @@ class ManualRerunControlActionResponseTest {
         assertThat(response.getActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);
         assertThat(response.getAvailableActions()).isEmpty();
         assertThat(response.getNote()).isEqualTo("운영자 확인 완료");
+    }
+
+    @DisplayName("service response를 controller response로 변환하면 UNACKNOWLEDGE 응답 필드를 그대로 유지한다.")
+    @Test
+    void from_keepsUnacknowledgeResponseFields() {
+        // given
+        ManualRerunControlActionServiceResponse serviceResponse = ManualRerunControlActionServiceResponse.of(
+                "EXECUTION:MANUAL_RERUN:action-2",
+                ManualRerunControlAction.UNACKNOWLEDGE,
+                ManualRerunControlActionStatus.APPLIED,
+                List.of(ManualRerunAvailableAction.ACKNOWLEDGE),
+                "운영자 확인 취소"
+        );
+
+        // when
+        ManualRerunControlActionResponse response = ManualRerunControlActionResponse.from(serviceResponse);
+
+        // then
+        assertThat(response.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:action-2");
+        assertThat(response.getAction()).isEqualTo(ManualRerunControlAction.UNACKNOWLEDGE);
+        assertThat(response.getActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);
+        assertThat(response.getAvailableActions()).containsExactly(ManualRerunAvailableAction.ACKNOWLEDGE);
+        assertThat(response.getNote()).isEqualTo("운영자 확인 취소");
     }
 }

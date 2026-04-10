@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0013",
-    "task_id": "TASK-0001",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0013/TASK-0001-multi-action-safety-net.md",
+    "task_id": "TASK-0002",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0013/TASK-0002-secondary-action-input-response.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0012/SPEC-0012-summary.md"
   },
   "proposals": [

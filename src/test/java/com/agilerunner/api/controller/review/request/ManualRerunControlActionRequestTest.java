@@ -27,4 +27,23 @@ class ManualRerunControlActionRequestTest {
         assertThat(serviceRequest.getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
         assertThat(serviceRequest.getNote()).isEqualTo("운영자 확인 완료");
     }
+
+    @DisplayName("관리자 제어 액션 요청은 UNACKNOWLEDGE 입력도 service request로 전달한다.")
+    @Test
+    void toServiceRequest_keepsUnacknowledgeInputValues() {
+        // given
+        ManualRerunControlActionRequest request = ManualRerunControlActionRequest.of(
+                ManualRerunControlAction.UNACKNOWLEDGE,
+                "운영자 확인 취소"
+        );
+
+        // when
+        ManualRerunControlActionServiceRequest serviceRequest =
+                request.toServiceRequest("EXECUTION:MANUAL_RERUN:action-2");
+
+        // then
+        assertThat(serviceRequest.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:action-2");
+        assertThat(serviceRequest.getAction()).isEqualTo(ManualRerunControlAction.UNACKNOWLEDGE);
+        assertThat(serviceRequest.getNote()).isEqualTo("운영자 확인 취소");
+    }
 }

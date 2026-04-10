@@ -309,6 +309,42 @@ class ManualRerunControllerTest {
         assertThat(requestCaptor.getValue().getNote()).isEqualTo("운영자 확인 완료");
     }
 
+    @DisplayName("관리자 제어 액션 요청은 UNACKNOWLEDGE 입력을 service에 전달하고 최소 성공 응답 계약을 유지한다.")
+    @Test
+    void executeAction_returnsUnacknowledgeResponseContract() throws Exception {
+        // given
+        ManualRerunControlActionServiceResponse response = ManualRerunControlActionServiceResponse.of(
+                "EXECUTION:MANUAL_RERUN:action-2",
+                ManualRerunControlAction.UNACKNOWLEDGE,
+                ManualRerunControlActionStatus.APPLIED,
+                List.of(ManualRerunAvailableAction.ACKNOWLEDGE),
+                "운영자 확인 취소"
+        );
+        when(manualRerunControlActionService.execute(any(ManualRerunControlActionServiceRequest.class)))
+                .thenReturn(response);
+
+        // when & then
+        mockMvc.perform(post("/reviews/rerun/{executionKey}/actions", "EXECUTION:MANUAL_RERUN:action-2")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "action", "UNACKNOWLEDGE",
+                                "note", "운영자 확인 취소"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:action-2"))
+                .andExpect(jsonPath("$.action").value("UNACKNOWLEDGE"))
+                .andExpect(jsonPath("$.actionStatus").value("APPLIED"))
+                .andExpect(jsonPath("$.availableActions[0]").value("ACKNOWLEDGE"))
+                .andExpect(jsonPath("$.note").value("운영자 확인 취소"));
+
+        ArgumentCaptor<ManualRerunControlActionServiceRequest> requestCaptor =
+                ArgumentCaptor.forClass(ManualRerunControlActionServiceRequest.class);
+        verify(manualRerunControlActionService).execute(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:action-2");
+        assertThat(requestCaptor.getValue().getAction()).isEqualTo(ManualRerunControlAction.UNACKNOWLEDGE);
+        assertThat(requestCaptor.getValue().getNote()).isEqualTo("운영자 확인 취소");
+    }
+
     @DisplayName("존재하지 않는 executionKey의 관리자 제어 액션 요청은 404와 executionKey, message를 반환한다.")
     @Test
     void executeAction_returnsNotFoundPolicy() throws Exception {
