@@ -6,104 +6,100 @@
 
 ## 현재 활성 Spec
 ### ID
-SPEC-0013
-
-### 이름
-운영용 관리자 제어 액션 다변화
-
-### 목표
-- 운영자가 `ACKNOWLEDGE`로 확인 완료 처리한 실행을 필요 시 다시 열 수 있게 만들어, 관리자 액션이 단방향 상태 변경에만 머물지 않도록 확장한다.
-- 목록 조회와 단건 조회가 `ACKNOWLEDGE`, `UNACKNOWLEDGE` 상태를 반영해 `availableActions`를 일관되게 계산하도록 만든다.
-- 추가 관리자 액션이 들어와도 action 응답, query/list 의미, H2 audit evidence를 같은 방식으로 해석할 수 있는 기준을 잡는다.
-
-### 대상 문제
-- 현재 관리자 액션은 `ACKNOWLEDGE` 하나뿐이라, 운영자가 실수로 확인 완료 처리했거나 다시 조치 대상으로 되돌려야 할 때 취소 수단이 없다.
-- `ACKNOWLEDGE` 이후에는 `availableActions=[]`가 되기 때문에, 운영자는 “이 실행을 다시 열 수 있는지”를 읽을 수 없다.
-- 다음 액션 종류를 늘리려면, 추가 액션 허용 조건과 query/list의 `availableActions` 재계산 규칙을 먼저 안정적으로 정리해야 한다.
-
-### 범위
-- 두 번째 관리자 액션으로 `UNACKNOWLEDGE`를 도입한다.
-- `UNACKNOWLEDGE`는 아래 조건을 만족하는 execution에서만 허용한다.
-  - `executionStartType = MANUAL_RERUN`
-  - `executionStatus = FAILED`
-  - `failureDisposition = MANUAL_ACTION_REQUIRED`
-  - 같은 execution에 이미 `ACKNOWLEDGE` audit evidence가 있다
-- 관리자 제어 액션 응답은 계속 최소한 아래를 포함한다.
-  - `executionKey`
-  - `action`
-  - `actionStatus`
-  - `availableActions`
-  - `note`
-- `ACKNOWLEDGE` 이후 query/list의 `availableActions`는 `UNACKNOWLEDGE`를 포함할 수 있어야 한다.
-- `UNACKNOWLEDGE` 실행 후 query/list의 `availableActions`는 다시 `ACKNOWLEDGE`를 포함할 수 있어야 한다.
-- local profile 실제 앱/H2 기준으로 representative execution에서 `ACKNOWLEDGE -> UNACKNOWLEDGE` 흐름을 수행하고, 응답/조회 결과/H2 audit evidence가 같은 의미를 가지는지 확인한다.
-
-### 비대상
-- 사용자용 UI
-- 여러 execution 대상 bulk action
-- `UNACKNOWLEDGE` 외 추가 관리자 액션 동시 도입
-- 장기 저장소 도입
-- 인증/권한 체계 추가
-
-### 외부 계약
-- `/webhook/github`, `POST /reviews/rerun`, `GET /reviews/rerun/{executionKey}`, `POST /reviews/rerun/{executionKey}/retry`, `GET /reviews/rerun/executions`, `POST /reviews/rerun/{executionKey}/actions` 기존 계약은 유지한다.
-- 관리자 제어 액션 결과는 기존 retry eligibility 정책, 목록 응답의 `availableActions`, 단건 조회 응답 의미와 모순되지 않아야 한다.
-- action detail은 계속 action 응답에서만 읽고, 단건 조회와 목록 조회는 `availableActions` 재계산 결과만 반환한다.
-
-### 핵심 시나리오
-1. 관리자 액션 다변화 안전망 고정
-   - 기존 `ACKNOWLEDGE` 흐름, query/list 의미, retry/webhook 계약이 새 액션 추가 전에도 유지된다는 점을 먼저 고정한다.
-   - `UNACKNOWLEDGE`가 필요한 상태 조합을 문서로 명확히 좁힌다.
-2. 추가 액션 입력과 응답 모델 확장
-   - `UNACKNOWLEDGE` request 해석과 최소 성공 응답 경계를 연다.
-   - 이 단계는 입력 해석과 최소 응답 경계까지만 닫고, audit evidence 반영은 다음 단계에서 고정한다.
-3. 추가 액션 정책과 상태 반영 연결
-   - `UNACKNOWLEDGE` 허용 조건을 정책으로 고정하고, 실행 결과를 audit evidence로 저장한다.
-   - query/list가 최신 audit state를 반영해 `ACKNOWLEDGE`와 `UNACKNOWLEDGE`를 번갈아 계산하도록 연결한다.
-4. 액션 전환 응답과 실행 근거 정합성 검증
-   - representative execution에서 `ACKNOWLEDGE -> UNACKNOWLEDGE`를 실제 앱에서 수행하고, 응답/조회 결과/H2 audit evidence가 같은 의미를 가지는지 확인한다.
-
-### Task 분해 기준
-- `TASK-0001` 관리자 액션 다변화 안전망 고정
-- `TASK-0002` 추가 액션 입력과 응답 모델 확장
-- `TASK-0003` 추가 액션 정책과 상태 반영 연결
-- `TASK-0004` 액션 전환 응답과 실행 근거 정합성 검증
-
-### 연결될 ValidationCriteria
-- `manual-rerun-control-multi-action-contract-preserved`
-- `manual-rerun-control-secondary-action-defined`
-- `manual-rerun-control-secondary-action-maps-audit-state`
-- `manual-rerun-control-secondary-runtime-evidence-aligned`
-
-### 필수 테스트 시나리오
-- 추가 관리자 액션을 도입해도 `/webhook/github`, `POST /reviews/rerun`, `GET /reviews/rerun/{executionKey}`, `POST /reviews/rerun/{executionKey}/retry`, `GET /reviews/rerun/executions`, `POST /reviews/rerun/{executionKey}/actions` 기존 계약은 유지된다.
-- `POST /reviews/rerun/{executionKey}/actions`는 `UNACKNOWLEDGE` 요청을 읽고, 성공 응답에서 `actionStatus=APPLIED`를 반환하며, 허용되지 않은 상태 조합에서는 성공으로 처리하지 않는다.
-- `ACKNOWLEDGE` 이후 query/list의 `availableActions`는 `UNACKNOWLEDGE`를 반환하고, `UNACKNOWLEDGE` 이후에는 다시 `ACKNOWLEDGE`를 반환한다.
-- representative execution 1건 이상에서 `ACKNOWLEDGE -> UNACKNOWLEDGE` 응답과 H2 audit evidence가 같은 결과를 가진다.
-
-## 후속 Spec 후보
-### ID
 SPEC-0014
 
 ### 이름
 운영용 관리자 제어 이력 조회 확장
 
+### 목표
+- 운영자가 execution별 관리자 액션 이력을 시간 순서대로 읽고, 각 action의 `note`, `actionStatus`, `appliedAt`을 확인할 수 있게 만든다.
+- 단건 조회와 목록 조회가 계속 현재 상태와 `availableActions`만 보여주고, 새 이력 조회 API는 “무슨 액션이 언제 적용됐는지”만 읽도록 역할을 분리한다.
+- representative actual app/H2 검증에서 action 응답, query/list 상태, action history, H2 audit evidence가 같은 execution 기준으로 같은 의미를 가지는지 확인한다.
+
+### 대상 문제
+- 현재는 단건 조회와 목록 조회에서 `availableActions`만 볼 수 있고, 운영자가 실제로 어떤 관리자 액션이 언제 적용됐는지는 읽을 수 없다.
+- action 응답은 즉시 결과를 보여주지만, 나중에 다시 확인할 때는 H2 audit table을 직접 보지 않는 한 action timeline을 읽기 어렵다.
+- 운영용 화면이나 대시보드를 붙이려면, 현재 상태와 별도로 “이미 수행된 관리자 액션 이력”을 읽는 API 경계가 먼저 정리돼야 한다.
+
+### 범위
+- `GET /reviews/rerun/{executionKey}/actions/history` 조회 경로를 추가한다.
+- 관리자 액션 이력 응답은 최소한 아래를 포함한다.
+  - `executionKey`
+  - `actions`
+  - `actions[].action`
+  - `actions[].actionStatus`
+  - `actions[].note`
+  - `actions[].appliedAt`
+- action history는 같은 execution의 관리자 액션을 `appliedAt` 기준 시간 순서대로 반환한다.
+- 단건 조회와 목록 조회는 계속 현재 상태와 `availableActions`만 반환하고, action detail은 새 history 응답에서만 읽는다.
+- local profile 실제 앱/H2 기준 representative execution에서 action 응답, history 조회 응답, 단건 조회, 목록 조회, H2 audit evidence가 같은 execution 기준으로 일치하는지 확인한다.
+
+### 비대상
+- 사용자용 UI
+- bulk action
+- 동일 execution에서 같은 action 반복 허용
+- 장기 저장소 도입
+- 새 관리자 액션 종류 추가
+
+### 외부 계약
+- `/webhook/github`, `POST /reviews/rerun`, `GET /reviews/rerun/{executionKey}`, `POST /reviews/rerun/{executionKey}/retry`, `GET /reviews/rerun/executions`, `POST /reviews/rerun/{executionKey}/actions` 기존 계약은 유지한다.
+- 새 history 조회는 기존 query/list가 반환하던 `availableActions` 의미를 바꾸지 않아야 한다.
+- history 응답은 action detail을 읽는 전용 경로이고, 단건 조회와 목록 조회는 계속 현재 상태 요약만 반환한다.
+
+### 핵심 시나리오
+1. 관리자 액션 이력 조회 안전망 고정
+   - 기존 action 응답, query/list, retry, webhook 계약이 action history 조회 도입 전에도 유지된다는 점을 먼저 고정한다.
+   - query/list는 계속 현재 상태와 `availableActions`만 반환하고 action detail은 새 경로로 분리한다는 경계를 문서와 테스트로 확인한다.
+2. 관리자 액션 이력 입력 모델과 진입점 도입
+   - `GET /reviews/rerun/{executionKey}/actions/history` 경로와 최소 응답 모델을 연다.
+   - 이 단계는 입력 해석과 최소 응답 경계까지만 닫고, 실제 audit timeline 매핑은 다음 단계에서 고정한다.
+3. 관리자 액션 이력 응답과 audit timeline 연결
+   - action history 응답이 audit row를 시간 순서대로 읽고, `action`, `actionStatus`, `note`, `appliedAt`을 반환하도록 연결한다.
+   - 없는 execution 또는 history 조회 불가 상황의 not-found 정책도 함께 고정한다.
+4. 관리자 액션 이력과 실행 근거 정합성 검증
+   - representative execution에서 action 응답, history 응답, query/list 상태, H2 audit evidence를 함께 대조해 같은 의미를 가지는지 확인한다.
+
+### Task 분해 기준
+- `TASK-0001` 관리자 액션 이력 조회 안전망 고정
+- `TASK-0002` 관리자 액션 이력 입력 모델과 진입점 도입
+- `TASK-0003` 관리자 액션 이력 응답과 audit timeline 연결
+- `TASK-0004` 관리자 액션 이력과 실행 근거 정합성 검증
+
+### 연결될 ValidationCriteria
+- `manual-rerun-control-history-contract-preserved`
+- `manual-rerun-control-history-response-defined`
+- `manual-rerun-control-history-maps-audit-timeline`
+- `manual-rerun-control-history-runtime-evidence-aligned`
+
+### 필수 테스트 시나리오
+- action history 조회를 도입해도 `/webhook/github`, `POST /reviews/rerun`, `GET /reviews/rerun/{executionKey}`, `POST /reviews/rerun/{executionKey}/retry`, `GET /reviews/rerun/executions`, `POST /reviews/rerun/{executionKey}/actions` 기존 계약은 유지된다.
+- `GET /reviews/rerun/{executionKey}/actions/history`는 `executionKey`를 읽고, 성공 시 `actions[].action`, `actions[].actionStatus`, `actions[].note`, `actions[].appliedAt`를 반환한다.
+- history 응답은 H2 audit row 순서와 같은 timeline을 반환하고, query/list는 계속 현재 상태와 `availableActions`만 반환한다.
+- representative execution 1건 이상에서 action 응답, history 조회, query/list, H2 audit evidence가 같은 결과를 가진다.
+
+## 후속 Spec 후보
+### ID
+SPEC-0015
+
+### 이름
+운영용 관리자 제어 액션 반복 정책 정교화
+
 ### 시작 조건
-- `현재 활성 Spec`이 완료되고, 복수 관리자 액션의 request/response/audit evidence 구조가 안정적으로 닫힌 뒤 시작한다.
+- `현재 활성 Spec`이 완료되고, action history 조회 응답과 audit timeline 해석이 안정적으로 닫힌 뒤 시작한다.
 
 ### 목표
-- 운영자가 execution별 관리자 액션 이력을 순서대로 조회하고, 각 action note와 적용 시각을 읽을 수 있게 만든다.
+- 같은 execution에서 `ACKNOWLEDGE`, `UNACKNOWLEDGE`를 반복 수행할 수 있는지, 허용한다면 어떤 저장 규칙과 조회 의미를 따를지 정리한다.
 
 ### 후속 변경 범위
-- action audit history 조회 응답 추가
-- 목록/단건 조회와 action history 관계 정리
-- representative verification에서 audit timeline 대조
+- 반복 action 허용 여부 결정
+- audit unique constraint 재설계 검토
+- repeated action timeline 해석 규칙 정리
 
 ### 후속 변경 비대상
 - 사용자용 UI
+- bulk action
 - 장기 저장소 도입
-- 자동 스케줄러 도입
 
 ### 후속 검증 방향
-- 복수 관리자 액션이 쌓여도 query/list 의미와 action history 해석이 충돌하지 않는다.
-- 운영자가 실행 상태, 가능한 액션, 이미 수행된 액션 이력을 일관되게 읽을 수 있다.
+- 같은 action이 반복되더라도 current state, history, availableActions, runtime evidence 해석이 충돌하지 않는다.
+- 운영자가 현재 상태와 과거 이력을 함께 읽어도 action timeline이 모순되지 않는다.
