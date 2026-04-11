@@ -227,6 +227,38 @@ class ManualRerunExecutionListServiceTest {
                 .containsExactly(ManualRerunAvailableAction.UNACKNOWLEDGE);
     }
 
+    @DisplayName("목록 조회 응답은 마지막 applied action이 UNACKNOWLEDGE면 ACKNOWLEDGE를 다시 노출한다.")
+    @Test
+    void list_exposesAcknowledgeAgainWhenLatestActionIsUnacknowledge() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        ManualRerunExecutionListService service = new ManualRerunExecutionListService(repository);
+        when(repository.findManualRerunExecutions()).thenReturn(List.of(
+                manualRerunExecution(
+                        "EXECUTION:MANUAL_RERUN:32",
+                        null,
+                        "owner/repo",
+                        32,
+                        WebhookExecutionStatus.FAILED,
+                        FailureDisposition.MANUAL_ACTION_REQUIRED,
+                        ExecutionControlMode.DRY_RUN,
+                        false
+                )
+        ));
+        when(repository.findLatestAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:32"))
+                .thenReturn(Optional.of(ManualRerunControlAction.UNACKNOWLEDGE));
+
+        // when
+        ManualRerunExecutionListServiceResponse response = service.list(
+                ManualRerunExecutionListServiceRequest.of(null, null, null, null, null)
+        );
+
+        // then
+        assertThat(response.getExecutions()).hasSize(1);
+        assertThat(response.getExecutions().get(0).getAvailableActions())
+                .containsExactly(ManualRerunAvailableAction.ACKNOWLEDGE);
+    }
+
     private WebhookExecution manualRerunExecution(String executionKey,
                                                   String retrySourceExecutionKey,
                                                   String repositoryName,

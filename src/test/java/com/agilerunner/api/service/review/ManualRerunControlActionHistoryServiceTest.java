@@ -83,6 +83,70 @@ class ManualRerunControlActionHistoryServiceTest {
         assertThat(response.getActions().get(1).getAppliedAt()).isEqualTo(LocalDateTime.of(2026, 4, 10, 12, 3));
     }
 
+    @DisplayName("반복 액션 이력 조회 서비스는 ACKNOWLEDGE, UNACKNOWLEDGE, ACKNOWLEDGE timeline을 순서대로 반환한다.")
+    @Test
+    void find_returnsRepeatedActionTimelineInOrder() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        ManualRerunControlActionHistoryService service = new ManualRerunControlActionHistoryService(repository);
+        WebhookExecution webhookExecution = WebhookExecution.start(
+                "EXECUTION:MANUAL_RERUN:history-repeat",
+                "PR_REVIEW:owner/repo#12",
+                "MANUAL_RERUN_DELIVERY:history-repeat",
+                "owner/repo",
+                12,
+                "PULL_REQUEST",
+                "manual_rerun",
+                LocalDateTime.of(2026, 4, 10, 12, 0)
+        ).withExecutionStartType(ExecutionStartType.MANUAL_RERUN).complete(
+                WebhookExecutionStatus.FAILED,
+                "failed",
+                null,
+                LocalDateTime.of(2026, 4, 10, 12, 1)
+        );
+        when(repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:history-repeat"))
+                .thenReturn(Optional.of(webhookExecution));
+        when(repository.findManualRerunControlActionAudits("EXECUTION:MANUAL_RERUN:history-repeat"))
+                .thenReturn(List.of(
+                        ManualRerunControlActionAudit.of(
+                                "EXECUTION:MANUAL_RERUN:history-repeat",
+                                ManualRerunControlAction.ACKNOWLEDGE,
+                                ManualRerunControlActionStatus.APPLIED,
+                                "첫 확인 완료",
+                                LocalDateTime.of(2026, 4, 10, 12, 2)
+                        ),
+                        ManualRerunControlActionAudit.of(
+                                "EXECUTION:MANUAL_RERUN:history-repeat",
+                                ManualRerunControlAction.UNACKNOWLEDGE,
+                                ManualRerunControlActionStatus.APPLIED,
+                                "확인 취소",
+                                LocalDateTime.of(2026, 4, 10, 12, 3)
+                        ),
+                        ManualRerunControlActionAudit.of(
+                                "EXECUTION:MANUAL_RERUN:history-repeat",
+                                ManualRerunControlAction.ACKNOWLEDGE,
+                                ManualRerunControlActionStatus.APPLIED,
+                                "재확인 완료",
+                                LocalDateTime.of(2026, 4, 10, 12, 4)
+                        )
+                ));
+
+        // when
+        ManualRerunControlActionHistoryServiceResponse response = service.find(
+                ManualRerunControlActionHistoryServiceRequest.of("EXECUTION:MANUAL_RERUN:history-repeat")
+        );
+
+        // then
+        assertThat(response.getActions()).hasSize(3);
+        assertThat(response.getActions().get(0).getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
+        assertThat(response.getActions().get(0).getNote()).isEqualTo("첫 확인 완료");
+        assertThat(response.getActions().get(1).getAction()).isEqualTo(ManualRerunControlAction.UNACKNOWLEDGE);
+        assertThat(response.getActions().get(1).getNote()).isEqualTo("확인 취소");
+        assertThat(response.getActions().get(2).getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
+        assertThat(response.getActions().get(2).getNote()).isEqualTo("재확인 완료");
+        assertThat(response.getActions().get(2).getAppliedAt()).isEqualTo(LocalDateTime.of(2026, 4, 10, 12, 4));
+    }
+
     @DisplayName("관리자 액션 이력은 execution이 존재하지만 audit row가 없으면 빈 actions로 반환한다.")
     @Test
     void find_returnsEmptyActionsWhenAuditDoesNotExist() {

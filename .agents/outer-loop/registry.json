@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0015",
-    "task_id": "TASK-0002",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0015/TASK-0002-control-repeat-storage-policy.md",
+    "task_id": "TASK-0003",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0015/TASK-0003-control-repeat-state-history.md",
     "spec_summary_path": null
   },
   "proposals": [

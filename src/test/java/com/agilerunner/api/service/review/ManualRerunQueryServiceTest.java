@@ -115,6 +115,47 @@ class ManualRerunQueryServiceTest {
         assertThat(response.getAvailableActions()).containsExactly(ManualRerunAvailableAction.UNACKNOWLEDGE);
     }
 
+    @DisplayName("마지막 applied action이 UNACKNOWLEDGE면 조회 응답은 ACKNOWLEDGE를 다시 노출한다.")
+    @Test
+    void find_exposesAcknowledgeAgainWhenLatestActionIsUnacknowledge() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        ManualRerunQueryService service = new ManualRerunQueryService(repository);
+        WebhookExecution webhookExecution = WebhookExecution.start(
+                "EXECUTION:MANUAL_RERUN:query-unacknowledged",
+                "PR_REVIEW:owner/repo#12",
+                "MANUAL_RERUN_DELIVERY:query-unacknowledged",
+                "owner/repo",
+                12,
+                "PULL_REQUEST",
+                "manual_rerun",
+                LocalDateTime.of(2026, 4, 9, 12, 0)
+        ).withExecutionStartType(
+                ExecutionStartType.MANUAL_RERUN
+        ).withExecutionControl(
+                ExecutionControlMode.DRY_RUN,
+                false,
+                GitHubWriteSkipReason.DRY_RUN
+        ).complete(
+                WebhookExecutionStatus.FAILED,
+                "GitHub App ID missing",
+                ErrorCode.GITHUB_APP_CONFIGURATION_MISSING,
+                FailureDisposition.MANUAL_ACTION_REQUIRED,
+                LocalDateTime.of(2026, 4, 9, 12, 1)
+        );
+        when(repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:query-unacknowledged")).thenReturn(Optional.of(webhookExecution));
+        when(repository.findLatestAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:query-unacknowledged"))
+                .thenReturn(Optional.of(ManualRerunControlAction.UNACKNOWLEDGE));
+
+        // when
+        ManualRerunQueryServiceResponse response = service.find(
+                ManualRerunQueryServiceRequest.of("EXECUTION:MANUAL_RERUN:query-unacknowledged")
+        );
+
+        // then
+        assertThat(response.getAvailableActions()).containsExactly(ManualRerunAvailableAction.ACKNOWLEDGE);
+    }
+
     @DisplayName("manual rerun execution이 없으면 조회는 not found 예외를 던진다.")
     @Test
     void find_throwsNotFoundWhenExecutionDoesNotExist() {
