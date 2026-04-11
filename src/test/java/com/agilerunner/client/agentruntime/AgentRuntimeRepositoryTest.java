@@ -18,6 +18,7 @@ import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.domain.exception.FailureDisposition;
 import com.agilerunner.domain.review.ManualRerunControlAction;
 import com.agilerunner.domain.review.ManualRerunControlActionAudit;
+import com.agilerunner.domain.review.ManualRerunControlActionHistorySortDirection;
 import com.agilerunner.domain.review.ManualRerunControlActionStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -547,6 +548,124 @@ class AgentRuntimeRepositoryTest {
             assertThat(filteredRangeHistory.getFirst().getAction()).isEqualTo(ManualRerunControlAction.UNACKNOWLEDGE);
             assertThat(filteredRangeHistory.getFirst().getNote()).isEqualTo("확인 취소");
             assertThat(filteredRangeHistory.getFirst().getAppliedAt()).isEqualTo(LocalDateTime.of(2026, 4, 11, 10, 5));
+        });
+    }
+
+    @DisplayName("manual rerun control action audit history는 정렬 방향과 page size 기준으로 row를 잘라 조회할 수 있다.")
+    @Test
+    void findManualRerunControlActionAudits_withSortDirectionAndPageSize() {
+        contextRunner.run(context -> {
+            // given
+            AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
+            repository.appendManualRerunControlActionAudit(ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:history-order-page",
+                    ManualRerunControlAction.ACKNOWLEDGE,
+                    "첫 확인",
+                    LocalDateTime.of(2026, 4, 12, 10, 0)
+            ));
+            repository.appendManualRerunControlActionAudit(ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:history-order-page",
+                    ManualRerunControlAction.UNACKNOWLEDGE,
+                    "첫 취소",
+                    LocalDateTime.of(2026, 4, 12, 10, 1)
+            ));
+            repository.appendManualRerunControlActionAudit(ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:history-order-page",
+                    ManualRerunControlAction.ACKNOWLEDGE,
+                    "재확인",
+                    LocalDateTime.of(2026, 4, 12, 10, 2)
+            ));
+
+            // when
+            List<ManualRerunControlActionAudit> descHistory =
+                    repository.findManualRerunControlActionAudits(
+                            "EXECUTION:MANUAL_RERUN:history-order-page",
+                            null,
+                            null,
+                            null,
+                            null,
+                            ManualRerunControlActionHistorySortDirection.DESC,
+                            2,
+                            null
+                    );
+            List<ManualRerunControlActionAudit> ascHistory =
+                    repository.findManualRerunControlActionAudits(
+                            "EXECUTION:MANUAL_RERUN:history-order-page",
+                            null,
+                            null,
+                            null,
+                            null,
+                            ManualRerunControlActionHistorySortDirection.ASC,
+                            2,
+                            null
+                    );
+
+            // then
+            assertThat(descHistory).hasSize(2);
+            assertThat(descHistory.get(0).getNote()).isEqualTo("재확인");
+            assertThat(descHistory.get(1).getNote()).isEqualTo("첫 취소");
+            assertThat(ascHistory).hasSize(2);
+            assertThat(ascHistory.get(0).getNote()).isEqualTo("첫 확인");
+            assertThat(ascHistory.get(1).getNote()).isEqualTo("첫 취소");
+        });
+    }
+
+    @DisplayName("manual rerun control action audit history는 cursorAppliedAt 배타 경계 기준으로 다음 window를 조회할 수 있다.")
+    @Test
+    void findManualRerunControlActionAudits_withCursorAppliedAt() {
+        contextRunner.run(context -> {
+            // given
+            AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
+            repository.appendManualRerunControlActionAudit(ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:history-cursor-page",
+                    ManualRerunControlAction.ACKNOWLEDGE,
+                    "첫 확인",
+                    LocalDateTime.of(2026, 4, 12, 11, 0)
+            ));
+            repository.appendManualRerunControlActionAudit(ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:history-cursor-page",
+                    ManualRerunControlAction.UNACKNOWLEDGE,
+                    "두 번째 확인 취소",
+                    LocalDateTime.of(2026, 4, 12, 11, 1)
+            ));
+            repository.appendManualRerunControlActionAudit(ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:history-cursor-page",
+                    ManualRerunControlAction.ACKNOWLEDGE,
+                    "세 번째 재확인",
+                    LocalDateTime.of(2026, 4, 12, 11, 2)
+            ));
+
+            // when
+            List<ManualRerunControlActionAudit> descWindow =
+                    repository.findManualRerunControlActionAudits(
+                            "EXECUTION:MANUAL_RERUN:history-cursor-page",
+                            null,
+                            null,
+                            null,
+                            null,
+                            ManualRerunControlActionHistorySortDirection.DESC,
+                            5,
+                            LocalDateTime.of(2026, 4, 12, 11, 2)
+                    );
+            List<ManualRerunControlActionAudit> ascWindow =
+                    repository.findManualRerunControlActionAudits(
+                            "EXECUTION:MANUAL_RERUN:history-cursor-page",
+                            null,
+                            null,
+                            null,
+                            null,
+                            ManualRerunControlActionHistorySortDirection.ASC,
+                            5,
+                            LocalDateTime.of(2026, 4, 12, 11, 0)
+                    );
+
+            // then
+            assertThat(descWindow).hasSize(2);
+            assertThat(descWindow.get(0).getNote()).isEqualTo("두 번째 확인 취소");
+            assertThat(descWindow.get(1).getNote()).isEqualTo("첫 확인");
+            assertThat(ascWindow).hasSize(2);
+            assertThat(ascWindow.get(0).getNote()).isEqualTo("두 번째 확인 취소");
+            assertThat(ascWindow.get(1).getNote()).isEqualTo("세 번째 재확인");
         });
     }
 

@@ -17,6 +17,7 @@ import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.domain.exception.FailureDisposition;
 import com.agilerunner.domain.review.ManualRerunControlAction;
 import com.agilerunner.domain.review.ManualRerunControlActionAudit;
+import com.agilerunner.domain.review.ManualRerunControlActionHistorySortDirection;
 import com.agilerunner.domain.review.ManualRerunControlActionStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -233,7 +234,7 @@ public class AgentRuntimeRepository {
             WHERE execution_key = :executionKey
             ORDER BY applied_at ASC, id ASC
             """;
-    private static final String FIND_MANUAL_RERUN_CONTROL_ACTION_AUDITS_WITH_FILTER_SQL = """
+    private static final String FIND_MANUAL_RERUN_CONTROL_ACTION_AUDITS_FILTER_BASE_SQL = """
             SELECT execution_key, action, action_status, note, applied_at
             FROM MANUAL_RERUN_CONTROL_ACTION_AUDIT
             WHERE execution_key = :executionKey
@@ -241,7 +242,6 @@ public class AgentRuntimeRepository {
               AND (:actionStatus IS NULL OR action_status = :actionStatus)
               AND (:appliedAtFrom IS NULL OR applied_at >= :appliedAtFrom)
               AND (:appliedAtTo IS NULL OR applied_at <= :appliedAtTo)
-            ORDER BY applied_at ASC, id ASC
             """;
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
@@ -367,14 +367,39 @@ public class AgentRuntimeRepository {
                                                                                   ManualRerunControlActionStatus actionStatus,
                                                                                   LocalDateTime appliedAtFrom,
                                                                                   LocalDateTime appliedAtTo) {
+        return findManualRerunControlActionAudits(
+                executionKey,
+                action,
+                actionStatus,
+                appliedAtFrom,
+                appliedAtTo,
+                null,
+                null,
+                null
+        );
+    }
+
+    public List<ManualRerunControlActionAudit> findManualRerunControlActionAudits(String executionKey,
+                                                                                  ManualRerunControlAction action,
+                                                                                  ManualRerunControlActionStatus actionStatus,
+                                                                                  LocalDateTime appliedAtFrom,
+                                                                                  LocalDateTime appliedAtTo,
+                                                                                  ManualRerunControlActionHistorySortDirection sortDirection,
+                                                                                  Integer pageSize,
+                                                                                  LocalDateTime cursorAppliedAt) {
+        ManualRerunControlActionHistorySortDirection effectiveSortDirection = getEffectiveHistorySortDirection(sortDirection);
+        String historySelectionSql = buildManualRerunControlActionHistorySelectionSql(effectiveSortDirection, pageSize, cursorAppliedAt);
+
         return namedParameterJdbcTemplate.query(
-                FIND_MANUAL_RERUN_CONTROL_ACTION_AUDITS_WITH_FILTER_SQL,
+                historySelectionSql,
                 new MapSqlParameterSource()
                         .addValue("executionKey", executionKey)
                         .addValue("action", getManualRerunControlActionName(action))
                         .addValue("actionStatus", getManualRerunControlActionStatusName(actionStatus))
                         .addValue("appliedAtFrom", appliedAtFrom)
-                        .addValue("appliedAtTo", appliedAtTo),
+                        .addValue("appliedAtTo", appliedAtTo)
+                        .addValue("cursorAppliedAt", cursorAppliedAt)
+                        .addValue("pageSize", pageSize),
                 this::mapManualRerunControlActionAudit
         );
     }
@@ -397,6 +422,52 @@ public class AgentRuntimeRepository {
                 .addValue("ownerRole", getAgentRoleName(taskRuntimeState.getOwnerRole()))
                 .addValue("startedAt", taskRuntimeState.getStartedAt())
                 .addValue("finishedAt", taskRuntimeState.getFinishedAt());
+    }
+
+    private ManualRerunControlActionHistorySortDirection getEffectiveHistorySortDirection(
+            ManualRerunControlActionHistorySortDirection sortDirection
+    ) {
+        if (sortDirection != null) {
+            return sortDirection;
+        }
+
+        return ManualRerunControlActionHistorySortDirection.ASC;
+    }
+
+    private String buildManualRerunControlActionHistorySelectionSql(
+            ManualRerunControlActionHistorySortDirection sortDirection,
+            Integer pageSize,
+            LocalDateTime cursorAppliedAt
+    ) {
+        StringBuilder sql = new StringBuilder(FIND_MANUAL_RERUN_CONTROL_ACTION_AUDITS_FILTER_BASE_SQL);
+
+        if (cursorAppliedAt != null) {
+            sql.append(getHistoryCursorClause(sortDirection));
+        }
+
+        sql.append(getHistoryOrderByClause(sortDirection));
+
+        if (pageSize != null) {
+            sql.append("\nLIMIT :pageSize");
+        }
+
+        return sql.toString();
+    }
+
+    private String getHistoryCursorClause(ManualRerunControlActionHistorySortDirection sortDirection) {
+        if (sortDirection == ManualRerunControlActionHistorySortDirection.DESC) {
+            return "  AND applied_at < :cursorAppliedAt\n";
+        }
+
+        return "  AND applied_at > :cursorAppliedAt\n";
+    }
+
+    private String getHistoryOrderByClause(ManualRerunControlActionHistorySortDirection sortDirection) {
+        if (sortDirection == ManualRerunControlActionHistorySortDirection.DESC) {
+            return "ORDER BY applied_at DESC, id DESC";
+        }
+
+        return "ORDER BY applied_at ASC, id ASC";
     }
 
     private MapSqlParameterSource toValidationCriteriaParameters(ValidationCriteria validationCriteria) {

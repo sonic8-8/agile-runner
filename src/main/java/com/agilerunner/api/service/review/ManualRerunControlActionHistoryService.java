@@ -6,8 +6,8 @@ import com.agilerunner.client.agentruntime.AgentRuntimeRepository;
 import com.agilerunner.domain.agentruntime.ExecutionStartType;
 import com.agilerunner.domain.agentruntime.WebhookExecution;
 import com.agilerunner.domain.exception.ManualRerunQueryNotFoundException;
-import org.springframework.stereotype.Service;
 import org.springframework.lang.Nullable;
+import org.springframework.stereotype.Service;
 
 @Service
 public class ManualRerunControlActionHistoryService {
@@ -39,7 +39,10 @@ public class ManualRerunControlActionHistoryService {
                                 request.getAction(),
                                 request.getActionStatus(),
                                 request.getAppliedAtFrom(),
-                                request.getAppliedAtTo()
+                                request.getAppliedAtTo(),
+                                request.getSortDirection(),
+                                request.getPageSize(),
+                                request.getCursorAppliedAt()
                         ).stream()
                         .map(audit -> ManualRerunControlActionHistoryServiceResponse.ActionHistorySummary.of(
                                 audit.getAction(),
