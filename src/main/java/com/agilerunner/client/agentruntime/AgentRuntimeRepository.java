@@ -233,6 +233,14 @@ public class AgentRuntimeRepository {
             WHERE execution_key = :executionKey
             ORDER BY applied_at ASC, id ASC
             """;
+    private static final String FIND_MANUAL_RERUN_CONTROL_ACTION_AUDITS_WITH_FILTER_SQL = """
+            SELECT execution_key, action, action_status, note, applied_at
+            FROM MANUAL_RERUN_CONTROL_ACTION_AUDIT
+            WHERE execution_key = :executionKey
+              AND (:action IS NULL OR action = :action)
+              AND (:actionStatus IS NULL OR action_status = :actionStatus)
+            ORDER BY applied_at ASC, id ASC
+            """;
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
@@ -336,6 +344,19 @@ public class AgentRuntimeRepository {
         return namedParameterJdbcTemplate.query(
                 FIND_MANUAL_RERUN_CONTROL_ACTION_AUDITS_SQL,
                 new MapSqlParameterSource("executionKey", executionKey),
+                this::mapManualRerunControlActionAudit
+        );
+    }
+
+    public List<ManualRerunControlActionAudit> findManualRerunControlActionAudits(String executionKey,
+                                                                                  ManualRerunControlAction action,
+                                                                                  ManualRerunControlActionStatus actionStatus) {
+        return namedParameterJdbcTemplate.query(
+                FIND_MANUAL_RERUN_CONTROL_ACTION_AUDITS_WITH_FILTER_SQL,
+                new MapSqlParameterSource()
+                        .addValue("executionKey", executionKey)
+                        .addValue("action", getManualRerunControlActionName(action))
+                        .addValue("actionStatus", getManualRerunControlActionStatusName(actionStatus)),
                 this::mapManualRerunControlActionAudit
         );
     }
@@ -600,6 +621,22 @@ public class AgentRuntimeRepository {
         }
 
         return executionStartType.name();
+    }
+
+    private String getManualRerunControlActionName(ManualRerunControlAction action) {
+        if (action == null) {
+            return null;
+        }
+
+        return action.name();
+    }
+
+    private String getManualRerunControlActionStatusName(ManualRerunControlActionStatus actionStatus) {
+        if (actionStatus == null) {
+            return null;
+        }
+
+        return actionStatus.name();
     }
 
     private ExecutionControlMode getExecutionControlMode(String value) {

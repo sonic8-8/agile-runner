@@ -443,6 +443,44 @@ class AgentRuntimeRepositoryTest {
         });
     }
 
+    @DisplayName("manual rerun control action audit history는 action과 action status 필터에 맞는 row만 조회할 수 있다.")
+    @Test
+    void findManualRerunControlActionAudits_withFilters() {
+        contextRunner.run(context -> {
+            // given
+            AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
+            ManualRerunControlActionAudit acknowledgeAudit = ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:history-filter",
+                    ManualRerunControlAction.ACKNOWLEDGE,
+                    "운영자 확인 완료",
+                    LocalDateTime.of(2026, 4, 10, 11, 0)
+            );
+            ManualRerunControlActionAudit unacknowledgeAudit = ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:history-filter",
+                    ManualRerunControlAction.UNACKNOWLEDGE,
+                    "운영자 확인 취소",
+                    LocalDateTime.of(2026, 4, 10, 11, 1)
+            );
+
+            repository.appendManualRerunControlActionAudit(acknowledgeAudit);
+            repository.appendManualRerunControlActionAudit(unacknowledgeAudit);
+
+            // when
+            List<ManualRerunControlActionAudit> filteredHistory =
+                    repository.findManualRerunControlActionAudits(
+                            "EXECUTION:MANUAL_RERUN:history-filter",
+                            ManualRerunControlAction.ACKNOWLEDGE,
+                            ManualRerunControlActionStatus.APPLIED
+                    );
+
+            // then
+            assertThat(filteredHistory).hasSize(1);
+            assertThat(filteredHistory.getFirst().getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
+            assertThat(filteredHistory.getFirst().getActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);
+            assertThat(filteredHistory.getFirst().getNote()).isEqualTo("운영자 확인 완료");
+        });
+    }
+
     @DisplayName("manual rerun control action audit는 같은 action을 다시 저장해도 마지막 applied action과 전체 history를 유지한다.")
     @Test
     void appendManualRerunControlActionAudit_allowsRepeatedActionAfterOppositeAction() {
