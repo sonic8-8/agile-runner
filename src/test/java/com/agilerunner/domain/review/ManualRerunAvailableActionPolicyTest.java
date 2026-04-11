@@ -35,6 +35,15 @@ class ManualRerunAvailableActionPolicyTest {
                 .containsExactly(ManualRerunAvailableAction.UNACKNOWLEDGE);
     }
 
+    @DisplayName("마지막 applied action이 UNACKNOWLEDGE면 ACKNOWLEDGE를 다시 반환한다.")
+    @Test
+    void resolve_returnsAcknowledgeWhenUnacknowledgeWasApplied() {
+        WebhookExecution execution = manualActionRequiredExecution("EXECUTION:MANUAL_RERUN:policy-2-1");
+
+        assertThat(policy.resolve(execution, ManualRerunControlAction.UNACKNOWLEDGE))
+                .containsExactly(ManualRerunAvailableAction.ACKNOWLEDGE);
+    }
+
     @DisplayName("UNACKNOWLEDGE 평가는 마지막 applied action이 ACKNOWLEDGE일 때만 허용한다.")
     @Test
     void evaluate_allowsUnacknowledgeOnlyAfterAcknowledge() {

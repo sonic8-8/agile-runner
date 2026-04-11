@@ -443,6 +443,53 @@ class AgentRuntimeRepositoryTest {
         });
     }
 
+    @DisplayName("manual rerun control action audit는 같은 action을 다시 저장해도 마지막 applied action과 전체 history를 유지한다.")
+    @Test
+    void appendManualRerunControlActionAudit_allowsRepeatedActionAfterOppositeAction() {
+        contextRunner.run(context -> {
+            // given
+            AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
+            ManualRerunControlActionAudit firstAcknowledge = ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:repeat-1",
+                    ManualRerunControlAction.ACKNOWLEDGE,
+                    "첫 확인 완료",
+                    LocalDateTime.of(2026, 4, 10, 11, 0)
+            );
+            ManualRerunControlActionAudit unacknowledge = ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:repeat-1",
+                    ManualRerunControlAction.UNACKNOWLEDGE,
+                    "확인 취소",
+                    LocalDateTime.of(2026, 4, 10, 11, 1)
+            );
+            ManualRerunControlActionAudit secondAcknowledge = ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:repeat-1",
+                    ManualRerunControlAction.ACKNOWLEDGE,
+                    "재확인 완료",
+                    LocalDateTime.of(2026, 4, 10, 11, 2)
+            );
+
+            // when
+            repository.appendManualRerunControlActionAudit(firstAcknowledge);
+            repository.appendManualRerunControlActionAudit(unacknowledge);
+            repository.appendManualRerunControlActionAudit(secondAcknowledge);
+            Optional<ManualRerunControlAction> latestAction =
+                    repository.findLatestAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:repeat-1");
+            List<ManualRerunControlActionAudit> history =
+                    repository.findManualRerunControlActionAudits("EXECUTION:MANUAL_RERUN:repeat-1");
+
+            // then
+            assertThat(latestAction).contains(ManualRerunControlAction.ACKNOWLEDGE);
+            assertThat(history).hasSize(3);
+            assertThat(history.get(0).getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
+            assertThat(history.get(0).getNote()).isEqualTo("첫 확인 완료");
+            assertThat(history.get(1).getAction()).isEqualTo(ManualRerunControlAction.UNACKNOWLEDGE);
+            assertThat(history.get(1).getNote()).isEqualTo("확인 취소");
+            assertThat(history.get(2).getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
+            assertThat(history.get(2).getNote()).isEqualTo("재확인 완료");
+            assertThat(history.get(2).getAppliedAt()).isEqualTo(LocalDateTime.of(2026, 4, 10, 11, 2));
+        });
+    }
+
     @DisplayName("성공한 webhook execution은 오류 코드 null 상태로 저장하고 다시 조회할 수 있다.")
     @Test
     void upsertWebhookExecution_withNullErrorCode_andFind() {

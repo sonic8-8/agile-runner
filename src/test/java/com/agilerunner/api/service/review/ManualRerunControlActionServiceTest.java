@@ -86,6 +86,34 @@ class ManualRerunControlActionServiceTest {
         verify(repository).appendManualRerunControlActionAudit(any(ManualRerunControlActionAudit.class));
     }
 
+    @DisplayName("UNACKNOWLEDGE 이후 ACKNOWLEDGE 재요청은 다시 허용되고 최소 성공 응답을 반환한다.")
+    @Test
+    void execute_returnsAppliedResponseContractForReacknowledge() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        ManualRerunControlActionService service = new ManualRerunControlActionService(repository);
+        ManualRerunControlActionServiceRequest request = ManualRerunControlActionServiceRequest.of(
+                "EXECUTION:MANUAL_RERUN:action-3",
+                ManualRerunControlAction.ACKNOWLEDGE,
+                "운영자 재확인 완료"
+        );
+        when(repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:action-3"))
+                .thenReturn(Optional.of(manualActionRequiredExecution("EXECUTION:MANUAL_RERUN:action-3")));
+        when(repository.findLatestAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:action-3"))
+                .thenReturn(Optional.of(ManualRerunControlAction.UNACKNOWLEDGE));
+
+        // when
+        ManualRerunControlActionServiceResponse response = service.execute(request);
+
+        // then
+        assertThat(response.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:action-3");
+        assertThat(response.getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
+        assertThat(response.getActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);
+        assertThat(response.getAvailableActions()).containsExactly(ManualRerunAvailableAction.UNACKNOWLEDGE);
+        assertThat(response.getNote()).isEqualTo("운영자 재확인 완료");
+        verify(repository).appendManualRerunControlActionAudit(any(ManualRerunControlActionAudit.class));
+    }
+
     @DisplayName("존재하지 않는 executionKey의 관리자 제어 액션 요청은 not found 예외를 던진다.")
     @Test
     void execute_throwsNotFoundWhenExecutionDoesNotExist() {
