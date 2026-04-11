@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0020",
-    "task_id": "TASK-0001",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0020/TASK-0001-response-doc-safety-net.md",
+    "task_id": "TASK-0002",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0020/TASK-0002-response-doc-role-structure.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0019/SPEC-0019-summary.md"
   },
   "proposals": [
