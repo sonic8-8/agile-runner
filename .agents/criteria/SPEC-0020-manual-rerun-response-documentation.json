@@ -1,0 +1,35 @@
+{
+  "spec_id": "SPEC-0020",
+  "spec_name": "운영용 조회 응답 문서 기준 정리",
+  "spec_version": 1,
+  "criteria": [
+    {
+      "key": "manual-rerun-response-doc-contract-preserved",
+      "target": "문서 기준 정리 중 기존 rerun/query/list/history/action 계약 유지",
+      "test_view": "컨트롤러/서비스 통합 관점",
+      "pass_condition": "운영용 조회 응답 문서 기준을 정리하는 동안에도 `POST /reviews/rerun`, `POST /reviews/rerun/{executionKey}/retry`, `GET /reviews/rerun/{executionKey}`, `GET /reviews/rerun/executions`, `GET /reviews/rerun/{executionKey}/actions/history`, `POST /reviews/rerun/{executionKey}/actions` 기존 계약과 의미가 유지된다.",
+      "fail_condition": "문서 기준 정리 과정에서 기존 rerun/query/list/history/action 응답 구조나 의미가 흔들린다."
+    },
+    {
+      "key": "manual-rerun-response-doc-role-defined",
+      "target": "운영용 조회 응답 역할과 문서 구조 정의",
+      "test_view": "문서 리뷰 + 컨트롤러/서비스 black-box 관점",
+      "pass_condition": "문서가 rerun, retry, query, list, history, action 응답이 각각 어떤 질문에 답하는지 구분해 설명하고, 같은 execution을 읽는 기본 순서를 운영자 관점에서 이해할 수 있게 정리한다.",
+      "fail_condition": "문서가 rerun, retry, query, list, history, action 응답의 역할을 서로 겹치게 설명하거나, 운영자가 어느 응답을 언제 읽어야 하는지 이해하기 어렵다."
+    },
+    {
+      "key": "manual-rerun-response-doc-field-meaning-defined",
+      "target": "응답 예시와 필드 의미, 중복 요약 기준 정의",
+      "test_view": "문서 리뷰 + 컨트롤러/서비스 black-box 관점",
+      "pass_condition": "문서 예시와 필드 설명이 현재 DTO/응답 계약과 모순되지 않고, `rerun`, `retry`, `query`, `list`, `history.currentActionState`, `history.actions[]`, `action` 응답이 각각 새 실행 시작 결과, 재시도 시작 결과, 현재 상태, 과거 timeline, 방금 수행한 조치 결과 중 무엇을 보여 주는지 명확하게 정리한다.",
+      "fail_condition": "문서 예시가 실제 DTO/응답 구조와 어긋나거나, 같은 execution에 대한 시작 결과, 현재 상태 요약, 과거 timeline, 방금 수행한 조치 결과 의미가 문서 안에서 섞인다."
+    },
+    {
+      "key": "manual-rerun-response-doc-runtime-aligned",
+      "target": "문서 기준과 representative 실제 응답 정합성",
+      "test_view": "실제 앱 representative 검증 관점",
+      "pass_condition": "로컬 프로필 실제 앱 기동 후 representative rerun execution 1건에서는 rerun, query, list, history, action 응답이 문서 예시와 같은 해석 기준을 가지며 서로 모순되지 않는다. representative retry execution 1건에서는 retry 응답과 `retrySourceExecutionKey` 설명이 실제와 일치한다.",
+      "fail_condition": "대표 rerun 또는 retry execution에서 문서 예시 또는 필드 설명이 실제 응답과 다르거나, rerun/query/list/history/action 응답 또는 retry 응답의 의미가 문서 기준과 일관되지 않다."
+    }
+  ]
+}

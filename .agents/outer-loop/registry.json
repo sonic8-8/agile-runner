@@ -1,9 +1,9 @@
 {
   "version": 1,
   "latest": {
-    "spec_id": "SPEC-0019",
-    "task_id": "TASK-0004",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0019/TASK-0004-list-history-composition-runtime-evidence.md",
+    "spec_id": "SPEC-0020",
+    "task_id": "TASK-0001",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0020/TASK-0001-response-doc-safety-net.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0019/SPEC-0019-summary.md"
   },
   "proposals": [
