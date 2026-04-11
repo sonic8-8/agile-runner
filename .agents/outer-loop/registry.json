@@ -2,9 +2,9 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0015",
-    "task_id": "TASK-0003",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0015/TASK-0003-control-repeat-state-history.md",
-    "spec_summary_path": null
+    "task_id": "TASK-0004",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0015/TASK-0004-control-repeat-runtime-evidence.md",
+    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0015/SPEC-0015-summary.md"
   },
   "proposals": [
     {
