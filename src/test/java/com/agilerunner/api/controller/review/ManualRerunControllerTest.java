@@ -30,6 +30,7 @@ import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
 import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
 import com.agilerunner.domain.review.ManualRerunAvailableAction;
 import com.agilerunner.domain.review.ManualRerunControlAction;
+import com.agilerunner.domain.review.ManualRerunControlActionHistorySortDirection;
 import com.agilerunner.domain.review.ManualRerunControlActionStatus;
 import com.agilerunner.domain.review.RerunExecutionStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -346,6 +347,61 @@ class ManualRerunControllerTest {
         assertThat(requestCaptor.getValue().getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:history-date-1");
         assertThat(requestCaptor.getValue().getAppliedAtFrom()).isEqualTo(LocalDateTime.of(2026, 4, 11, 10, 15, 30));
         assertThat(requestCaptor.getValue().getAppliedAtTo()).isEqualTo(LocalDateTime.of(2026, 4, 11, 11, 45));
+    }
+
+    @DisplayName("관리자 액션 이력 조회 요청은 정렬 방향과 페이지 기준을 service request로 전달한다.")
+    @Test
+    void getActionHistory_passesOrderAndPageFilters() throws Exception {
+        // given
+        ManualRerunControlActionHistoryServiceResponse response = ManualRerunControlActionHistoryServiceResponse.of(
+                "EXECUTION:MANUAL_RERUN:history-page-1",
+                List.of()
+        );
+        when(manualRerunControlActionHistoryService.find(any(ManualRerunControlActionHistoryServiceRequest.class)))
+                .thenReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/reviews/rerun/{executionKey}/actions/history", "EXECUTION:MANUAL_RERUN:history-page-1")
+                        .queryParam("sortDirection", "ASC")
+                        .queryParam("pageSize", "10")
+                        .queryParam("cursorAppliedAt", "2026-04-12T11:30:00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:history-page-1"))
+                .andExpect(jsonPath("$.actions").isArray());
+
+        ArgumentCaptor<ManualRerunControlActionHistoryServiceRequest> requestCaptor =
+                ArgumentCaptor.forClass(ManualRerunControlActionHistoryServiceRequest.class);
+        verify(manualRerunControlActionHistoryService).find(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().getSortDirection()).isEqualTo(ManualRerunControlActionHistorySortDirection.ASC);
+        assertThat(requestCaptor.getValue().getPageSize()).isEqualTo(10);
+        assertThat(requestCaptor.getValue().getCursorAppliedAt()).isEqualTo(LocalDateTime.of(2026, 4, 12, 11, 30));
+    }
+
+    @DisplayName("관리자 액션 이력 조회 요청에서 페이지 기준만 있으면 정렬 방향은 DESC 기본값으로 해석한다.")
+    @Test
+    void getActionHistory_defaultsDescendingWhenPageInputsExist() throws Exception {
+        // given
+        ManualRerunControlActionHistoryServiceResponse response = ManualRerunControlActionHistoryServiceResponse.of(
+                "EXECUTION:MANUAL_RERUN:history-page-default",
+                List.of()
+        );
+        when(manualRerunControlActionHistoryService.find(any(ManualRerunControlActionHistoryServiceRequest.class)))
+                .thenReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/reviews/rerun/{executionKey}/actions/history", "EXECUTION:MANUAL_RERUN:history-page-default")
+                        .queryParam("pageSize", "5")
+                        .queryParam("cursorAppliedAt", "2026-04-12T11:45:00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:history-page-default"))
+                .andExpect(jsonPath("$.actions").isArray());
+
+        ArgumentCaptor<ManualRerunControlActionHistoryServiceRequest> requestCaptor =
+                ArgumentCaptor.forClass(ManualRerunControlActionHistoryServiceRequest.class);
+        verify(manualRerunControlActionHistoryService).find(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().getSortDirection()).isEqualTo(ManualRerunControlActionHistorySortDirection.DESC);
+        assertThat(requestCaptor.getValue().getPageSize()).isEqualTo(5);
+        assertThat(requestCaptor.getValue().getCursorAppliedAt()).isEqualTo(LocalDateTime.of(2026, 4, 12, 11, 45));
     }
 
     @DisplayName("관리자 액션 이력 조회 요청에 필터가 없으면 service request의 필터는 미적용으로 해석한다.")

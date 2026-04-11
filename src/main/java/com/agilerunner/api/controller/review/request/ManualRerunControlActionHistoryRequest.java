@@ -2,6 +2,7 @@ package com.agilerunner.api.controller.review.request;
 
 import com.agilerunner.api.service.review.request.ManualRerunControlActionHistoryServiceRequest;
 import com.agilerunner.domain.review.ManualRerunControlAction;
+import com.agilerunner.domain.review.ManualRerunControlActionHistorySortDirection;
 import com.agilerunner.domain.review.ManualRerunControlActionStatus;
 import lombok.Getter;
 import lombok.Setter;
@@ -18,6 +19,10 @@ public class ManualRerunControlActionHistoryRequest {
     private LocalDateTime appliedAtFrom;
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
     private LocalDateTime appliedAtTo;
+    private ManualRerunControlActionHistorySortDirection sortDirection;
+    private Integer pageSize;
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+    private LocalDateTime cursorAppliedAt;
 
     public ManualRerunControlActionHistoryServiceRequest toServiceRequest(String executionKey) {
         return ManualRerunControlActionHistoryServiceRequest.of(
@@ -25,7 +30,10 @@ public class ManualRerunControlActionHistoryRequest {
                 action,
                 actionStatus,
                 appliedAtFrom,
-                appliedAtTo
+                appliedAtTo,
+                sortDirection,
+                pageSize,
+                cursorAppliedAt
         );
     }
 }
