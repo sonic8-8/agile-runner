@@ -7,6 +7,7 @@ import com.agilerunner.domain.agentruntime.WebhookExecution;
 import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
 import com.agilerunner.domain.review.ManualRerunAvailableAction;
 import com.agilerunner.domain.review.ManualRerunControlAction;
+import com.agilerunner.domain.review.ManualRerunControlActionAudit;
 import com.agilerunner.domain.review.ManualRerunAvailableActionPolicy;
 import com.agilerunner.domain.review.RerunExecutionStatus;
 import org.springframework.lang.Nullable;
@@ -82,6 +83,7 @@ public class ManualRerunExecutionListService {
     }
 
     private ManualRerunExecutionListServiceResponse.ExecutionSummary toExecutionSummary(WebhookExecution execution) {
+        ManualRerunControlActionAudit latestAppliedAudit = findLatestAppliedAudit(execution.getExecutionKey()).orElse(null);
         return ManualRerunExecutionListServiceResponse.ExecutionSummary.of(
                 execution.getExecutionKey(),
                 execution.getRetrySourceExecutionKey(),
@@ -91,6 +93,10 @@ public class ManualRerunExecutionListService {
                 Boolean.TRUE.equals(execution.getWritePerformed()),
                 execution.getErrorCode(),
                 execution.getFailureDisposition(),
+                latestAppliedAudit == null ? null : latestAppliedAudit.getAction(),
+                latestAppliedAudit == null ? null : latestAppliedAudit.getActionStatus(),
+                latestAppliedAudit == null ? null : latestAppliedAudit.getAppliedAt(),
+                latestAppliedAudit != null,
                 resolveAvailableActions(execution)
         );
     }
@@ -112,5 +118,19 @@ public class ManualRerunExecutionListService {
                 execution.getExecutionKey()
         ).orElse(null);
         return availableActionPolicy.resolve(execution, latestAppliedAction);
+    }
+
+    private java.util.Optional<ManualRerunControlActionAudit> findLatestAppliedAudit(String executionKey) {
+        if (agentRuntimeRepository == null) {
+            return java.util.Optional.empty();
+        }
+
+        java.util.Optional<ManualRerunControlActionAudit> latestAppliedAudit =
+                agentRuntimeRepository.findLatestAppliedManualRerunControlActionAudit(executionKey);
+        if (latestAppliedAudit == null) {
+            return java.util.Optional.empty();
+        }
+
+        return latestAppliedAudit;
     }
 }

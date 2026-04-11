@@ -406,6 +406,40 @@ class AgentRuntimeRepositoryTest {
         });
     }
 
+    @DisplayName("manual rerun control action audit를 저장하고 마지막 applied audit row를 다시 조회할 수 있다.")
+    @Test
+    void appendManualRerunControlActionAudit_andFindLatestAppliedAudit() {
+        contextRunner.run(context -> {
+            // given
+            AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
+            ManualRerunControlActionAudit acknowledgeAudit = ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:ack-audit-1",
+                    ManualRerunControlAction.ACKNOWLEDGE,
+                    "운영자 확인 완료",
+                    LocalDateTime.of(2026, 4, 10, 11, 0)
+            );
+            ManualRerunControlActionAudit unacknowledgeAudit = ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:ack-audit-1",
+                    ManualRerunControlAction.UNACKNOWLEDGE,
+                    "운영자 확인 취소",
+                    LocalDateTime.of(2026, 4, 10, 11, 1)
+            );
+
+            // when
+            repository.appendManualRerunControlActionAudit(acknowledgeAudit);
+            repository.appendManualRerunControlActionAudit(unacknowledgeAudit);
+            Optional<ManualRerunControlActionAudit> latestAudit =
+                    repository.findLatestAppliedManualRerunControlActionAudit("EXECUTION:MANUAL_RERUN:ack-audit-1");
+
+            // then
+            assertThat(latestAudit).isPresent();
+            assertThat(latestAudit.get().getAction()).isEqualTo(ManualRerunControlAction.UNACKNOWLEDGE);
+            assertThat(latestAudit.get().getActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);
+            assertThat(latestAudit.get().getNote()).isEqualTo("운영자 확인 취소");
+            assertThat(latestAudit.get().getAppliedAt()).isEqualTo(LocalDateTime.of(2026, 4, 10, 11, 1));
+        });
+    }
+
     @DisplayName("manual rerun control action audit history를 저장하고 시간 순서대로 다시 조회할 수 있다.")
     @Test
     void appendManualRerunControlActionAudit_andFindHistory() {

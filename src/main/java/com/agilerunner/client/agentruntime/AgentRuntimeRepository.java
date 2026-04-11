@@ -220,8 +220,8 @@ public class AgentRuntimeRepository {
                 :appliedAt
             )
             """;
-    private static final String FIND_LATEST_APPLIED_MANUAL_RERUN_CONTROL_ACTION_SQL = """
-            SELECT action
+    private static final String FIND_LATEST_APPLIED_MANUAL_RERUN_CONTROL_ACTION_AUDIT_SQL = """
+            SELECT execution_key, action, action_status, note, applied_at
             FROM MANUAL_RERUN_CONTROL_ACTION_AUDIT
             WHERE execution_key = :executionKey
               AND action_status = :actionStatus
@@ -327,19 +327,24 @@ public class AgentRuntimeRepository {
     }
 
     public Optional<ManualRerunControlAction> findLatestAppliedManualRerunControlAction(String executionKey) {
-        List<ManualRerunControlAction> actions = namedParameterJdbcTemplate.query(
-                FIND_LATEST_APPLIED_MANUAL_RERUN_CONTROL_ACTION_SQL,
+        return findLatestAppliedManualRerunControlActionAudit(executionKey)
+                .map(ManualRerunControlActionAudit::getAction);
+    }
+
+    public Optional<ManualRerunControlActionAudit> findLatestAppliedManualRerunControlActionAudit(String executionKey) {
+        List<ManualRerunControlActionAudit> audits = namedParameterJdbcTemplate.query(
+                FIND_LATEST_APPLIED_MANUAL_RERUN_CONTROL_ACTION_AUDIT_SQL,
                 new MapSqlParameterSource()
                         .addValue("executionKey", executionKey)
                         .addValue("actionStatus", ManualRerunControlActionStatus.APPLIED.name()),
-                (resultSet, rowNum) -> ManualRerunControlAction.valueOf(resultSet.getString("action"))
+                this::mapManualRerunControlActionAudit
         );
 
-        if (actions.isEmpty()) {
+        if (audits.isEmpty()) {
             return Optional.empty();
         }
 
-        return Optional.of(actions.getFirst());
+        return Optional.of(audits.getFirst());
     }
 
     public List<ManualRerunControlActionAudit> findManualRerunControlActionAudits(String executionKey) {

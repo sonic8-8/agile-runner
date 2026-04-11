@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0019",
-    "task_id": "TASK-0002",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0019/TASK-0002-list-history-composition-response-model.md",
+    "task_id": "TASK-0003",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0019/TASK-0003-list-history-composition-latest-action.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0018/SPEC-0018-summary.md"
   },
   "proposals": [

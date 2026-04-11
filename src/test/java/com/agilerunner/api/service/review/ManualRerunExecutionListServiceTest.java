@@ -11,6 +11,8 @@ import com.agilerunner.domain.exception.FailureDisposition;
 import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
 import com.agilerunner.domain.review.ManualRerunAvailableAction;
 import com.agilerunner.domain.review.ManualRerunControlAction;
+import com.agilerunner.domain.review.ManualRerunControlActionAudit;
+import com.agilerunner.domain.review.ManualRerunControlActionStatus;
 import com.agilerunner.domain.review.RerunExecutionStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -149,6 +151,16 @@ class ManualRerunExecutionListServiceTest {
                         true
                 )
         ));
+        when(repository.findLatestAppliedManualRerunControlActionAudit("EXECUTION:MANUAL_RERUN:20"))
+                .thenReturn(Optional.of(ManualRerunControlActionAudit.of(
+                        "EXECUTION:MANUAL_RERUN:20",
+                        ManualRerunControlAction.ACKNOWLEDGE,
+                        ManualRerunControlActionStatus.APPLIED,
+                        "운영자 확인 완료",
+                        LocalDateTime.of(2026, 4, 12, 15, 0)
+                )));
+        when(repository.findLatestAppliedManualRerunControlActionAudit("EXECUTION:MANUAL_RERUN:21"))
+                .thenReturn(Optional.empty());
 
         // when
         ManualRerunExecutionListServiceResponse response = service.list(
@@ -167,10 +179,10 @@ class ManualRerunExecutionListServiceTest {
         assertThat(retryable.isWritePerformed()).isFalse();
         assertThat(retryable.getErrorCode()).isEqualTo(ErrorCode.GITHUB_COMMENT_POST_FAILED);
         assertThat(retryable.getFailureDisposition()).isEqualTo(FailureDisposition.RETRYABLE);
-        assertThat(retryable.getLatestAction()).isNull();
-        assertThat(retryable.getLatestActionStatus()).isNull();
-        assertThat(retryable.getLatestActionAppliedAt()).isNull();
-        assertThat(retryable.isHistoryAvailable()).isFalse();
+        assertThat(retryable.getLatestAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
+        assertThat(retryable.getLatestActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);
+        assertThat(retryable.getLatestActionAppliedAt()).isEqualTo(LocalDateTime.of(2026, 4, 12, 15, 0));
+        assertThat(retryable.isHistoryAvailable()).isTrue();
         assertThat(retryable.getAvailableActions()).containsExactly(ManualRerunAvailableAction.RETRY);
 
         ManualRerunExecutionListServiceResponse.ExecutionSummary completed = response.getExecutions().get(1);

@@ -6,7 +6,10 @@ import com.agilerunner.client.agentruntime.AgentRuntimeRepository;
 import com.agilerunner.domain.agentruntime.ExecutionStartType;
 import com.agilerunner.domain.agentruntime.WebhookExecution;
 import com.agilerunner.domain.agentruntime.WebhookExecutionStatus;
+import com.agilerunner.domain.exception.ErrorCode;
+import com.agilerunner.domain.exception.FailureDisposition;
 import com.agilerunner.domain.exception.ManualRerunQueryNotFoundException;
+import com.agilerunner.domain.review.ManualRerunAvailableAction;
 import com.agilerunner.domain.review.ManualRerunControlAction;
 import com.agilerunner.domain.review.ManualRerunControlActionAudit;
 import com.agilerunner.domain.review.ManualRerunControlActionHistorySortDirection;
@@ -96,6 +99,79 @@ class ManualRerunControlActionHistoryServiceTest {
         assertThat(response.getActions().get(1).getActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);
         assertThat(response.getActions().get(1).getNote()).isEqualTo("운영자 확인 취소");
         assertThat(response.getActions().get(1).getAppliedAt()).isEqualTo(LocalDateTime.of(2026, 4, 10, 12, 3));
+    }
+
+    @DisplayName("관리자 액션 이력 조회 서비스의 현재 조치 상태 요약은 현재 history 필터 결과가 아니라 execution 전체의 최신 applied action을 기준으로 계산한다.")
+    @Test
+    void find_buildsCurrentActionStateFromLatestAppliedAudit() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        ManualRerunControlActionHistoryService service = new ManualRerunControlActionHistoryService(repository);
+        WebhookExecution webhookExecution = WebhookExecution.start(
+                "EXECUTION:MANUAL_RERUN:history-current-state",
+                "PR_REVIEW:owner/repo#12",
+                "MANUAL_RERUN_DELIVERY:history-current-state",
+                "owner/repo",
+                12,
+                "PULL_REQUEST",
+                "manual_rerun",
+                LocalDateTime.of(2026, 4, 10, 12, 0)
+        ).withExecutionStartType(ExecutionStartType.MANUAL_RERUN).complete(
+                WebhookExecutionStatus.FAILED,
+                "failed",
+                ErrorCode.GITHUB_APP_CONFIGURATION_MISSING,
+                FailureDisposition.MANUAL_ACTION_REQUIRED,
+                LocalDateTime.of(2026, 4, 10, 12, 1)
+        );
+        when(repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:history-current-state"))
+                .thenReturn(Optional.of(webhookExecution));
+        when(repository.findLatestAppliedManualRerunControlAction("EXECUTION:MANUAL_RERUN:history-current-state"))
+                .thenReturn(Optional.of(ManualRerunControlAction.UNACKNOWLEDGE));
+        when(repository.findLatestAppliedManualRerunControlActionAudit("EXECUTION:MANUAL_RERUN:history-current-state"))
+                .thenReturn(Optional.of(ManualRerunControlActionAudit.of(
+                        "EXECUTION:MANUAL_RERUN:history-current-state",
+                        ManualRerunControlAction.UNACKNOWLEDGE,
+                        ManualRerunControlActionStatus.APPLIED,
+                        "운영자 확인 취소",
+                        LocalDateTime.of(2026, 4, 10, 12, 3)
+                )));
+        when(repository.findManualRerunControlActionAudits(
+                "EXECUTION:MANUAL_RERUN:history-current-state",
+                ManualRerunControlAction.ACKNOWLEDGE,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        )).thenReturn(List.of(
+                ManualRerunControlActionAudit.of(
+                        "EXECUTION:MANUAL_RERUN:history-current-state",
+                        ManualRerunControlAction.ACKNOWLEDGE,
+                        ManualRerunControlActionStatus.APPLIED,
+                        "운영자 확인 완료",
+                        LocalDateTime.of(2026, 4, 10, 12, 2)
+                )
+        ));
+
+        // when
+        ManualRerunControlActionHistoryServiceResponse response = service.find(
+                ManualRerunControlActionHistoryServiceRequest.of(
+                        "EXECUTION:MANUAL_RERUN:history-current-state",
+                        ManualRerunControlAction.ACKNOWLEDGE,
+                        null
+                )
+        );
+
+        // then
+        assertThat(response.getCurrentActionState().getLatestAction()).isEqualTo(ManualRerunControlAction.UNACKNOWLEDGE);
+        assertThat(response.getCurrentActionState().getLatestActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);
+        assertThat(response.getCurrentActionState().getLatestActionAppliedAt()).isEqualTo(LocalDateTime.of(2026, 4, 10, 12, 3));
+        assertThat(response.getCurrentActionState().getAvailableActions())
+                .containsExactly(ManualRerunAvailableAction.ACKNOWLEDGE);
+        assertThat(response.getActions()).hasSize(1);
+        assertThat(response.getActions().getFirst().getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
+        assertThat(response.getActions().getFirst().getAppliedAt()).isEqualTo(LocalDateTime.of(2026, 4, 10, 12, 2));
     }
 
     @DisplayName("관리자 액션 이력 조회 서비스는 action, actionStatus 필터를 audit selection에 전달한다.")
