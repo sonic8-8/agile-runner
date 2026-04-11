@@ -2,9 +2,9 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0016",
-    "task_id": "TASK-0003",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0016/TASK-0003-history-filter-audit-selection.md",
-    "spec_summary_path": null
+    "task_id": "TASK-0004",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0016/TASK-0004-history-filter-runtime-evidence.md",
+    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0016/SPEC-0016-summary.md"
   },
   "proposals": [
     {
