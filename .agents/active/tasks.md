@@ -167,6 +167,8 @@
   - list row 최신 action 요약
   - history `currentActionState`
   - H2 audit timeline의 최신 applied row
+- history filter/page 결과에 포함된 `actions[]`와 별개로, 비교 기준은 항상 execution 전체 latest applied audit row로 고정한다.
+- representative 검증 대상은 applied audit row가 존재하는 execution을 기준으로 잡고, audit row가 없는 execution의 `null`/`false` 의미는 앞선 task의 테스트 근거로 유지한다.
 - 정합성 검증에 꼭 필요한 최소 query/runtime 보정만 허용한다.
 
 ### 관련 파일 후보
