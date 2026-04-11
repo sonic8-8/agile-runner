@@ -301,7 +301,9 @@ class ManualRerunControllerTest {
                 .thenReturn(response);
 
         // when & then
-        mockMvc.perform(get("/reviews/rerun/{executionKey}/actions/history", "EXECUTION:MANUAL_RERUN:history-1"))
+        mockMvc.perform(get("/reviews/rerun/{executionKey}/actions/history", "EXECUTION:MANUAL_RERUN:history-1")
+                        .queryParam("action", "ACKNOWLEDGE")
+                        .queryParam("actionStatus", "APPLIED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:history-1"))
                 .andExpect(jsonPath("$.actions[0].action").value("ACKNOWLEDGE"))
@@ -313,6 +315,33 @@ class ManualRerunControllerTest {
                 ArgumentCaptor.forClass(ManualRerunControlActionHistoryServiceRequest.class);
         verify(manualRerunControlActionHistoryService).find(requestCaptor.capture());
         assertThat(requestCaptor.getValue().getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:history-1");
+        assertThat(requestCaptor.getValue().getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
+        assertThat(requestCaptor.getValue().getActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);
+    }
+
+    @DisplayName("관리자 액션 이력 조회 요청에 필터가 없으면 service request의 필터는 미적용으로 해석한다.")
+    @Test
+    void getActionHistory_treatsMissingFiltersAsNoFilters() throws Exception {
+        // given
+        ManualRerunControlActionHistoryServiceResponse response = ManualRerunControlActionHistoryServiceResponse.of(
+                "EXECUTION:MANUAL_RERUN:history-empty-filter",
+                List.of()
+        );
+        when(manualRerunControlActionHistoryService.find(any(ManualRerunControlActionHistoryServiceRequest.class)))
+                .thenReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/reviews/rerun/{executionKey}/actions/history", "EXECUTION:MANUAL_RERUN:history-empty-filter"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:history-empty-filter"))
+                .andExpect(jsonPath("$.actions").isArray());
+
+        ArgumentCaptor<ManualRerunControlActionHistoryServiceRequest> requestCaptor =
+                ArgumentCaptor.forClass(ManualRerunControlActionHistoryServiceRequest.class);
+        verify(manualRerunControlActionHistoryService).find(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:history-empty-filter");
+        assertThat(requestCaptor.getValue().getAction()).isNull();
+        assertThat(requestCaptor.getValue().getActionStatus()).isNull();
     }
 
     @DisplayName("관리자 액션 이력 조회에서 execution을 찾지 못하면 404 응답을 반환한다.")

@@ -2,6 +2,7 @@ package com.agilerunner.api.controller.review;
 
 import com.agilerunner.api.controller.review.request.ManualRerunRequest;
 import com.agilerunner.api.controller.review.request.ManualRerunExecutionListRequest;
+import com.agilerunner.api.controller.review.request.ManualRerunControlActionHistoryRequest;
 import com.agilerunner.api.controller.review.request.ManualRerunControlActionRequest;
 import com.agilerunner.api.controller.review.request.ManualRerunRetryRequest;
 import com.agilerunner.api.controller.review.response.ManualRerunControlActionHistoryResponse;
@@ -21,7 +22,6 @@ import com.agilerunner.api.service.review.ManualRerunControlActionService;
 import com.agilerunner.api.service.review.ManualRerunQueryService;
 import com.agilerunner.api.service.review.ManualRerunService;
 import com.agilerunner.api.service.review.ManualRerunRetryService;
-import com.agilerunner.api.service.review.request.ManualRerunControlActionHistoryServiceRequest;
 import com.agilerunner.api.service.review.response.ManualRerunControlActionServiceResponse;
 import com.agilerunner.api.service.review.response.ManualRerunControlActionHistoryServiceResponse;
 import com.agilerunner.api.service.review.response.ManualRerunExecutionListServiceResponse;
@@ -69,9 +69,10 @@ public class ManualRerunController {
     }
 
     @GetMapping("/{executionKey}/actions/history")
-    public ResponseEntity<ManualRerunControlActionHistoryResponse> getActionHistory(@PathVariable String executionKey) {
+    public ResponseEntity<ManualRerunControlActionHistoryResponse> getActionHistory(@PathVariable String executionKey,
+                                                                                    ManualRerunControlActionHistoryRequest request) {
         ManualRerunControlActionHistoryServiceResponse response = manualRerunControlActionHistoryService.find(
-                ManualRerunControlActionHistoryServiceRequest.of(executionKey)
+                request.toServiceRequest(executionKey)
         );
         return ResponseEntity.ok(ManualRerunControlActionHistoryResponse.from(response));
     }
