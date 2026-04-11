@@ -1,0 +1,35 @@
+{
+  "spec_id": "SPEC-0015",
+  "spec_name": "운영용 관리자 제어 액션 반복 정책 정교화",
+  "spec_version": 1,
+  "criteria": [
+    {
+      "key": "manual-rerun-control-repeat-contract-preserved",
+      "target": "반복 정책 정교화 중 기존 action, query, list, history 계약 유지",
+      "test_view": "컨트롤러/서비스 통합 관점",
+      "pass_condition": "반복 액션 정책을 정교화하는 동안에도 `POST /reviews/rerun/{executionKey}/actions`, `GET /reviews/rerun/{executionKey}`, `GET /reviews/rerun/executions`, `GET /reviews/rerun/{executionKey}/actions/history` 기존 계약과 의미가 유지된다.",
+      "fail_condition": "반복 정책 정교화 때문에 기존 action, query, list, history 응답 구조나 의미가 흔들린다."
+    },
+    {
+      "key": "manual-rerun-control-repeat-policy-allows-reapply",
+      "target": "반대 액션 이후 같은 액션 재적용 허용",
+      "test_view": "정책/서비스/저장소 black-box 관점",
+      "pass_condition": "`ACKNOWLEDGE -> UNACKNOWLEDGE -> ACKNOWLEDGE` 흐름이 저장 단계에서 막히지 않고, 마지막 applied action 기준 허용/비허용 정책이 일관된다.",
+      "fail_condition": "반대 액션 이후 같은 액션 재적용이 물리 스키마나 저장 단계에서 막히거나, 정책 해석과 저장 결과가 어긋난다."
+    },
+    {
+      "key": "manual-rerun-control-repeat-history-reflects-latest-state",
+      "target": "반복 액션 이후 현재 상태와 history timeline 정합성",
+      "test_view": "query/list/history 서비스 black-box 관점",
+      "pass_condition": "query/list는 마지막 applied action 기준 현재 상태와 `availableActions`를 반환하고, history는 반복 액션 전체 timeline을 시간 순서대로 반환한다.",
+      "fail_condition": "query/list가 마지막 상태를 잘못 해석하거나, history가 반복 액션 전체 timeline을 누락하거나, 두 응답의 의미가 서로 충돌한다."
+    },
+    {
+      "key": "manual-rerun-control-repeat-runtime-evidence-aligned",
+      "target": "반복 액션 응답과 runtime audit evidence 정합성",
+      "test_view": "저장소/H2 실제 검증 관점",
+      "pass_condition": "로컬 프로필 실제 앱 기동 후 representative execution에서 action 응답, history 조회 응답, query/list 상태, H2 audit evidence가 같은 execution 기준으로 같은 결과를 가진다.",
+      "fail_condition": "대표 execution의 action 응답, history, query/list 상태가 H2 audit evidence와 다르거나, 반복 액션 timeline 해석이 execution 단위로 일관되지 않다."
+    }
+  ]
+}
