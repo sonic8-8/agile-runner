@@ -11,6 +11,14 @@
 - `action` 응답은 방금 수행한 관리자 조치 결과를 읽기 위한 응답이다.
 - `rerun`과 `retry` 응답은 새 실행을 시작한 직후의 결과를 읽기 위한 응답이다.
 
+## representative 검증에서 읽는 기준
+- representative rerun execution 1건은 `rerun -> query -> action -> history -> list` 순서로 읽는다.
+- representative rerun execution에서는 `query`를 관리자 조치 전 현재 상태로 읽고, `action`, `history`, `list`는 `ACKNOWLEDGE` 적용 직후 현재 상태로 읽는다.
+- representative retry execution 1건은 `retry` 응답을 기준으로 읽고, 필요하면 `list` row에서 `retrySourceExecutionKey`가 같은 의미로 노출되는지 함께 확인한다.
+- 즉, 같은 execution이라도 응답을 읽는 시점이 다를 수 있고, `query.availableActions`와 `action/list/history.currentActionState.availableActions`가 다르게 보이면 먼저 조치 전/후 시점 차이를 확인한다.
+- representative rerun execution에서는 `query.availableActions`, `action.availableActions`, `history.currentActionState.availableActions`, `list.availableActions`와 `list.latestAction*`, `history.currentActionState.latestAction*`가 같은 흐름으로 이어지는지 함께 본다.
+- representative retry execution에서는 `retry.executionKey`, `retry.retrySourceExecutionKey`, `list.retrySourceExecutionKey`, `list.executionStartType`가 서로 같은 관계를 설명하는지 함께 본다.
+
 ## 응답별로 답하는 질문
 
 | 응답 | 운영자가 확인하는 질문 |
@@ -36,11 +44,12 @@
 - 새 수동 재실행을 시작한 직후 결과를 보여 준다.
 - 핵심 관심사는 실행이 시작됐는지와 어떤 실행 모드로 시작됐는지다.
 - 자세한 현재 상태 조회는 이후 `query`에서 다시 확인한다.
+- 아래 예시는 representative rerun execution을 시작한 직후 응답이다.
 
 예시:
 ```json
 {
-  "executionKey": "EXECUTION:MANUAL_RERUN:abcd-1234",
+  "executionKey": "EXECUTION:MANUAL_RERUN:rerun-representative",
   "executionControlMode": "DRY_RUN",
   "writePerformed": false,
   "executionStatus": "FAILED",
@@ -53,17 +62,18 @@
 - 기존 실행을 기준으로 새 재시도를 시작한 직후 결과를 보여 준다.
 - 핵심 관심사는 새 execution과 원본 execution이 어떻게 연결되는지다.
 - 자세한 현재 상태 조회는 이후 `query`에서 다시 확인한다.
+- 아래 예시는 representative retry execution을 시작한 직후 응답이다.
 
 예시:
 ```json
 {
-  "executionKey": "EXECUTION:MANUAL_RERUN:retry-5678",
-  "retrySourceExecutionKey": "EXECUTION:MANUAL_RERUN:source-1234",
-  "executionControlMode": "NORMAL",
-  "writePerformed": true,
-  "executionStatus": "SUCCEEDED",
-  "errorCode": null,
-  "failureDisposition": null
+  "executionKey": "EXECUTION:MANUAL_RERUN:retry-derived-representative",
+  "retrySourceExecutionKey": "EXECUTION:MANUAL_RERUN:retry-source-representative",
+  "executionControlMode": "DRY_RUN",
+  "writePerformed": false,
+  "executionStatus": "FAILED",
+  "errorCode": "GITHUB_APP_CONFIGURATION_MISSING",
+  "failureDisposition": "MANUAL_ACTION_REQUIRED"
 }
 ```
 
@@ -71,11 +81,12 @@
 - 특정 execution 하나의 현재 상태를 보여 준다.
 - 운영자는 이 응답으로 현재 실패 상태, 오류 코드, 조치 필요 여부를 읽는다.
 - 과거 관리자 조치 timeline 전체는 포함하지 않는다.
+- 아래 예시는 representative rerun execution을 관리자 조치 전에 읽은 응답이다.
 
 예시:
 ```json
 {
-  "executionKey": "EXECUTION:MANUAL_RERUN:abcd-1234",
+  "executionKey": "EXECUTION:MANUAL_RERUN:rerun-representative",
   "executionControlMode": "DRY_RUN",
   "writePerformed": false,
   "executionStatus": "FAILED",
@@ -91,13 +102,14 @@
 - 여러 execution의 현재 상태를 한 번에 요약해서 보여 준다.
 - 운영자는 이 응답으로 지금 어떤 execution을 더 자세히 봐야 하는지 고른다.
 - 개별 execution의 과거 timeline 전체는 포함하지 않는다.
+- 아래 예시는 representative rerun execution에 `ACKNOWLEDGE`를 적용한 뒤 list row를 읽은 상태다.
 
 예시:
 ```json
 {
   "executions": [
     {
-      "executionKey": "EXECUTION:MANUAL_RERUN:abcd-1234",
+      "executionKey": "EXECUTION:MANUAL_RERUN:rerun-representative",
       "retrySourceExecutionKey": null,
       "executionStartType": "MANUAL_RERUN",
       "executionStatus": "FAILED",
@@ -122,11 +134,12 @@
 - `currentActionState`는 현재 조치 상태 요약이고, `actions[]`는 과거 timeline이다.
 - 핵심 책임은 과거 조치 이력을 보여 주는 것이다.
 - 여러 execution 비교 용도는 아니다.
+- 아래 예시는 representative rerun execution에 `ACKNOWLEDGE`를 적용한 뒤 history를 읽은 상태다.
 
 예시:
 ```json
 {
-  "executionKey": "EXECUTION:MANUAL_RERUN:abcd-1234",
+  "executionKey": "EXECUTION:MANUAL_RERUN:rerun-representative",
   "currentActionState": {
     "latestAction": "ACKNOWLEDGE",
     "latestActionStatus": "APPLIED",
@@ -150,11 +163,12 @@
 - 방금 수행한 관리자 조치 요청의 적용 결과를 보여 준다.
 - 운영자는 이 응답으로 지금 누른 조치가 실제로 적용됐는지 확인한다.
 - 과거 timeline 전체를 다시 싣는 용도는 아니다.
+- 아래 예시는 representative rerun execution에 `ACKNOWLEDGE`를 적용한 직후 action 응답이다.
 
 예시:
 ```json
 {
-  "executionKey": "EXECUTION:MANUAL_RERUN:abcd-1234",
+  "executionKey": "EXECUTION:MANUAL_RERUN:rerun-representative",
   "action": "ACKNOWLEDGE",
   "actionStatus": "APPLIED",
   "availableActions": [
@@ -232,7 +246,16 @@
 - `action.availableActions`는 방금 조치 적용 직후 다음에 가능한 액션을 읽는 값이다.
 - `list.latestAction*`와 `history.currentActionState.latestAction*`는 모두 현재 조치 상태 요약이지만, `list`는 여러 execution 요약, `history`는 한 execution의 현재 조치 상태를 더 자세히 보여 주는 위치다.
 
-## 이번 단계에서 아직 하지 않는 것
-- representative 실제 응답과 문서 예시 정합성 검증
-
-위 항목은 다음 task에서 다룬다.
+## representative 검증에서 같이 확인한 항목
+- representative rerun execution에서는 아래 해석 기준이 서로 모순되지 않는지 함께 확인했다.
+  - `rerun`은 시작 직후 결과
+  - `query`는 관리자 조치 전 현재 상태
+  - `action`은 방금 적용한 조치 결과
+  - `query.availableActions=[ACKNOWLEDGE]`
+  - `action.availableActions`, `history.currentActionState.availableActions`, `list.availableActions`는 `ACKNOWLEDGE` 적용 직후 모두 `[UNACKNOWLEDGE]`
+  - `history.currentActionState.latestAction*`와 `list.latestAction*`는 `ACKNOWLEDGE` 적용 직후 같은 현재 조치 상태 요약
+- representative retry execution에서는 아래 해석 기준이 서로 모순되지 않는지 함께 확인했다.
+  - `retry` 응답의 `executionKey`
+  - `retry` 응답의 `retrySourceExecutionKey`
+  - 같은 derived execution을 반환하는 `list` row의 `retrySourceExecutionKey`
+  - 같은 derived execution을 반환하는 `list` row의 `executionStartType=MANUAL_RERUN`
