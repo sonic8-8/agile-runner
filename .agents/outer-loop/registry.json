@@ -2,9 +2,9 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0018",
-    "task_id": "TASK-0003",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0018/TASK-0003-history-order-page-selection.md",
-    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0017/SPEC-0017-summary.md"
+    "task_id": "TASK-0004",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0018/TASK-0004-history-order-page-runtime-evidence.md",
+    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0018/SPEC-0018-summary.md"
   },
   "proposals": [
     {
@@ -62,6 +62,10 @@
     {
       "proposal_id": "WORKFLOW-PROP-0012",
       "path": ".agents/outer-loop/proposals/WORKFLOW/WORKFLOW-PROP-0012-from-SPEC-0012-TASK-0003.md"
+    },
+    {
+      "proposal_id": "WORKFLOW-PROP-0013",
+      "path": ".agents/outer-loop/proposals/WORKFLOW/WORKFLOW-PROP-0013-from-SPEC-0018-TASK-0004.md"
     }
   ]
 }
