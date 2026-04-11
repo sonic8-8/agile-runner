@@ -52,10 +52,13 @@
 - 실제 앱/H2 대표 검증에 사용하는 `delivery_id`는 이전 검증과 겹치지 않는 새 값으로 정하고, 기존 local H2 row와 충돌하지 않게 관리한다.
 - 실제 앱/H2 대표 검증이 실패하면 schema 또는 runtime failure로 단정하기 전에 `delivery_id` 재사용 충돌 여부를 먼저 확인한다.
 - local H2 file DB를 외부에서 조회하는 실제 앱/H2 대표 검증은 기본적으로 `앱 기동 -> 새로운 delivery_id로 대표 검증 요청 1건 실행 -> HTTP 결과 확인 -> 앱 종료 -> H2 CLI 또는 SQL 조회 도구로 evidence 확인` 순서로 진행한다.
+- local H2 file DB를 Shell 또는 SQL CLI로 후속 확인할 때, 같은 H2 file을 대상으로 하는 조회는 기본적으로 순차 실행한다.
+- 같은 H2 file에 대한 Shell 또는 SQL CLI 조회를 병렬로 열지 않는다.
 - 실제 앱/H2 대표 검증이 synthetic source execution 또는 synthetic runtime evidence seed를 먼저 필요로 하고, 현재 task가 `agent-runtime` 물리 스키마를 바꾸면 seed 전에 현재 `schema.sql`을 local H2 file DB에 먼저 적용할지 우선 검토한다.
 - 현재 `Spec`이 `정책 또는 저장 seam 연결 task`와 `representative 실제 앱/H2 검증 task`를 명시적으로 분리했다면, 앞선 task는 `targeted test + 전체 cleanTest test + repository 또는 H2 mem 수준 저장 seam 검증 + retrospective 경고사항 기록`을 근거로 종료할 수 있다.
 - 이 경우에도 representative 실제 앱/H2 검증은 뒤 task에서 필수로 수행해야 하며, 앞선 task의 retrospective에 검증을 다음 task로 넘긴 이유와 남은 위험을 함께 남긴다.
 - 애플리케이션 실행 중 H2 조회가 실패하면 schema 또는 runtime failure로 바로 단정하지 말고, 먼저 H2 file lock 여부를 확인한다.
+- 앱 종료 후 H2 Shell 또는 SQL CLI 조회가 lock으로 실패하면 schema 또는 runtime failure로 단정하지 말고, 먼저 앱 프로세스 종료 여부와 다른 H2 Shell 조회 동시 실행 여부를 확인한다.
 - 다른 순서로 검증하면 그 이유를 retrospective에 남긴다.
 - 실제 애플리케이션 검증이 불가하면 사유와 남은 위험을 retrospective에 남긴다.
 - `Orchestrator`는 테스트 근거, AGENTS 체크 결과, artifact 연결이 모두 충족될 때만 task 완료를 선언한다.
