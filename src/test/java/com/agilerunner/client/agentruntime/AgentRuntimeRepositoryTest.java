@@ -481,6 +481,75 @@ class AgentRuntimeRepositoryTest {
         });
     }
 
+    @DisplayName("manual rerun control action audit history는 기간 필터에 맞는 row만 조회할 수 있다.")
+    @Test
+    void findManualRerunControlActionAudits_withDateFilters() {
+        contextRunner.run(context -> {
+            // given
+            AgentRuntimeRepository repository = context.getBean(AgentRuntimeRepository.class);
+            ManualRerunControlActionAudit beforeFilter = ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:history-date-filter",
+                    ManualRerunControlAction.ACKNOWLEDGE,
+                    "첫 확인 완료",
+                    LocalDateTime.of(2026, 4, 11, 10, 0)
+            );
+            ManualRerunControlActionAudit insideFilter = ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:history-date-filter",
+                    ManualRerunControlAction.UNACKNOWLEDGE,
+                    "확인 취소",
+                    LocalDateTime.of(2026, 4, 11, 10, 5)
+            );
+            ManualRerunControlActionAudit afterFilter = ManualRerunControlActionAudit.applied(
+                    "EXECUTION:MANUAL_RERUN:history-date-filter",
+                    ManualRerunControlAction.ACKNOWLEDGE,
+                    "재확인 완료",
+                    LocalDateTime.of(2026, 4, 11, 10, 10)
+            );
+
+            repository.appendManualRerunControlActionAudit(beforeFilter);
+            repository.appendManualRerunControlActionAudit(insideFilter);
+            repository.appendManualRerunControlActionAudit(afterFilter);
+
+            // when
+            List<ManualRerunControlActionAudit> filteredFromHistory =
+                    repository.findManualRerunControlActionAudits(
+                            "EXECUTION:MANUAL_RERUN:history-date-filter",
+                            null,
+                            null,
+                            LocalDateTime.of(2026, 4, 11, 10, 1),
+                            null
+                    );
+            List<ManualRerunControlActionAudit> filteredToHistory =
+                    repository.findManualRerunControlActionAudits(
+                            "EXECUTION:MANUAL_RERUN:history-date-filter",
+                            null,
+                            null,
+                            null,
+                            LocalDateTime.of(2026, 4, 11, 10, 9)
+                    );
+            List<ManualRerunControlActionAudit> filteredRangeHistory =
+                    repository.findManualRerunControlActionAudits(
+                            "EXECUTION:MANUAL_RERUN:history-date-filter",
+                            null,
+                            null,
+                            LocalDateTime.of(2026, 4, 11, 10, 1),
+                            LocalDateTime.of(2026, 4, 11, 10, 9)
+                    );
+
+            // then
+            assertThat(filteredFromHistory).hasSize(2);
+            assertThat(filteredFromHistory.getFirst().getAction()).isEqualTo(ManualRerunControlAction.UNACKNOWLEDGE);
+            assertThat(filteredFromHistory.getLast().getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
+            assertThat(filteredToHistory).hasSize(2);
+            assertThat(filteredToHistory.getFirst().getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
+            assertThat(filteredToHistory.getLast().getAction()).isEqualTo(ManualRerunControlAction.UNACKNOWLEDGE);
+            assertThat(filteredRangeHistory).hasSize(1);
+            assertThat(filteredRangeHistory.getFirst().getAction()).isEqualTo(ManualRerunControlAction.UNACKNOWLEDGE);
+            assertThat(filteredRangeHistory.getFirst().getNote()).isEqualTo("확인 취소");
+            assertThat(filteredRangeHistory.getFirst().getAppliedAt()).isEqualTo(LocalDateTime.of(2026, 4, 11, 10, 5));
+        });
+    }
+
     @DisplayName("manual rerun control action audit는 같은 action을 다시 저장해도 마지막 applied action과 전체 history를 유지한다.")
     @Test
     void appendManualRerunControlActionAudit_allowsRepeatedActionAfterOppositeAction() {

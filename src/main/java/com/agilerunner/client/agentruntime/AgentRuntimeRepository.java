@@ -239,6 +239,8 @@ public class AgentRuntimeRepository {
             WHERE execution_key = :executionKey
               AND (:action IS NULL OR action = :action)
               AND (:actionStatus IS NULL OR action_status = :actionStatus)
+              AND (:appliedAtFrom IS NULL OR applied_at >= :appliedAtFrom)
+              AND (:appliedAtTo IS NULL OR applied_at <= :appliedAtTo)
             ORDER BY applied_at ASC, id ASC
             """;
 
@@ -351,12 +353,28 @@ public class AgentRuntimeRepository {
     public List<ManualRerunControlActionAudit> findManualRerunControlActionAudits(String executionKey,
                                                                                   ManualRerunControlAction action,
                                                                                   ManualRerunControlActionStatus actionStatus) {
+        return findManualRerunControlActionAudits(
+                executionKey,
+                action,
+                actionStatus,
+                null,
+                null
+        );
+    }
+
+    public List<ManualRerunControlActionAudit> findManualRerunControlActionAudits(String executionKey,
+                                                                                  ManualRerunControlAction action,
+                                                                                  ManualRerunControlActionStatus actionStatus,
+                                                                                  LocalDateTime appliedAtFrom,
+                                                                                  LocalDateTime appliedAtTo) {
         return namedParameterJdbcTemplate.query(
                 FIND_MANUAL_RERUN_CONTROL_ACTION_AUDITS_WITH_FILTER_SQL,
                 new MapSqlParameterSource()
                         .addValue("executionKey", executionKey)
                         .addValue("action", getManualRerunControlActionName(action))
-                        .addValue("actionStatus", getManualRerunControlActionStatusName(actionStatus)),
+                        .addValue("actionStatus", getManualRerunControlActionStatusName(actionStatus))
+                        .addValue("appliedAtFrom", appliedAtFrom)
+                        .addValue("appliedAtTo", appliedAtTo),
                 this::mapManualRerunControlActionAudit
         );
     }

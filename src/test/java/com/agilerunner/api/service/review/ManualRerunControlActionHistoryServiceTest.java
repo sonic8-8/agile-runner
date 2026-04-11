@@ -51,6 +51,8 @@ class ManualRerunControlActionHistoryServiceTest {
         when(repository.findManualRerunControlActionAudits(
                 "EXECUTION:MANUAL_RERUN:history-1",
                 null,
+                null,
+                null,
                 null
         ))
                 .thenReturn(List.of(
@@ -114,7 +116,9 @@ class ManualRerunControlActionHistoryServiceTest {
         when(repository.findManualRerunControlActionAudits(
                 "EXECUTION:MANUAL_RERUN:history-filtered",
                 ManualRerunControlAction.ACKNOWLEDGE,
-                ManualRerunControlActionStatus.APPLIED
+                ManualRerunControlActionStatus.APPLIED,
+                null,
+                null
         )).thenReturn(List.of(
                 ManualRerunControlActionAudit.of(
                         "EXECUTION:MANUAL_RERUN:history-filtered",
@@ -141,20 +145,24 @@ class ManualRerunControlActionHistoryServiceTest {
         verify(repository).findManualRerunControlActionAudits(
                 "EXECUTION:MANUAL_RERUN:history-filtered",
                 ManualRerunControlAction.ACKNOWLEDGE,
-                ManualRerunControlActionStatus.APPLIED
+                ManualRerunControlActionStatus.APPLIED,
+                null,
+                null
         );
     }
 
-    @DisplayName("관리자 액션 이력 조회 서비스는 기간 필터 입력이 있어도 현재 단계에서는 기존 전체 timeline 의미를 유지한다.")
+    @DisplayName("관리자 액션 이력 조회 서비스는 기간 필터를 audit selection에 함께 전달한다.")
     @Test
-    void find_keepsWholeTimelineWhenDateFilterInputIsOnlyDefined() {
+    void find_usesDateRangeFilteredAuditSelection() {
         // given
         AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
         ManualRerunControlActionHistoryService service = new ManualRerunControlActionHistoryService(repository);
+        LocalDateTime appliedAtFrom = LocalDateTime.of(2026, 4, 11, 10, 1);
+        LocalDateTime appliedAtTo = LocalDateTime.of(2026, 4, 11, 10, 2);
         WebhookExecution webhookExecution = WebhookExecution.start(
-                "EXECUTION:MANUAL_RERUN:history-date-input",
+                "EXECUTION:MANUAL_RERUN:history-date-filtered",
                 "PR_REVIEW:owner/repo#12",
-                "MANUAL_RERUN_DELIVERY:history-date-input",
+                "MANUAL_RERUN_DELIVERY:history-date-filtered",
                 "owner/repo",
                 12,
                 "PULL_REQUEST",
@@ -166,47 +174,96 @@ class ManualRerunControlActionHistoryServiceTest {
                 null,
                 LocalDateTime.of(2026, 4, 11, 10, 1)
         );
-        when(repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:history-date-input"))
+        when(repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:history-date-filtered"))
                 .thenReturn(Optional.of(webhookExecution));
         when(repository.findManualRerunControlActionAudits(
-                "EXECUTION:MANUAL_RERUN:history-date-input",
-                null,
-                null
+                "EXECUTION:MANUAL_RERUN:history-date-filtered",
+                ManualRerunControlAction.ACKNOWLEDGE,
+                ManualRerunControlActionStatus.APPLIED,
+                appliedAtFrom,
+                appliedAtTo
         )).thenReturn(List.of(
                 ManualRerunControlActionAudit.of(
-                        "EXECUTION:MANUAL_RERUN:history-date-input",
+                        "EXECUTION:MANUAL_RERUN:history-date-filtered",
                         ManualRerunControlAction.ACKNOWLEDGE,
                         ManualRerunControlActionStatus.APPLIED,
                         "운영자 확인 완료",
                         LocalDateTime.of(2026, 4, 11, 10, 2)
-                ),
-                ManualRerunControlActionAudit.of(
-                        "EXECUTION:MANUAL_RERUN:history-date-input",
-                        ManualRerunControlAction.UNACKNOWLEDGE,
-                        ManualRerunControlActionStatus.APPLIED,
-                        "운영자 확인 취소",
-                        LocalDateTime.of(2026, 4, 11, 10, 3)
                 )
         ));
 
         // when
         ManualRerunControlActionHistoryServiceResponse response = service.find(
                 ManualRerunControlActionHistoryServiceRequest.of(
-                        "EXECUTION:MANUAL_RERUN:history-date-input",
-                        null,
-                        null,
-                        LocalDateTime.of(2026, 4, 11, 10, 1),
-                        LocalDateTime.of(2026, 4, 11, 10, 4)
+                        "EXECUTION:MANUAL_RERUN:history-date-filtered",
+                        ManualRerunControlAction.ACKNOWLEDGE,
+                        ManualRerunControlActionStatus.APPLIED,
+                        appliedAtFrom,
+                        appliedAtTo
                 )
         );
 
         // then
-        assertThat(response.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:history-date-input");
-        assertThat(response.getActions()).hasSize(2);
+        assertThat(response.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:history-date-filtered");
+        assertThat(response.getActions()).hasSize(1);
+        assertThat(response.getActions().getFirst().getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
         verify(repository).findManualRerunControlActionAudits(
-                "EXECUTION:MANUAL_RERUN:history-date-input",
+                "EXECUTION:MANUAL_RERUN:history-date-filtered",
+                ManualRerunControlAction.ACKNOWLEDGE,
+                ManualRerunControlActionStatus.APPLIED,
+                appliedAtFrom,
+                appliedAtTo
+        );
+    }
+
+    @DisplayName("관리자 액션 이력 조회 서비스는 execution이 존재하지만 기간 필터 결과가 없으면 빈 timeline을 반환한다.")
+    @Test
+    void find_returnsEmptyActionsWhenDateFilterMatchesNoAuditRows() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        ManualRerunControlActionHistoryService service = new ManualRerunControlActionHistoryService(repository);
+        LocalDateTime appliedAtFrom = LocalDateTime.of(2026, 4, 11, 10, 10);
+        LocalDateTime appliedAtTo = LocalDateTime.of(2026, 4, 11, 10, 11);
+        WebhookExecution webhookExecution = WebhookExecution.start(
+                "EXECUTION:MANUAL_RERUN:history-date-empty",
+                "PR_REVIEW:owner/repo#12",
+                "MANUAL_RERUN_DELIVERY:history-date-empty",
+                "owner/repo",
+                12,
+                "PULL_REQUEST",
+                "manual_rerun",
+                LocalDateTime.of(2026, 4, 11, 10, 0)
+        ).withExecutionStartType(ExecutionStartType.MANUAL_RERUN);
+        when(repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:history-date-empty"))
+                .thenReturn(Optional.of(webhookExecution));
+        when(repository.findManualRerunControlActionAudits(
+                "EXECUTION:MANUAL_RERUN:history-date-empty",
                 null,
-                null
+                null,
+                appliedAtFrom,
+                appliedAtTo
+        )).thenReturn(List.of());
+
+        // when
+        ManualRerunControlActionHistoryServiceResponse response = service.find(
+                ManualRerunControlActionHistoryServiceRequest.of(
+                        "EXECUTION:MANUAL_RERUN:history-date-empty",
+                        null,
+                        null,
+                        appliedAtFrom,
+                        appliedAtTo
+                )
+        );
+
+        // then
+        assertThat(response.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:history-date-empty");
+        assertThat(response.getActions()).isEmpty();
+        verify(repository).findManualRerunControlActionAudits(
+                "EXECUTION:MANUAL_RERUN:history-date-empty",
+                null,
+                null,
+                appliedAtFrom,
+                appliedAtTo
         );
     }
 
@@ -235,6 +292,8 @@ class ManualRerunControlActionHistoryServiceTest {
                 .thenReturn(Optional.of(webhookExecution));
         when(repository.findManualRerunControlActionAudits(
                 "EXECUTION:MANUAL_RERUN:history-repeat",
+                null,
+                null,
                 null,
                 null
         ))
@@ -298,6 +357,8 @@ class ManualRerunControlActionHistoryServiceTest {
                 .thenReturn(Optional.of(webhookExecution));
         when(repository.findManualRerunControlActionAudits(
                 "EXECUTION:MANUAL_RERUN:history-empty",
+                null,
+                null,
                 null,
                 null
         ))

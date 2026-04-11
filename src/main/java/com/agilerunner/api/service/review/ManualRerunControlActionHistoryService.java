@@ -37,7 +37,9 @@ public class ManualRerunControlActionHistoryService {
                 agentRuntimeRepository.findManualRerunControlActionAudits(
                                 webhookExecution.getExecutionKey(),
                                 request.getAction(),
-                                request.getActionStatus()
+                                request.getActionStatus(),
+                                request.getAppliedAtFrom(),
+                                request.getAppliedAtTo()
                         ).stream()
                         .map(audit -> ManualRerunControlActionHistoryServiceResponse.ActionHistorySummary.of(
                                 audit.getAction(),
