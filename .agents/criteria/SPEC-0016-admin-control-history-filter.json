@@ -1,0 +1,35 @@
+{
+  "spec_id": "SPEC-0016",
+  "spec_name": "운영용 관리자 제어 이력 필터 확장",
+  "spec_version": 1,
+  "criteria": [
+    {
+      "key": "manual-rerun-control-history-filter-contract-preserved",
+      "target": "이력 필터 확장 중 기존 action, query, list, history 계약 유지",
+      "test_view": "컨트롤러/서비스 통합 관점",
+      "pass_condition": "history 필터를 도입하는 동안에도 `POST /reviews/rerun/{executionKey}/actions`, `GET /reviews/rerun/{executionKey}`, `GET /reviews/rerun/executions`, `GET /reviews/rerun/{executionKey}/actions/history` 기존 계약과 의미가 유지된다.",
+      "fail_condition": "이력 필터 확장 때문에 기존 action, query, list, history 응답 구조나 의미가 흔들린다."
+    },
+    {
+      "key": "manual-rerun-control-history-filter-input-defined",
+      "target": "관리자 액션 이력 필터 입력 경계 정의",
+      "test_view": "컨트롤러/서비스 black-box 관점",
+      "pass_condition": "`GET /reviews/rerun/{executionKey}/actions/history`는 `action`, `actionStatus` 필터를 읽고, 비어 있으면 기존과 동일한 전체 timeline 의미를 유지한다.",
+      "fail_condition": "history 조회 경계가 필터를 일관되게 해석하지 못하거나, 필터가 비었을 때 기존 전체 timeline 의미를 깨뜨린다."
+    },
+    {
+      "key": "manual-rerun-control-history-filter-maps-audit-selection",
+      "target": "이력 필터와 audit row selection 연결",
+      "test_view": "서비스/저장소 black-box 관점",
+      "pass_condition": "`action`, `actionStatus` 필터가 history 응답 row 선택에 반영되고, 필터가 없으면 전체 timeline을 반환한다.",
+      "fail_condition": "필터가 audit row selection에 반영되지 않거나, 필터 없는 history와 필터 적용 history 의미가 충돌한다."
+    },
+    {
+      "key": "manual-rerun-control-history-filter-runtime-evidence-aligned",
+      "target": "이력 필터 응답과 runtime audit evidence 정합성",
+      "test_view": "저장소/H2 실제 검증 관점",
+      "pass_condition": "로컬 프로필 실제 앱 기동 후 representative execution에서 필터 없는 history, 필터 적용 history, H2 audit evidence가 같은 execution 기준으로 같은 결과를 가진다.",
+      "fail_condition": "대표 execution의 history 응답이 H2 audit evidence와 다르거나, 필터 조건에 따라 반환되는 row가 execution 단위로 일관되지 않다."
+    }
+  ]
+}
