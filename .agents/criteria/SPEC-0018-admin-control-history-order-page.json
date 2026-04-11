@@ -1,0 +1,35 @@
+{
+  "spec_id": "SPEC-0018",
+  "spec_name": "운영용 관리자 제어 이력 정렬과 페이지 기준 정리",
+  "spec_version": 1,
+  "criteria": [
+    {
+      "key": "manual-rerun-control-history-order-page-contract-preserved",
+      "target": "정렬/페이지 기준 확장 중 기존 action, query, list, history 계약 유지",
+      "test_view": "컨트롤러/서비스 통합 관점",
+      "pass_condition": "history 정렬/페이지 기준을 도입하는 동안에도 `POST /reviews/rerun/{executionKey}/actions`, `GET /reviews/rerun/{executionKey}`, `GET /reviews/rerun/executions`, `GET /reviews/rerun/{executionKey}/actions/history` 기존 계약과 의미가 유지된다.",
+      "fail_condition": "정렬/페이지 기준 확장 때문에 기존 action, query, list, history 응답 구조나 의미가 흔들린다."
+    },
+    {
+      "key": "manual-rerun-control-history-order-page-input-defined",
+      "target": "관리자 액션 이력 정렬/페이지 입력 경계 정의",
+      "test_view": "컨트롤러/서비스 black-box 관점",
+      "pass_condition": "`GET /reviews/rerun/{executionKey}/actions/history`는 `sortDirection`, `pageSize`, `cursorAppliedAt`를 읽고, 입력이 모두 비어 있으면 기존과 동일한 전체 timeline 의미를 유지한다. `pageSize` 또는 `cursorAppliedAt`만 있고 `sortDirection`이 비어 있으면 `DESC`로 해석한다.",
+      "fail_condition": "history 조회 경계가 정렬/페이지 입력을 일관되게 해석하지 못하거나, 기본 정렬 방향이 모호하거나, 입력이 모두 비었을 때 기존 전체 timeline 의미를 깨뜨린다."
+    },
+    {
+      "key": "manual-rerun-control-history-order-page-maps-audit-selection",
+      "target": "정렬/페이지 기준과 audit row selection 연결",
+      "test_view": "서비스/저장소 black-box 관점",
+      "pass_condition": "`sortDirection`, `pageSize`, `cursorAppliedAt`가 history 응답 row 선택에 반영되고, `cursorAppliedAt`는 배타 경계로 동작한다. 같은 `appliedAt` row는 `id`를 같은 방향의 2차 정렬 기준으로 사용하고, `cursorAppliedAt`와 같은 시각 row는 다음 window에서 제외한다. 입력이 없으면 전체 timeline을 반환한다. 없는 execution은 기존 not-found 의미를 유지하고, execution은 있지만 page window 결과가 0건이면 빈 timeline을 반환한다.",
+      "fail_condition": "정렬/페이지 기준이 audit row selection에 반영되지 않거나, `cursorAppliedAt` 경계가 포함/제외 기준 없이 흔들리거나, 같은 `appliedAt` row의 정렬 기준이 불명확하거나, 없는 execution과 빈 page window 결과를 구분하지 못하거나, 전체 timeline과 page window 의미가 충돌한다."
+    },
+    {
+      "key": "manual-rerun-control-history-order-page-runtime-evidence-aligned",
+      "target": "정렬/페이지 응답과 runtime audit evidence 정합성",
+      "test_view": "저장소/H2 실제 검증 관점",
+      "pass_condition": "로컬 프로필 실제 앱 기동 후 representative execution에서 ascending/descending history, page window history, H2 audit evidence가 같은 execution 기준으로 같은 결과를 가진다.",
+      "fail_condition": "대표 execution의 history 응답이 H2 audit evidence와 다르거나, 정렬/페이지 조건에 따라 반환되는 row가 execution 단위로 일관되지 않다."
+    }
+  ]
+}
