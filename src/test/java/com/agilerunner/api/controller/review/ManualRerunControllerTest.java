@@ -317,6 +317,35 @@ class ManualRerunControllerTest {
         assertThat(requestCaptor.getValue().getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:history-1");
         assertThat(requestCaptor.getValue().getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
         assertThat(requestCaptor.getValue().getActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);
+        assertThat(requestCaptor.getValue().getAppliedAtFrom()).isNull();
+        assertThat(requestCaptor.getValue().getAppliedAtTo()).isNull();
+    }
+
+    @DisplayName("관리자 액션 이력 조회 요청은 기간 필터를 service request로 전달한다.")
+    @Test
+    void getActionHistory_passesDateRangeFilters() throws Exception {
+        // given
+        ManualRerunControlActionHistoryServiceResponse response = ManualRerunControlActionHistoryServiceResponse.of(
+                "EXECUTION:MANUAL_RERUN:history-date-1",
+                List.of()
+        );
+        when(manualRerunControlActionHistoryService.find(any(ManualRerunControlActionHistoryServiceRequest.class)))
+                .thenReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/reviews/rerun/{executionKey}/actions/history", "EXECUTION:MANUAL_RERUN:history-date-1")
+                        .queryParam("appliedAtFrom", "2026-04-11T10:15:30")
+                        .queryParam("appliedAtTo", "2026-04-11T11:45:00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:history-date-1"))
+                .andExpect(jsonPath("$.actions").isArray());
+
+        ArgumentCaptor<ManualRerunControlActionHistoryServiceRequest> requestCaptor =
+                ArgumentCaptor.forClass(ManualRerunControlActionHistoryServiceRequest.class);
+        verify(manualRerunControlActionHistoryService).find(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:history-date-1");
+        assertThat(requestCaptor.getValue().getAppliedAtFrom()).isEqualTo(LocalDateTime.of(2026, 4, 11, 10, 15, 30));
+        assertThat(requestCaptor.getValue().getAppliedAtTo()).isEqualTo(LocalDateTime.of(2026, 4, 11, 11, 45));
     }
 
     @DisplayName("관리자 액션 이력 조회 요청에 필터가 없으면 service request의 필터는 미적용으로 해석한다.")
@@ -342,6 +371,8 @@ class ManualRerunControllerTest {
         assertThat(requestCaptor.getValue().getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:history-empty-filter");
         assertThat(requestCaptor.getValue().getAction()).isNull();
         assertThat(requestCaptor.getValue().getActionStatus()).isNull();
+        assertThat(requestCaptor.getValue().getAppliedAtFrom()).isNull();
+        assertThat(requestCaptor.getValue().getAppliedAtTo()).isNull();
     }
 
     @DisplayName("관리자 액션 이력 조회에서 execution을 찾지 못하면 404 응답을 반환한다.")

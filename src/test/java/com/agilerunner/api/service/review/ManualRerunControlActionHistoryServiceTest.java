@@ -145,6 +145,71 @@ class ManualRerunControlActionHistoryServiceTest {
         );
     }
 
+    @DisplayName("관리자 액션 이력 조회 서비스는 기간 필터 입력이 있어도 현재 단계에서는 기존 전체 timeline 의미를 유지한다.")
+    @Test
+    void find_keepsWholeTimelineWhenDateFilterInputIsOnlyDefined() {
+        // given
+        AgentRuntimeRepository repository = mock(AgentRuntimeRepository.class);
+        ManualRerunControlActionHistoryService service = new ManualRerunControlActionHistoryService(repository);
+        WebhookExecution webhookExecution = WebhookExecution.start(
+                "EXECUTION:MANUAL_RERUN:history-date-input",
+                "PR_REVIEW:owner/repo#12",
+                "MANUAL_RERUN_DELIVERY:history-date-input",
+                "owner/repo",
+                12,
+                "PULL_REQUEST",
+                "manual_rerun",
+                LocalDateTime.of(2026, 4, 11, 10, 0)
+        ).withExecutionStartType(ExecutionStartType.MANUAL_RERUN).complete(
+                WebhookExecutionStatus.FAILED,
+                "failed",
+                null,
+                LocalDateTime.of(2026, 4, 11, 10, 1)
+        );
+        when(repository.findWebhookExecution("EXECUTION:MANUAL_RERUN:history-date-input"))
+                .thenReturn(Optional.of(webhookExecution));
+        when(repository.findManualRerunControlActionAudits(
+                "EXECUTION:MANUAL_RERUN:history-date-input",
+                null,
+                null
+        )).thenReturn(List.of(
+                ManualRerunControlActionAudit.of(
+                        "EXECUTION:MANUAL_RERUN:history-date-input",
+                        ManualRerunControlAction.ACKNOWLEDGE,
+                        ManualRerunControlActionStatus.APPLIED,
+                        "운영자 확인 완료",
+                        LocalDateTime.of(2026, 4, 11, 10, 2)
+                ),
+                ManualRerunControlActionAudit.of(
+                        "EXECUTION:MANUAL_RERUN:history-date-input",
+                        ManualRerunControlAction.UNACKNOWLEDGE,
+                        ManualRerunControlActionStatus.APPLIED,
+                        "운영자 확인 취소",
+                        LocalDateTime.of(2026, 4, 11, 10, 3)
+                )
+        ));
+
+        // when
+        ManualRerunControlActionHistoryServiceResponse response = service.find(
+                ManualRerunControlActionHistoryServiceRequest.of(
+                        "EXECUTION:MANUAL_RERUN:history-date-input",
+                        null,
+                        null,
+                        LocalDateTime.of(2026, 4, 11, 10, 1),
+                        LocalDateTime.of(2026, 4, 11, 10, 4)
+                )
+        );
+
+        // then
+        assertThat(response.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:history-date-input");
+        assertThat(response.getActions()).hasSize(2);
+        verify(repository).findManualRerunControlActionAudits(
+                "EXECUTION:MANUAL_RERUN:history-date-input",
+                null,
+                null
+        );
+    }
+
     @DisplayName("반복 액션 이력 조회 서비스는 ACKNOWLEDGE, UNACKNOWLEDGE, ACKNOWLEDGE timeline을 순서대로 반환한다.")
     @Test
     void find_returnsRepeatedActionTimelineInOrder() {
