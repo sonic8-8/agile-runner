@@ -5,9 +5,12 @@ import com.agilerunner.domain.exception.ErrorCode;
 import com.agilerunner.domain.exception.FailureDisposition;
 import com.agilerunner.domain.executioncontrol.ExecutionControlMode;
 import com.agilerunner.domain.review.ManualRerunAvailableAction;
+import com.agilerunner.domain.review.ManualRerunControlAction;
+import com.agilerunner.domain.review.ManualRerunControlActionStatus;
 import com.agilerunner.domain.review.RerunExecutionStatus;
 import lombok.Getter;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -32,6 +35,10 @@ public class ManualRerunExecutionListServiceResponse {
         private final boolean writePerformed;
         private final ErrorCode errorCode;
         private final FailureDisposition failureDisposition;
+        private final ManualRerunControlAction latestAction;
+        private final ManualRerunControlActionStatus latestActionStatus;
+        private final LocalDateTime latestActionAppliedAt;
+        private final boolean historyAvailable;
         private final List<ManualRerunAvailableAction> availableActions;
 
         private ExecutionSummary(String executionKey,
@@ -42,6 +49,10 @@ public class ManualRerunExecutionListServiceResponse {
                                  boolean writePerformed,
                                  ErrorCode errorCode,
                                  FailureDisposition failureDisposition,
+                                 ManualRerunControlAction latestAction,
+                                 ManualRerunControlActionStatus latestActionStatus,
+                                 LocalDateTime latestActionAppliedAt,
+                                 boolean historyAvailable,
                                  List<ManualRerunAvailableAction> availableActions) {
             this.executionKey = executionKey;
             this.retrySourceExecutionKey = retrySourceExecutionKey;
@@ -51,6 +62,10 @@ public class ManualRerunExecutionListServiceResponse {
             this.writePerformed = writePerformed;
             this.errorCode = errorCode;
             this.failureDisposition = failureDisposition;
+            this.latestAction = latestAction;
+            this.latestActionStatus = latestActionStatus;
+            this.latestActionAppliedAt = latestActionAppliedAt;
+            this.historyAvailable = historyAvailable;
             this.availableActions = List.copyOf(availableActions);
         }
 
@@ -72,6 +87,40 @@ public class ManualRerunExecutionListServiceResponse {
                     writePerformed,
                     errorCode,
                     failureDisposition,
+                    null,
+                    null,
+                    null,
+                    false,
+                    availableActions
+            );
+        }
+
+        public static ExecutionSummary of(String executionKey,
+                                          String retrySourceExecutionKey,
+                                          ExecutionStartType executionStartType,
+                                          RerunExecutionStatus executionStatus,
+                                          ExecutionControlMode executionControlMode,
+                                          boolean writePerformed,
+                                          ErrorCode errorCode,
+                                          FailureDisposition failureDisposition,
+                                          ManualRerunControlAction latestAction,
+                                          ManualRerunControlActionStatus latestActionStatus,
+                                          LocalDateTime latestActionAppliedAt,
+                                          boolean historyAvailable,
+                                          List<ManualRerunAvailableAction> availableActions) {
+            return new ExecutionSummary(
+                    executionKey,
+                    retrySourceExecutionKey,
+                    executionStartType,
+                    executionStatus,
+                    executionControlMode,
+                    writePerformed,
+                    errorCode,
+                    failureDisposition,
+                    latestAction,
+                    latestActionStatus,
+                    latestActionAppliedAt,
+                    historyAvailable,
                     availableActions
             );
         }

@@ -167,6 +167,10 @@ class ManualRerunExecutionListServiceTest {
         assertThat(retryable.isWritePerformed()).isFalse();
         assertThat(retryable.getErrorCode()).isEqualTo(ErrorCode.GITHUB_COMMENT_POST_FAILED);
         assertThat(retryable.getFailureDisposition()).isEqualTo(FailureDisposition.RETRYABLE);
+        assertThat(retryable.getLatestAction()).isNull();
+        assertThat(retryable.getLatestActionStatus()).isNull();
+        assertThat(retryable.getLatestActionAppliedAt()).isNull();
+        assertThat(retryable.isHistoryAvailable()).isFalse();
         assertThat(retryable.getAvailableActions()).containsExactly(ManualRerunAvailableAction.RETRY);
 
         ManualRerunExecutionListServiceResponse.ExecutionSummary completed = response.getExecutions().get(1);
@@ -178,6 +182,10 @@ class ManualRerunExecutionListServiceTest {
         assertThat(completed.isWritePerformed()).isTrue();
         assertThat(completed.getErrorCode()).isNull();
         assertThat(completed.getFailureDisposition()).isNull();
+        assertThat(completed.getLatestAction()).isNull();
+        assertThat(completed.getLatestActionStatus()).isNull();
+        assertThat(completed.getLatestActionAppliedAt()).isNull();
+        assertThat(completed.isHistoryAvailable()).isFalse();
         assertThat(completed.getAvailableActions()).isEmpty();
     }
 

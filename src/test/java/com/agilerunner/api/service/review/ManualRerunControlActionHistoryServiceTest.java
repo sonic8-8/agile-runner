@@ -83,6 +83,10 @@ class ManualRerunControlActionHistoryServiceTest {
 
         // then
         assertThat(response.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:history-1");
+        assertThat(response.getCurrentActionState().getLatestAction()).isNull();
+        assertThat(response.getCurrentActionState().getLatestActionStatus()).isNull();
+        assertThat(response.getCurrentActionState().getLatestActionAppliedAt()).isNull();
+        assertThat(response.getCurrentActionState().getAvailableActions()).isEmpty();
         assertThat(response.getActions()).hasSize(2);
         assertThat(response.getActions().get(0).getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
         assertThat(response.getActions().get(0).getActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);

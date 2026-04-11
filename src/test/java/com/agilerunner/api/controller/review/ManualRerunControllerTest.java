@@ -207,6 +207,10 @@ class ManualRerunControllerTest {
                                 false,
                                 ErrorCode.GITHUB_COMMENT_POST_FAILED,
                                 FailureDisposition.RETRYABLE,
+                                ManualRerunControlAction.ACKNOWLEDGE,
+                                ManualRerunControlActionStatus.APPLIED,
+                                LocalDateTime.of(2026, 4, 12, 13, 15),
+                                true,
                                 List.of(ManualRerunAvailableAction.RETRY)
                         ),
                         ManualRerunExecutionListServiceResponse.ExecutionSummary.of(
@@ -218,6 +222,10 @@ class ManualRerunControllerTest {
                                 true,
                                 null,
                                 null,
+                                null,
+                                null,
+                                null,
+                                false,
                                 List.of()
                         )
                 )
@@ -240,6 +248,10 @@ class ManualRerunControllerTest {
                 .andExpect(jsonPath("$.executions[0].writePerformed").value(false))
                 .andExpect(jsonPath("$.executions[0].errorCode").value("GITHUB_COMMENT_POST_FAILED"))
                 .andExpect(jsonPath("$.executions[0].failureDisposition").value("RETRYABLE"))
+                .andExpect(jsonPath("$.executions[0].latestAction").value("ACKNOWLEDGE"))
+                .andExpect(jsonPath("$.executions[0].latestActionStatus").value("APPLIED"))
+                .andExpect(jsonPath("$.executions[0].latestActionAppliedAt").value("2026-04-12T13:15:00"))
+                .andExpect(jsonPath("$.executions[0].historyAvailable").value(true))
                 .andExpect(jsonPath("$.executions[0].availableActions[0]").value("RETRY"))
                 .andExpect(jsonPath("$.executions[1].executionKey").value("EXECUTION:MANUAL_RERUN:101"))
                 .andExpect(jsonPath("$.executions[1].retrySourceExecutionKey").value(nullValue()))
@@ -248,6 +260,10 @@ class ManualRerunControllerTest {
                 .andExpect(jsonPath("$.executions[1].writePerformed").value(true))
                 .andExpect(jsonPath("$.executions[1].errorCode").value(nullValue()))
                 .andExpect(jsonPath("$.executions[1].failureDisposition").value(nullValue()))
+                .andExpect(jsonPath("$.executions[1].latestAction").value(nullValue()))
+                .andExpect(jsonPath("$.executions[1].latestActionStatus").value(nullValue()))
+                .andExpect(jsonPath("$.executions[1].latestActionAppliedAt").value(nullValue()))
+                .andExpect(jsonPath("$.executions[1].historyAvailable").value(false))
                 .andExpect(jsonPath("$.executions[1].availableActions").isArray());
 
         ArgumentCaptor<ManualRerunExecutionListServiceRequest> requestCaptor =
@@ -289,6 +305,12 @@ class ManualRerunControllerTest {
         LocalDateTime appliedAt = LocalDateTime.of(2026, 4, 10, 12, 15);
         ManualRerunControlActionHistoryServiceResponse response = ManualRerunControlActionHistoryServiceResponse.of(
                 "EXECUTION:MANUAL_RERUN:history-1",
+                ManualRerunControlActionHistoryServiceResponse.CurrentActionState.of(
+                        ManualRerunControlAction.UNACKNOWLEDGE,
+                        ManualRerunControlActionStatus.APPLIED,
+                        LocalDateTime.of(2026, 4, 10, 12, 20),
+                        List.of(ManualRerunAvailableAction.ACKNOWLEDGE)
+                ),
                 List.of(
                         ManualRerunControlActionHistoryServiceResponse.ActionHistorySummary.of(
                                 ManualRerunControlAction.ACKNOWLEDGE,
@@ -307,6 +329,10 @@ class ManualRerunControllerTest {
                         .queryParam("actionStatus", "APPLIED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.executionKey").value("EXECUTION:MANUAL_RERUN:history-1"))
+                .andExpect(jsonPath("$.currentActionState.latestAction").value("UNACKNOWLEDGE"))
+                .andExpect(jsonPath("$.currentActionState.latestActionStatus").value("APPLIED"))
+                .andExpect(jsonPath("$.currentActionState.latestActionAppliedAt").value("2026-04-10T12:20:00"))
+                .andExpect(jsonPath("$.currentActionState.availableActions[0]").value("ACKNOWLEDGE"))
                 .andExpect(jsonPath("$.actions[0].action").value("ACKNOWLEDGE"))
                 .andExpect(jsonPath("$.actions[0].actionStatus").value("APPLIED"))
                 .andExpect(jsonPath("$.actions[0].note").value("운영자 확인 완료"))

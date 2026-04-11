@@ -1,6 +1,7 @@
 package com.agilerunner.api.controller.review.response;
 
 import com.agilerunner.api.service.review.response.ManualRerunControlActionHistoryServiceResponse;
+import com.agilerunner.domain.review.ManualRerunAvailableAction;
 import com.agilerunner.domain.review.ManualRerunControlAction;
 import com.agilerunner.domain.review.ManualRerunControlActionStatus;
 import org.junit.jupiter.api.DisplayName;
@@ -20,6 +21,12 @@ class ManualRerunControlActionHistoryResponseTest {
         LocalDateTime appliedAt = LocalDateTime.of(2026, 4, 10, 11, 30);
         ManualRerunControlActionHistoryServiceResponse serviceResponse = ManualRerunControlActionHistoryServiceResponse.of(
                 "EXECUTION:MANUAL_RERUN:history-1",
+                ManualRerunControlActionHistoryServiceResponse.CurrentActionState.of(
+                        ManualRerunControlAction.UNACKNOWLEDGE,
+                        ManualRerunControlActionStatus.APPLIED,
+                        LocalDateTime.of(2026, 4, 10, 11, 35),
+                        List.of(ManualRerunAvailableAction.ACKNOWLEDGE)
+                ),
                 List.of(
                         ManualRerunControlActionHistoryServiceResponse.ActionHistorySummary.of(
                                 ManualRerunControlAction.ACKNOWLEDGE,
@@ -35,6 +42,10 @@ class ManualRerunControlActionHistoryResponseTest {
 
         // then
         assertThat(response.getExecutionKey()).isEqualTo("EXECUTION:MANUAL_RERUN:history-1");
+        assertThat(response.getCurrentActionState().getLatestAction()).isEqualTo(ManualRerunControlAction.UNACKNOWLEDGE);
+        assertThat(response.getCurrentActionState().getLatestActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);
+        assertThat(response.getCurrentActionState().getLatestActionAppliedAt()).isEqualTo(LocalDateTime.of(2026, 4, 10, 11, 35));
+        assertThat(response.getCurrentActionState().getAvailableActions()).containsExactly(ManualRerunAvailableAction.ACKNOWLEDGE);
         assertThat(response.getActions()).hasSize(1);
         assertThat(response.getActions().get(0).getAction()).isEqualTo(ManualRerunControlAction.ACKNOWLEDGE);
         assertThat(response.getActions().get(0).getActionStatus()).isEqualTo(ManualRerunControlActionStatus.APPLIED);
