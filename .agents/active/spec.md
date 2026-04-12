@@ -6,111 +6,103 @@
 
 ## 현재 활성 Spec
 ### ID
-SPEC-0021
-
-### 이름
-운영용 조회 응답 예시 자동 검증
-
-### 목표
-- 운영용 조회 응답 가이드의 예시가 이후 코드 변경으로 틀어질 때 테스트에서 바로 드러나게 한다.
-- `rerun`, `retry`, `query`, `list`, `history`, `action` 응답 예시를 fixture와 검증 기준에 연결해 수동 대표 검증 의존도를 줄인다.
-- 문서 예시와 현재 DTO/응답 계약 사이의 drift를 사람이 뒤늦게 발견하지 않도록 자동 검증 기반을 마련한다.
-
-### 대상 문제
-- 지금은 [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md)에 역할과 예시가 정리돼 있지만, 이후 응답 DTO나 매핑이 바뀌면 문서 예시가 조용히 낡을 수 있다.
-- `SPEC-0020`에서는 representative 실제 앱 검증으로 문서와 실제 응답 의미를 맞췄지만, 이 검증은 수동 절차라 이후 변경 때 매번 사람이 다시 확인해야 한다.
-- 운영용 조회 응답은 필드가 서로 겹치는 부분이 많아, 예시 drift가 생기면 운영자가 어떤 응답을 어떻게 읽어야 하는지 다시 혼동할 수 있다.
-
-### 범위
-- 운영용 조회 응답 예시를 자동 검증할 fixture 또는 snapshot source를 정의한다.
-- 아래 응답을 검증 대상에 포함한다.
-  - `POST /reviews/rerun`
-  - `POST /reviews/rerun/{executionKey}/retry`
-  - `GET /reviews/rerun/{executionKey}`
-  - `GET /reviews/rerun/executions`
-  - `GET /reviews/rerun/{executionKey}/actions/history`
-  - `POST /reviews/rerun/{executionKey}/actions`
-- 가이드 문서의 예시와 자동 검증 대상이 어떻게 연결되는지 문서 안에서 바로 읽히게 정리한다.
-- 예시 검증은 최소한 아래 축을 다시 확인할 수 있어야 한다.
-  - `executionKey`
-  - `retrySourceExecutionKey`
-  - `executionStatus`
-  - `failureDisposition`
-  - `availableActions`
-  - `latestAction*`
-  - `currentActionState`
-  - `actionStatus`
-- 문서 예시와 테스트 fixture가 같은 의미를 설명하는지 검증하는 자동 테스트를 추가한다.
-- 이번 spec의 자동 검증은 controller/service black-box 기대값과 fixture 비교를 중심으로 구성하고, DTO 직렬화 세부 구현만 따로 검증하는 저수준 serialization spec으로 키우지 않는다.
-
-### 비대상
-- 새 조회 endpoint 추가
-- 응답 필드 rename
-- 사용자용 UI
-- bulk action
-- OpenAPI 또는 Swagger 도입
-- 실제 앱 representative 검증 절차 제거
-
-### 외부 계약
-- 기존 rerun/query/list/history/action 경로와 HTTP status 계약은 유지한다.
-- 기존 응답 필드 의미는 바꾸지 않는다.
-- 이번 spec은 응답 예시와 자동 검증 기준을 추가하는 작업이며, 운영 API의 동작 자체를 바꾸는 작업이 아니다.
-
-### 핵심 시나리오
-1. 예시 자동 검증 안전망 고정
-   - 기존 controller/service black-box 테스트가 현재 guide 예시 자동 검증 spec에도 충분한지 먼저 확인한다.
-   - 기존 안전망이 충분하면 근거만 남기고, 부족할 때만 최소 테스트를 추가한다.
-2. 예시 fixture와 문서 매핑 구조 도입
-   - 응답 예시를 어떤 fixture 파일 또는 검증 source와 연결할지 먼저 정리한다.
-   - 운영자가 guide를 읽을 때 어느 예시가 자동 검증 대상인지 이해할 수 있게 문서 구조를 정리한다.
-3. 예시 자동 검증 테스트 도입
-   - controller/service black-box 기대값과 fixture를 비교하는 자동 검증 테스트를 추가한다.
-   - rerun, retry, query, list, history, action 예시가 현재 계약과 다르면 테스트가 바로 깨지도록 한다.
-4. drift 검증과 문서 마감
-   - representative fixture와 자동 검증 테스트가 실제 guide 예시를 충분히 보호하는지 마지막으로 정리한다.
-   - 필요하면 guide 예시 문구와 fixture를 최소 보정하고, drift 감지 기준을 회고와 summary에 남긴다.
-   - 이번 spec은 docs/test 자산 정리 중심이므로 actual app/H2 representative 재검증은 수행하지 않고, 그 판단 근거를 retrospective와 summary에 남긴다.
-
-### Task 분해 기준
-- `TASK-0001` 예시 자동 검증 안전망 고정
-- `TASK-0002` 예시 fixture와 문서 매핑 구조 도입
-- `TASK-0003` 예시 자동 검증 테스트 도입
-- `TASK-0004` drift 검증과 문서 마감
-
-### 연결될 ValidationCriteria
-- `manual-rerun-response-example-contract-preserved`
-- `manual-rerun-response-example-source-defined`
-- `manual-rerun-response-example-tests-defined`
-- `manual-rerun-response-example-drift-detected`
-
-### 필수 테스트 시나리오
-- 예시 자동 검증을 추가하는 동안 기존 rerun/query/list/history/action 계약은 유지된다.
-- guide 예시가 어떤 fixture 또는 검증 source를 기준으로 쓰였는지 문서에서 바로 읽을 수 있다.
-- rerun/retry/query/list/history/action 예시가 현재 DTO/응답 계약과 다르면 자동 검증 테스트가 실패한다.
-- 이후 문서 예시 drift가 생기면 targeted test 또는 full test에서 바로 드러난다.
-
-## 후속 Spec 후보
-### ID
 SPEC-0022
 
 ### 이름
-운영용 조회 응답 문서와 fixture 생성 규칙 정리
-
-### 시작 조건
-- `현재 활성 Spec`이 완료되고, 운영용 조회 응답 예시 자동 검증 기반이 안정적으로 동작한 뒤 시작한다.
+운영용 조회 응답 문서와 기준 파일 생성 규칙 정리
 
 ### 목표
-- 응답 예시 fixture를 누가, 어떤 규칙으로, 어떤 단위에서 갱신하는지 운영 규칙을 더 명확하게 정리한다.
+- 운영용 조회 응답 guide와 기준 파일을 누가, 어떤 기준으로, 어떤 순서로 갱신해야 하는지 새 작업자도 바로 따라갈 수 있게 정리한다.
+- 대표 실제 앱 검증 결과와 문서용 기준 파일의 역할 차이를 분명히 해서, 기준 파일을 실데이터처럼 오해하거나 대표 검증을 기준 파일 갱신으로 대체하지 않게 한다.
+- 기준 파일 이름 규칙, 추가 위치, 갱신 절차, 검증 순서를 문서로 고정해 이후 응답 예시 유지 비용을 낮춘다.
+
+### 대상 문제
+- `SPEC-0021`까지 진행하면서 guide 예시와 기준 파일, 자동 검증 테스트는 연결됐지만, 기준 파일을 언제 새로 만들고 언제 기존 파일을 수정하는지 운영 규칙은 아직 암묵적이다.
+- 대표 실제 앱 검증 결과와 문서용 기준 파일의 경계가 문서에 충분히 분리되어 있지 않아, 이후 작업자가 어떤 값을 기준 파일로 옮겨야 하는지 혼동할 수 있다.
+- 기준 파일 이름과 시점 표현은 현재도 읽을 수 있지만, 앞으로 응답 예시가 더 늘어나면 이름 규칙과 디렉토리 규칙이 없으면 drift 관리 비용이 커질 수 있다.
+
+### 범위
+- 운영용 조회 응답 guide와 기준 파일 생성/갱신 규칙을 문서로 정리한다.
+- 아래 내용을 최소 범위로 포함한다.
+  - 기준 파일 이름 규칙
+  - 기준 파일 추가 위치와 파일 단위 기준
+  - guide 본문, 기준 파일, 자동 검증 테스트를 함께 수정하는 절차
+  - 대표 실제 앱 검증 결과와 기준 파일 예시의 경계
+  - 같은 execution의 조치 전/후 시점 표현 규칙
+- 현재 운영용 조회 응답 세트에 적용한다.
+  - `rerun`
+  - `retry`
+  - `query`
+  - `list`
+  - `history`
+  - `action`
+- 문서 규칙이 실제 현재 기준 파일 구조와 충돌하지 않는지 검토하고, 필요한 범위에서 guide 또는 관련 문서를 보정한다.
+
+### 비대상
+- 새 조회 endpoint 추가
+- 응답 필드 추가 또는 rename
+- actual app 대표 응답 재정의
+- 기준 파일 자동 생성 스크립트 도입
+- 사용자용 UI
+
+### 외부 계약
+- 기존 rerun/retry/query/list/history/action 경로와 HTTP status 계약은 유지한다.
+- 기존 응답 필드 의미는 바꾸지 않는다.
+- 이번 spec은 문서와 기준 파일 운영 규칙을 정리하는 작업이며, 운영 API 동작 자체를 바꾸는 작업이 아니다.
+
+### 핵심 시나리오
+1. 기준 파일 생성 규칙 안전망 확인
+   - 현재 guide, 기준 파일, 자동 검증 테스트 구조가 이미 문서 규칙 정리 spec의 safety-net으로 충분한지 먼저 확인한다.
+   - 부족한 경우만 최소 문서/테스트 보강을 검토한다.
+2. 기준 파일 이름과 파일 단위 규칙 정리
+   - 어떤 응답이 어떤 이름 규칙으로 기준 파일이 되는지 정리한다.
+   - 같은 execution을 서로 다른 시점으로 읽는 경우 파일 이름과 문서 표현을 어떻게 나누는지 고정한다.
+3. 기준 파일 갱신 절차와 대표 검증 경계 정리
+   - guide, 기준 파일, 자동 검증 테스트를 어떤 순서로 함께 수정해야 하는지 적는다.
+   - 대표 실제 앱 검증 결과는 언제 참고하고, 언제 기준 파일로 옮기지 않는지 경계를 분명히 한다.
+4. 규칙 문서 마감과 정합성 확인
+   - 새 작업자가 문서만 읽고 기준 파일 생성/갱신 절차를 따라갈 수 있는지 점검한다.
+   - targeted/full test를 다시 돌려 문서 기준 정리로 기존 자동 검증 흐름이 깨지지 않았는지 확인한다.
+
+### Task 분해 기준
+- `TASK-0001` 기준 파일 생성 규칙 안전망 확인
+- `TASK-0002` 기준 파일 이름과 파일 단위 규칙 정리
+- `TASK-0003` 기준 파일 갱신 절차와 대표 검증 경계 정리
+- `TASK-0004` 규칙 문서 마감과 정합성 확인
+
+### 연결될 ValidationCriteria
+- `manual-rerun-fixture-governance-safety-net-preserved`
+- `manual-rerun-fixture-naming-rules-defined`
+- `manual-rerun-fixture-update-boundary-defined`
+- `manual-rerun-fixture-guide-readiness-verified`
+
+### 필수 테스트 시나리오
+- 기준 파일 운영 규칙을 정리하는 동안 기존 rerun/retry/query/list/history/action 자동 검증은 유지된다.
+- 새 작업자가 문서만 읽고 기준 파일 이름 규칙과 파일 위치 규칙을 이해할 수 있다.
+- guide, 기준 파일, 자동 검증 테스트를 함께 수정해야 한다는 절차와 대표 실제 앱 검증과의 경계가 문서에서 바로 읽힌다.
+- 문서 정리 후에도 targeted test와 full test에서 기존 자동 검증 흐름이 유지된다.
+
+## 후속 Spec 후보
+### ID
+SPEC-0023
+
+### 이름
+운영용 조회 응답 예시 seed 데이터 정리
+
+### 시작 조건
+- `현재 활성 Spec`이 완료되고, 기준 파일 생성/갱신 규칙이 문서로 고정된 뒤 시작한다.
+
+### 목표
+- 대표 검증과 synthetic seed 데이터를 더 예측 가능하게 만들기 위한 seed 규칙을 정리한다.
 
 ### 후속 변경 범위
-- fixture naming 규칙
-- 예시 갱신 절차
-- representative 응답과 fixture 갱신 경계 정리
+- synthetic seed naming 규칙
+- 예시 seed 준비 절차
+- 대표 응답과 seed 갱신 경계 정리
 
 ### 후속 변경 비대상
 - 사용자용 UI
-- bulk action
 - 장기 저장소 도입
 
 ### 후속 검증 방향
-- fixture와 문서 예시 갱신 절차가 새 작업자에게도 바로 읽힌다.
+- representative 실제 앱 검증 준비 절차가 새 작업자에게도 바로 읽힌다.
