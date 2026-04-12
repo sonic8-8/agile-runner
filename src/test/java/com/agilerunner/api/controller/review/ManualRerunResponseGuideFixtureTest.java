@@ -205,7 +205,7 @@ class ManualRerunResponseGuideFixtureTest {
                 .getContentAsString();
 
         // then
-        assertFixtureMatches("manual-rerun-response-guide/rerun-list-after-acknowledge.json", actualJson);
+        assertFixtureMatches("manual-rerun-response-guide/rerun-list-row-after-acknowledge.json", actualJson);
     }
 
     @DisplayName("retry list row 예시는 guide 기준 파일과 같아야 한다.")
@@ -237,7 +237,7 @@ class ManualRerunResponseGuideFixtureTest {
                 .getContentAsString();
 
         // then
-        assertFixtureMatches("manual-rerun-response-guide/retry-list-row.json", actualJson);
+        assertFixtureMatches("manual-rerun-response-guide/retry-list-row-after-retry.json", actualJson);
     }
 
     @DisplayName("history 응답 예시는 guide 기준 파일과 같아야 한다.")

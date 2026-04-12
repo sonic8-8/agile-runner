@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0022",
-    "task_id": "TASK-0001",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0022/TASK-0001-fixture-governance-safety-net.md",
+    "task_id": "TASK-0002",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0022/TASK-0002-fixture-naming-rules.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0021/SPEC-0021-summary.md"
   },
   "proposals": [

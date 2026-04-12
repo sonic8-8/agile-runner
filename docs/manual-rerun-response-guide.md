@@ -27,14 +27,26 @@
 | rerun 시작 응답 | `src/test/resources/manual-rerun-response-guide/rerun-start-response.json` |
 | retry 시작 응답 | `src/test/resources/manual-rerun-response-guide/retry-start-response.json` |
 | rerun query 응답 | `src/test/resources/manual-rerun-response-guide/rerun-query-before-acknowledge.json` |
-| rerun list 응답 | `src/test/resources/manual-rerun-response-guide/rerun-list-after-acknowledge.json` |
-| retry list row | `src/test/resources/manual-rerun-response-guide/retry-list-row.json` |
+| rerun list row 응답 | `src/test/resources/manual-rerun-response-guide/rerun-list-row-after-acknowledge.json` |
+| retry list row 응답 | `src/test/resources/manual-rerun-response-guide/retry-list-row-after-retry.json` |
 | rerun history 응답 | `src/test/resources/manual-rerun-response-guide/rerun-history-after-acknowledge.json` |
 | rerun action 응답 | `src/test/resources/manual-rerun-response-guide/rerun-action-after-acknowledge.json` |
 
 이 기준 파일은 guide 예시와 1:1로 대응하는 문서용 예시 파일이다. 현재는 이 파일과 실제 응답 기대값을 자동 검증으로 연결해, 예시가 달라지면 테스트에서 바로 드러나게 관리한다.
 자동 검증 테스트 위치는 `src/test/java/com/agilerunner/api/controller/review/ManualRerunResponseGuideFixtureTest.java`다.
-즉 문서를 고칠 때는 guide 본문만 보지 말고, 기준 파일과 자동 검증 테스트를 함께 확인해야 한다.
+
+## 기준 파일 이름 규칙
+- 기준 파일 이름은 `실행 종류 - 응답 종류 - 시점` 순서를 기본으로 잡는다.
+- 실행 종류는 `rerun`, `retry`처럼 응답이 설명하는 실행 출처를 먼저 적는다.
+- 응답 종류는 `start-response`, `query`, `list-row`, `history`, `action`처럼 어떤 응답을 설명하는지 적는다.
+- 시점이 필요한 응답은 `before-acknowledge`, `after-acknowledge`, `after-retry`처럼 마지막에 붙인다.
+- 시점이 따로 필요 없는 시작 응답은 `rerun-start-response.json`, `retry-start-response.json`처럼 시점을 생략한다.
+
+## 파일 단위 기준
+- 시작 응답, query, history, action 예시는 응답 전체를 파일 하나로 둔다.
+- list 예시는 여러 row 전체를 일반화하지 않고, 문서에서 설명하려는 대표 row 1건을 담은 응답 파일 하나로 둔다.
+- 같은 execution을 조치 전과 조치 후로 나눠 읽어야 하면 파일 이름에도 그 시점을 같이 드러낸다.
+- retry 예시는 원본 execution과 파생 execution 관계가 중요하므로, `retrySourceExecutionKey`가 드러나는 row를 기준 파일로 둔다.
 
 ## 응답별로 답하는 질문
 
@@ -123,7 +135,7 @@
 - 운영자는 이 응답으로 지금 어떤 execution을 더 자세히 봐야 하는지 고른다.
 - 개별 execution의 과거 timeline 전체는 포함하지 않는다.
 - 아래 예시는 예시 수동 재실행에 `ACKNOWLEDGE`를 적용한 뒤 list row를 읽은 상태다.
-- 예시 기준 파일: `src/test/resources/manual-rerun-response-guide/rerun-list-after-acknowledge.json`
+- 예시 기준 파일: `src/test/resources/manual-rerun-response-guide/rerun-list-row-after-acknowledge.json`
 
 예시:
 ```json
