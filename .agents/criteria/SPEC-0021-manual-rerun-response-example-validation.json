@@ -1,0 +1,35 @@
+{
+  "spec_id": "SPEC-0021",
+  "spec_name": "운영용 조회 응답 예시 자동 검증",
+  "spec_version": 1,
+  "criteria": [
+    {
+      "key": "manual-rerun-response-example-contract-preserved",
+      "target": "예시 자동 검증 도입 중 기존 응답 계약 유지",
+      "test_view": "컨트롤러/서비스 통합 관점",
+      "pass_condition": "운영용 조회 응답 예시 자동 검증을 추가하는 동안에도 `POST /reviews/rerun`, `POST /reviews/rerun/{executionKey}/retry`, `GET /reviews/rerun/{executionKey}`, `GET /reviews/rerun/executions`, `GET /reviews/rerun/{executionKey}/actions/history`, `POST /reviews/rerun/{executionKey}/actions` 기존 계약과 의미가 유지된다.",
+      "fail_condition": "예시 자동 검증 도입 과정에서 기존 rerun/query/list/history/action 응답 구조나 의미가 흔들린다."
+    },
+    {
+      "key": "manual-rerun-response-example-source-defined",
+      "target": "문서 예시와 검증 source 연결 정의",
+      "test_view": "문서 리뷰 + 테스트 구조 관점",
+      "pass_condition": "guide 문서가 rerun, retry, query, list, history, action 예시가 어떤 fixture 또는 검증 source를 기준으로 유지되는지 설명하고, 예시와 자동 검증 source의 연결 위치를 새 작업자도 바로 찾을 수 있다.",
+      "fail_condition": "문서 예시가 어떤 fixture 또는 검증 source와 연결되는지 드러나지 않거나, 예시 drift가 생겼을 때 어디를 고쳐야 하는지 이해하기 어렵다."
+    },
+    {
+      "key": "manual-rerun-response-example-tests-defined",
+      "target": "예시 자동 검증 테스트 정의",
+      "test_view": "controller/service black-box + fixture 비교 관점",
+      "pass_condition": "rerun, retry, query, list, history, action 예시가 현재 controller/service black-box 기대값과 다르면 자동 검증 테스트가 실패하고, 같은 execution을 읽는 예시 의미가 fixture 기준으로 일관되게 유지된다.",
+      "fail_condition": "문서 예시가 현재 DTO/응답 계약과 달라도 테스트가 깨지지 않거나, 예시 검증 범위가 일부 응답에만 머문다."
+    },
+    {
+      "key": "manual-rerun-response-example-drift-detected",
+      "target": "문서 예시 drift 조기 감지",
+      "test_view": "targeted test + 전체 테스트 관점",
+      "pass_condition": "문서 예시 또는 연결 fixture가 현재 응답 의미와 어긋나면 targeted test 또는 전체 `cleanTest test`에서 조기에 드러나고, guide와 fixture 정리 결과가 retrospective와 spec summary에 남는다.",
+      "fail_condition": "문서 예시가 현재 응답 의미와 어긋나도 수동 representative 검증 전까지 자동으로 드러나지 않는다."
+    }
+  ]
+}
