@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0024",
-    "task_id": "TASK-0001",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0024/TASK-0001-seed-application-safety-net.md",
+    "task_id": "TASK-0002",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0024/TASK-0002-seed-application-order-and-command-boundary.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0023/SPEC-0023-summary.md"
   },
   "proposals": [

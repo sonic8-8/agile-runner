@@ -16,8 +16,8 @@
 - 각 `Task` 시작 전 해당 task용 GitHub Issue를 새로 연결한다.
 - 각 `Task`는 연결된 `ValidationCriteria`와 테스트 근거가 없으면 완료로 보지 않는다.
 - 기존 `POST /reviews/rerun`, `POST /reviews/rerun/{executionKey}/retry`, `GET /reviews/rerun/{executionKey}`, `GET /reviews/rerun/executions`, `GET /reviews/rerun/{executionKey}/actions/history`, `POST /reviews/rerun/{executionKey}/actions` 계약은 유지한다.
-- 이번 spec은 대표 실제 앱/H2 검증 전에 준비 데이터를 어떤 순서로 적용하고 무엇을 먼저 점검하는지 문서로 고정하는 데 집중한다.
-- `TASK-0001` 시작 전 현재 회고와 자동 검증 기반이 준비 데이터 적용 절차 spec의 기존 안전망으로 충분한지 먼저 검토한다.
+- 이번 단계는 대표 실제 앱/H2 검증 전에 준비 데이터를 어떤 순서로 적용하고 무엇을 먼저 점검하는지 문서로 고정하는 데 집중한다.
+- `TASK-0001` 시작 전 현재 회고와 자동 검증 기반이 준비 데이터 적용 절차 현재 단계의 기존 안전망으로 충분한지 먼저 검토한다.
 
 ## 요약 표
 | Task | 이름 | 핵심 목표 | 연결 ValidationCriteria | 핵심 검증 | Issue |
@@ -25,14 +25,14 @@
 | `TASK-0001` | 준비 데이터 적용 절차 안전망 확인 | 현재 대표 검증 절차 근거 유지 확인 | `manual-rerun-seed-application-safety-net-preserved` | 회귀 테스트 + 회고 근거 확인 | 새 Issue |
 | `TASK-0002` | 준비 데이터 적용 순서와 명령 기준 정리 | 준비 데이터 적용 순서와 명령 기준 고정 | `manual-rerun-seed-application-order-defined` | 문서 리뷰 | 새 Issue |
 | `TASK-0003` | schema와 enum 값 점검 순서, 대표 검증 체크리스트 정리 | 대표 검증 전 점검 체크리스트 고정 | `manual-rerun-seed-precheck-checklist-defined` | 문서 리뷰 | 새 Issue |
-| `TASK-0004` | 준비 데이터 적용 절차 문서 마감과 정합성 확인 | 새 작업자가 절차 문서를 따라갈 수 있는지 확인하고 마감 | `manual-rerun-seed-application-guide-readiness-verified` | targeted/full test + 문서 검토 | 새 Issue |
+| `TASK-0004` | 준비 데이터 적용 절차 문서 마감과 정합성 확인 | 새 작업자가 절차 문서를 따라갈 수 있는지 확인하고 마감 | `manual-rerun-seed-application-guide-readiness-verified` | targeted/전체 test + 문서 검토 | 새 Issue |
 
 ## TASK-0001
 ### 이름
 준비 데이터 적용 절차 안전망 확인
 
 ### 목표
-- 준비 데이터 적용 절차 spec을 시작하기 전에 대표 검증에서 어떤 적용 순서와 점검 항목이 실제로 필요했는지와 기존 근거가 이미 충분한 기존 안전망인지 확인한다.
+- 준비 데이터 적용 절차 현재 단계를 시작하기 전에 대표 검증에서 어떤 적용 순서와 점검 항목이 실제로 필요했는지와 기존 근거가 이미 충분한 기존 안전망인지 확인한다.
 
 ### 구현 범위
 - 기존 회고와 관련 controller/service 테스트를 우선 재사용한다.
@@ -113,7 +113,7 @@ schema와 enum 값 점검 순서, 대표 검증 체크리스트 정리
   - schema.sql과 enum 값을 어떤 순서로 확인하는가
   - 준비 데이터 적용 전에 확인할 체크리스트
   - 앱 기동 전 확인 항목과 앱 종료 후 확인 항목을 어떻게 구분하는가
-  - 대표 검증 중 lock이나 준비 데이터 오류가 나면 무엇부터 의심해야 하는가
+  - 대표 검증 중 앱 실행으로 인한 H2 잠금이나 준비 데이터 오류가 나면 무엇부터 의심해야 하는가
 - 필요하면 준비 데이터 가이드 또는 관련 운영 문서에 체크리스트 섹션을 보강한다.
 
 ### 관련 파일 후보
