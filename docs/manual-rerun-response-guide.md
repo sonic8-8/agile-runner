@@ -48,6 +48,21 @@
 - 같은 execution을 조치 전과 조치 후로 나눠 읽어야 하면 파일 이름에도 그 시점을 같이 드러낸다.
 - retry 예시는 원본 execution과 파생 execution 관계가 중요하므로, `retrySourceExecutionKey`가 드러나는 row를 기준 파일로 둔다.
 
+## 기준 파일 갱신 순서
+- guide 문구를 먼저 읽고, 이번에 바꾸려는 예시가 어떤 응답과 어떤 시점을 설명하는지부터 고정한다.
+- guide 본문이 바뀌면 대응하는 기준 파일 경로를 같이 확인하고, 새 예시가 필요하면 `src/test/resources/manual-rerun-response-guide/` 아래에 이름 규칙에 맞는 파일을 추가한다.
+- 기준 파일을 추가하거나 수정하면 `src/test/java/com/agilerunner/api/controller/review/ManualRerunResponseGuideFixtureTest.java`의 같은 예시 비교 테스트도 같은 작업에서 함께 갱신한다.
+- 기준 파일과 fixture test를 맞춘 뒤에 관련 controller/service targeted test와 full `cleanTest test`를 순서대로 다시 확인한다.
+- 문서만 바꾸고 기준 파일 또는 fixture test를 따로 미루지 않는다. guide, 기준 파일, 자동 검증 테스트는 한 번에 같은 변경으로 닫는다.
+
+## 대표 실제 앱 검증과 기준 파일의 경계
+- 대표 실제 앱 검증은 실제 실행 흐름이 지금도 같은 의미로 동작하는지 확인하는 근거다.
+- 기준 파일은 문서 설명에 맞춰 남겨 두는 예시 응답이다. 대표 실제 앱 응답을 그대로 복사해 넣는 용도가 아니다.
+- 대표 실제 앱 검증에서 보이는 `executionKey`, `delivery_id`, UUID, 시각 같은 값은 근거 artifact와 retrospective에 남기고, 기준 파일에는 문서 설명에 필요한 안정적인 예시 값만 둔다.
+- 기준 파일은 응답 의미나 시점 설명이 바뀔 때만 수정한다. 대표 실제 앱 검증 값이 새로 나왔다는 이유만으로 기준 파일을 갱신하지 않는다.
+- 같은 execution을 조치 전과 조치 후로 나눠 설명할 때는 문서와 기준 파일도 그 시점을 분리해서 유지한다.
+- 예를 들어 `query`는 조치 전 현재 상태를 읽고, `action`, `history`, `list`는 조치 후 상태를 읽는다. 이 차이를 한 파일이나 한 예시로 섞지 않는다.
+
 ## 응답별로 답하는 질문
 
 | 응답 | 운영자가 확인하는 질문 |
