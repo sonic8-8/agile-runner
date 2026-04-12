@@ -1,0 +1,19 @@
+{
+  "executionKey": "EXECUTION:MANUAL_RERUN:example-rerun",
+  "currentActionState": {
+    "latestAction": "ACKNOWLEDGE",
+    "latestActionStatus": "APPLIED",
+    "latestActionAppliedAt": "2026-04-12T13:15:00",
+    "availableActions": [
+      "UNACKNOWLEDGE"
+    ]
+  },
+  "actions": [
+    {
+      "action": "ACKNOWLEDGE",
+      "actionStatus": "APPLIED",
+      "note": "운영자 확인 완료",
+      "appliedAt": "2026-04-12T13:15:00"
+    }
+  ]
+}

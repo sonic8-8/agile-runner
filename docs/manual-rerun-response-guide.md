@@ -19,6 +19,21 @@
 - representative rerun execution에서는 `query.availableActions`, `action.availableActions`, `history.currentActionState.availableActions`, `list.availableActions`와 `list.latestAction*`, `history.currentActionState.latestAction*`가 같은 흐름으로 이어지는지 함께 본다.
 - representative retry execution에서는 `retry.executionKey`, `retry.retrySourceExecutionKey`, `list.retrySourceExecutionKey`, `list.executionStartType`가 서로 같은 관계를 설명하는지 함께 본다.
 
+## 예시 기준 파일 위치
+아래 예시는 이후 자동 검증에서 기준 파일로 재사용할 수 있도록 `src/test/resources/manual-rerun-response-guide/` 아래에 같이 둔다.
+
+| 예시 | 예시 기준 파일 |
+| --- | --- |
+| rerun 시작 응답 | `src/test/resources/manual-rerun-response-guide/rerun-start-response.json` |
+| retry 시작 응답 | `src/test/resources/manual-rerun-response-guide/retry-start-response.json` |
+| rerun query 응답 | `src/test/resources/manual-rerun-response-guide/rerun-query-before-acknowledge.json` |
+| rerun list 응답 | `src/test/resources/manual-rerun-response-guide/rerun-list-after-acknowledge.json` |
+| retry list row | `src/test/resources/manual-rerun-response-guide/retry-list-row.json` |
+| rerun history 응답 | `src/test/resources/manual-rerun-response-guide/rerun-history-after-acknowledge.json` |
+| rerun action 응답 | `src/test/resources/manual-rerun-response-guide/rerun-action-after-acknowledge.json` |
+
+이 기준 파일은 guide 예시와 1:1로 대응하는 문서용 fixture다. 다음 task에서는 이 기준 파일과 controller/service black-box 기대값을 연결해 drift를 자동 검출한다.
+
 ## 응답별로 답하는 질문
 
 | 응답 | 운영자가 확인하는 질문 |
@@ -45,11 +60,12 @@
 - 핵심 관심사는 실행이 시작됐는지와 어떤 실행 모드로 시작됐는지다.
 - 자세한 현재 상태 조회는 이후 `query`에서 다시 확인한다.
 - 아래 예시는 representative rerun execution을 시작한 직후 응답이다.
+- 예시 기준 파일: `src/test/resources/manual-rerun-response-guide/rerun-start-response.json`
 
 예시:
 ```json
 {
-  "executionKey": "EXECUTION:MANUAL_RERUN:rerun-representative",
+  "executionKey": "EXECUTION:MANUAL_RERUN:example-rerun",
   "executionControlMode": "DRY_RUN",
   "writePerformed": false,
   "executionStatus": "FAILED",
@@ -63,12 +79,13 @@
 - 핵심 관심사는 새 execution과 원본 execution이 어떻게 연결되는지다.
 - 자세한 현재 상태 조회는 이후 `query`에서 다시 확인한다.
 - 아래 예시는 representative retry execution을 시작한 직후 응답이다.
+- 예시 기준 파일: `src/test/resources/manual-rerun-response-guide/retry-start-response.json`
 
 예시:
 ```json
 {
-  "executionKey": "EXECUTION:MANUAL_RERUN:retry-derived-representative",
-  "retrySourceExecutionKey": "EXECUTION:MANUAL_RERUN:retry-source-representative",
+  "executionKey": "EXECUTION:MANUAL_RERUN:example-retry-derived",
+  "retrySourceExecutionKey": "EXECUTION:MANUAL_RERUN:example-retry-source",
   "executionControlMode": "DRY_RUN",
   "writePerformed": false,
   "executionStatus": "FAILED",
@@ -82,11 +99,12 @@
 - 운영자는 이 응답으로 현재 실패 상태, 오류 코드, 조치 필요 여부를 읽는다.
 - 과거 관리자 조치 timeline 전체는 포함하지 않는다.
 - 아래 예시는 representative rerun execution을 관리자 조치 전에 읽은 응답이다.
+- 예시 기준 파일: `src/test/resources/manual-rerun-response-guide/rerun-query-before-acknowledge.json`
 
 예시:
 ```json
 {
-  "executionKey": "EXECUTION:MANUAL_RERUN:rerun-representative",
+  "executionKey": "EXECUTION:MANUAL_RERUN:example-rerun",
   "executionControlMode": "DRY_RUN",
   "writePerformed": false,
   "executionStatus": "FAILED",
@@ -103,13 +121,14 @@
 - 운영자는 이 응답으로 지금 어떤 execution을 더 자세히 봐야 하는지 고른다.
 - 개별 execution의 과거 timeline 전체는 포함하지 않는다.
 - 아래 예시는 representative rerun execution에 `ACKNOWLEDGE`를 적용한 뒤 list row를 읽은 상태다.
+- 예시 기준 파일: `src/test/resources/manual-rerun-response-guide/rerun-list-after-acknowledge.json`
 
 예시:
 ```json
 {
   "executions": [
     {
-      "executionKey": "EXECUTION:MANUAL_RERUN:rerun-representative",
+      "executionKey": "EXECUTION:MANUAL_RERUN:example-rerun",
       "retrySourceExecutionKey": null,
       "executionStartType": "MANUAL_RERUN",
       "executionStatus": "FAILED",
@@ -135,11 +154,12 @@
 - 핵심 책임은 과거 조치 이력을 보여 주는 것이다.
 - 여러 execution 비교 용도는 아니다.
 - 아래 예시는 representative rerun execution에 `ACKNOWLEDGE`를 적용한 뒤 history를 읽은 상태다.
+- 예시 기준 파일: `src/test/resources/manual-rerun-response-guide/rerun-history-after-acknowledge.json`
 
 예시:
 ```json
 {
-  "executionKey": "EXECUTION:MANUAL_RERUN:rerun-representative",
+  "executionKey": "EXECUTION:MANUAL_RERUN:example-rerun",
   "currentActionState": {
     "latestAction": "ACKNOWLEDGE",
     "latestActionStatus": "APPLIED",
@@ -164,11 +184,12 @@
 - 운영자는 이 응답으로 지금 누른 조치가 실제로 적용됐는지 확인한다.
 - 과거 timeline 전체를 다시 싣는 용도는 아니다.
 - 아래 예시는 representative rerun execution에 `ACKNOWLEDGE`를 적용한 직후 action 응답이다.
+- 예시 기준 파일: `src/test/resources/manual-rerun-response-guide/rerun-action-after-acknowledge.json`
 
 예시:
 ```json
 {
-  "executionKey": "EXECUTION:MANUAL_RERUN:rerun-representative",
+  "executionKey": "EXECUTION:MANUAL_RERUN:example-rerun",
   "action": "ACKNOWLEDGE",
   "actionStatus": "APPLIED",
   "availableActions": [

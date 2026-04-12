@@ -1,0 +1,11 @@
+{
+  "executionKey": "EXECUTION:MANUAL_RERUN:example-rerun",
+  "executionControlMode": "DRY_RUN",
+  "writePerformed": false,
+  "executionStatus": "FAILED",
+  "errorCode": "GITHUB_APP_CONFIGURATION_MISSING",
+  "failureDisposition": "MANUAL_ACTION_REQUIRED",
+  "availableActions": [
+    "ACKNOWLEDGE"
+  ]
+}

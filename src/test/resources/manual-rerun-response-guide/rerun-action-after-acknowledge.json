@@ -1,0 +1,9 @@
+{
+  "executionKey": "EXECUTION:MANUAL_RERUN:example-rerun",
+  "action": "ACKNOWLEDGE",
+  "actionStatus": "APPLIED",
+  "availableActions": [
+    "UNACKNOWLEDGE"
+  ],
+  "note": "운영자 확인 완료"
+}

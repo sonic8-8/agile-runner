@@ -1,0 +1,9 @@
+{
+  "executionKey": "EXECUTION:MANUAL_RERUN:example-retry-derived",
+  "retrySourceExecutionKey": "EXECUTION:MANUAL_RERUN:example-retry-source",
+  "executionControlMode": "DRY_RUN",
+  "writePerformed": false,
+  "executionStatus": "FAILED",
+  "errorCode": "GITHUB_APP_CONFIGURATION_MISSING",
+  "failureDisposition": "MANUAL_ACTION_REQUIRED"
+}
