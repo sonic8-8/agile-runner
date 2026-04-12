@@ -48,6 +48,45 @@
 - 서로 다른 대표 검증 시나리오를 한 파일에 섞지 않는다.
 - 즉 retry 준비 파일과 rerun 조치 이력 파일은 분리하고, 결과 확인 SQL도 시나리오별로 나눈다.
 
+## 준비 데이터를 손대기 전에 확인할 항목
+- schema.sql에서 현재 컬럼 이름을 먼저 본다.
+  - `WEBHOOK_EXECUTION.failure_disposition`
+  - `WEBHOOK_EXECUTION.execution_start_type`
+  - `WEBHOOK_EXECUTION.write_skip_reason`
+  - `AGENT_EXECUTION_LOG.failure_disposition`
+  - `AGENT_EXECUTION_LOG.execution_start_type`
+  - `AGENT_EXECUTION_LOG.write_skip_reason`
+  - `MANUAL_RERUN_CONTROL_ACTION_AUDIT.action_status`
+- enum 값도 현재 코드를 먼저 본다.
+  - `GitHubWriteSkipReason`
+  - `ExecutionStartType`
+  - `FailureDisposition`
+  - `ManualRerunControlAction`
+  - `ManualRerunControlActionStatus`
+  - `RerunExecutionStatus`
+- 이유는 간단하다. 준비 데이터 파일은 제품 버그가 아니라 준비 오류 때문에 먼저 깨질 수 있고, 실제로 `write_skip_reason` enum 값이 어긋나 거짓 실패가 난 적이 있었다.
+
+## 새 파일을 만들 때와 기존 파일을 갱신할 때
+- 아래 중 하나면 새 파일을 만든다.
+  - 새 대표 검증 시나리오가 생겼을 때
+  - 기존 파일이 설명하지 못하는 새 준비 데이터 종류가 생겼을 때
+  - 같은 시나리오라도 원본 실행 데이터, 관리자 조치 이력, 실행 근거 확인 SQL이 서로 다른 파일 단위여야 할 때
+- 아래 중 하나면 기존 파일을 갱신한다.
+  - 파일 이름 규칙은 유지되지만 컬럼 이름이나 enum 값이 현재 코드와 달라졌을 때
+  - 같은 대표 검증 시나리오 안에서 예시 SQL 주석이나 파일 설명만 더 정확히 써야 할 때
+  - 이미 있는 파일이 같은 시나리오와 같은 준비 데이터 종류를 계속 설명할 수 있을 때
+- 헷갈리면 먼저 “이 변경이 새 시나리오를 추가하는가”를 본다. 아니면 기존 파일 갱신 쪽을 먼저 검토한다.
+
+## 준비 데이터 파일, 기준 파일, 대표 검증 결과의 경계
+- 준비 데이터 파일은 대표 검증을 시작하기 전에 local H2에 넣거나, 검증 뒤에 어떤 row를 확인할지 정리한 입력 자료다.
+- 기준 파일은 문서 설명에 맞춰 남겨 두는 응답 예시다.
+- 대표 검증 결과는 실제 앱을 띄운 뒤 얻는 실행 근거다.
+- 이 셋은 역할이 다르므로 바로 섞지 않는다.
+- 대표 검증에서 새 `executionKey`, `delivery_id`, UUID, 시각이 나왔다고 해서 그 값을 준비 데이터 파일이나 기준 파일에 바로 복사하지 않는다.
+- 준비 데이터 파일에는 반복 가능한 준비 규칙과 예시 SQL 뼈대만 남기고, 실제 실행 결과 값은 회고와 실행 근거에 남긴다.
+- 기준 파일은 응답 의미가 바뀔 때만 수정한다. 준비 데이터 파일이 바뀌었다는 이유만으로 기준 파일을 같이 갱신하지 않는다.
+- 반대로 대표 검증 결과가 새로 나왔다고 해서 준비 데이터 파일 이름 규칙까지 바로 바꾸지 않는다. 먼저 새 시나리오인지, 기존 파일 갱신인지부터 판단한다.
+
 ## 현재 만드는 첫 파일 뼈대
 - `source-execution/retry-source-execution-seed.example.sql`
   - retry 대표 검증에 필요한 원본 실행 데이터 이름 규칙 예시
@@ -60,7 +99,7 @@
 
 ## 이번 단계에서 하지 않는 것
 - 준비 데이터 적용 순서 정리
-- schema, enum 선확인 순서 정리
+- schema와 enum 값 확인 순서 정리
 - actual app/H2 대표 검증 재실행
 - 대표 검증 결과를 문서 예시 기준 파일로 옮기는 작업
 
