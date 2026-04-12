@@ -1,10 +1,10 @@
 {
   "version": 1,
   "latest": {
-    "spec_id": "SPEC-0022",
-    "task_id": "TASK-0004",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0022/TASK-0004-fixture-governance-closeout.md",
-    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0022/SPEC-0022-summary.md"
+    "spec_id": "SPEC-0023",
+    "task_id": "TASK-0001",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0023/TASK-0001-seed-governance-safety-net.md",
+    "spec_summary_path": null
   },
   "proposals": [
     {

@@ -24,7 +24,7 @@ GitHub Pull Request webhook을 받아 PR diff를 분석하고, OpenAI를 통해 
 
 ## 현재 목표
 초기 webhook 안정화와 실행 흔적 축적의 기반은 이미 확보됐다.
-현재는 그 기반 위에서 운영자가 실패한 리뷰 실행을 다시 실행하고, 조회하고, 조치할 수 있는 기능 위에 운영용 문서와 기준 파일, 자동 검증 유지 규칙을 더 분명히 정리하는 단계다.
+현재는 그 기반 위에서 운영자가 실패한 리뷰 실행을 다시 실행하고, 조회하고, 조치할 수 있는 기능 위에 운영용 문서, 기준 파일, 대표 검증 준비 데이터 유지 규칙을 더 분명히 정리하는 단계다.
 즉, 지금 단계의 제품 목표는 `자동 리뷰 기능 자체를 더 많이 늘리는 것`보다 `운영자용 조회와 조치 기능의 사용 기준과 유지 규칙을 더 정교하게 다듬는 것`에 더 가깝다.
 
 ## 구현 흐름
@@ -43,7 +43,7 @@ GitHub Pull Request webhook을 받아 PR diff를 분석하고, OpenAI를 통해 
 
 ## 현재 위치
 현재는 위 흐름 중 `운영자 조회 기능 확장` 단계에 있다.
-지금은 운영자가 `query`, `list`, `history`, `action` 응답을 함께 읽을 때 참고하는 문서와 기준 파일, 자동 검증 테스트를 어떤 규칙으로 유지할지 정리하는 단계다.
+지금은 운영자가 `query`, `list`, `history`, `action` 응답을 함께 읽을 때 참고하는 문서, 기준 파일, 대표 검증 준비 데이터를 어떤 규칙으로 유지할지 정리하는 단계다.
 
 - 이미 완료한 범위
   - 자동 리뷰 실행 안정화
@@ -52,14 +52,14 @@ GitHub Pull Request webhook을 받아 PR diff를 분석하고, OpenAI를 통해 
   - 재실행 결과 조회와 목록 조회
   - 관리자 액션과 관리자 액션 이력 조회
 - 지금 진행 중인 범위
-  - 운영용 조회 응답 문서와 기준 파일 생성 규칙 정리
-  - guide 문서, 기준 파일, 자동 검증 테스트를 어떤 규칙으로 만들고 갱신할지 운영 규칙을 정리하는 기능
+  - 운영용 조회 응답 예시 준비 데이터 정리
+  - 대표 검증을 준비할 때 필요한 원본 실행 데이터, 관리자 조치 이력 데이터, 실행 근거 데이터를 어떤 규칙으로 만들고 갱신할지 정리하는 기능
 - 현재 활성 spec
-  - `SPEC-0022 운영용 조회 응답 문서와 기준 파일 생성 규칙 정리`
+  - `SPEC-0023 운영용 조회 응답 예시 준비 데이터 정리`
 - 직전 완료 spec
-  - `SPEC-0021 운영용 조회 응답 예시 자동 검증`
+  - `SPEC-0022 운영용 조회 응답 문서와 기준 파일 생성 규칙 정리`
 - 다음 후보 spec
-  - `SPEC-0023 운영용 조회 응답 예시 seed 데이터 정리`
+  - `SPEC-0024 운영용 조회 응답 준비 데이터 적용 절차 정리`
 
 쉽게 말하면 지금은 `자동 리뷰를 실행하는 기능` 자체보다, `운영자가 실패 실행을 보고 관리하는 기능`을 계속 다듬고 있는 단계다.
 
@@ -144,16 +144,16 @@ GitHub Pull Request webhook을 받아 PR diff를 분석하고, OpenAI를 통해 
 - 운영자용 조회와 조치 API는 생겼지만, 아직 별도 관리자 UI나 대시보드는 없다.
 - 관리자 액션 이력 조회는 존재하지만, 조회 조건과 검색성은 아직 확장 중이다.
 - 현재는 운영용 조회 응답 guide, 기준 파일, 자동 검증 테스트를 어떤 규칙으로 유지할지 정리하는 중이다.
-- prompt 버전, artifact, retrospective를 더 강하게 연결하는 개발 피드백 루프는 아직 초기 단계다.
+- prompt 버전, 근거 자료, 회고를 더 강하게 연결하는 개발 피드백 루프는 아직 초기 단계다.
 - 문서 용어와 현재 `agent-runtime` 코드 용어가 아직 완전히 정렬되지 않았다. 현재 구현에는 `TaskState`, `ReviewRun` 같은 이전 이름이 남아 있다.
 
 ## 우선순위 로드맵
 ### 지금 우선순위
 - 운영자 조회 기능 확장
   - 현재 가장 직접적으로 진행 중인 영역이다.
-  - 운영용 조회 응답 문서와 기준 파일 생성 규칙 정리
-  - guide 문서, 기준 파일, 자동 검증 테스트 갱신 절차 정리
-  - 문서 예시와 현재 응답 계약 drift 조기 감지 유지
+  - 운영용 조회 응답 예시 준비 데이터 정리
+  - 대표 검증용 준비 데이터 이름 규칙, 저장 위치, 갱신 기준 정리
+  - 준비 데이터와 기준 파일, 대표 검증의 경계 유지
 - 운영 안정성 잔여 과제
   - 아직 남아 있는 기술 부채를 줄이기 위한 영역이다.
   - webhook signature 검증
@@ -181,7 +181,7 @@ GitHub Pull Request webhook을 받아 PR diff를 분석하고, OpenAI를 통해 
 - 관측성과 회고 지원
   - 로컬 수집 이후 조회와 분석 활용 범위를 넓히기 위한 단계다.
   - `WebhookExecution` 조회 API
-  - artifact export
+  - 근거 자료 export
 - 관리자 UI 또는 대시보드
   - 운영용 백엔드 기능 위에 실제 운영 화면을 붙이는 단계다.
 
@@ -192,19 +192,19 @@ GitHub Pull Request webhook을 받아 PR diff를 분석하고, OpenAI를 통해 
 - GitHub Issue는 하나의 `Task`를 외부에서 추적하기 위한 수단으로 사용하고, 구현의 기준 문서는 `Spec`, `ValidationCriteria`, `Task` 문서로 유지한다.
 - 하나의 `Spec`은 1개 이상의 `Task`로 분해할 수 있다.
 - 하나의 `Task`는 검증 과정에서 0개 이상의 `WebhookExecution` evidence를 가질 수 있다.
-- 최소 artifact 저장 위치는 `.agents/` 문서와 로컬 `agent-runtime` H2 저장소로 나눈다.
-- 문서 artifact의 현재 저장 위치는 `PRD`는 `.agents/prd.md`, `Spec`은 `.agents/active/spec.md`, `ValidationCriteria`는 `.agents/criteria/`, `Task`는 `.agents/active/tasks.md`, retrospective와 수정 제안서는 `.agents/outer-loop/`로 둔다.
+- 최소 근거 자료 저장 위치는 `.agents/` 문서와 로컬 `agent-runtime` H2 저장소로 나눈다.
+- 문서 근거 자료의 현재 저장 위치는 `PRD`는 `.agents/prd.md`, `Spec`은 `.agents/active/spec.md`, `ValidationCriteria`는 `.agents/criteria/`, `Task`는 `.agents/active/tasks.md`, 회고와 수정 제안서는 `.agents/outer-loop/`로 둔다.
 - `Issue`는 문제, 목표, 제약 조건, 제외 범위, 완료 기준을 포함해야 한다.
 - `Spec`은 범위, 핵심 시나리오, 비목표, 외부 계약을 포함해야 한다.
 - `ValidationCriteria`는 criteria key, 검증 대상, 테스트 관점, pass/fail 조건을 포함해야 한다.
 - `Task`는 입력, 기대 결과, 검증 방법, 연결된 GitHub Issue를 포함해야 한다.
-- retrospective는 작업 요약, 실패 요약, root cause, 근거 artifact, 후속 action을 포함해야 한다.
-- AGENTS.md와 개발 가이드 개선은 위 artifact를 근거로 수동 또는 반자동으로 수행하고, 완전 자동화는 현재 범위에 포함하지 않는다.
+- 회고는 작업 요약, 실패 요약, root cause, 근거 자료, 후속 action을 포함해야 한다.
+- AGENTS.md와 개발 가이드 개선은 위 근거 자료를 바탕으로 수동 또는 반자동으로 수행하고, 완전 자동화는 현재 범위에 포함하지 않는다.
 
 ## 결정 규칙
 - GitHub Issue는 `Task`가 정의된 뒤 해당 `Task`와 바로 연결한다.
 - `Spec` 작성이 끝나기 전에는 `ValidationCriteria`와 `Task`를 확정하지 않는다.
 - `ValidationCriteria`는 구현 시작 전에 고정하고, 변경이 필요하면 변경 사유와 영향 범위를 함께 남긴다.
-- `Task` 완료 판정은 코드 변경, 테스트 결과, artifact 근거가 모두 연결될 때만 가능하다.
-- retrospective는 `Task` 종료 직후 작성하고, 다음 작업 시작 전에 참고 가능해야 한다.
-- PRD와 `AGENTS.md` 수정은 retrospective와 누적 artifact를 근거로 수동 승인 후 반영한다.
+- `Task` 완료 판정은 코드 변경, 테스트 결과, 근거 자료가 모두 연결될 때만 가능하다.
+- 회고는 `Task` 종료 직후 작성하고, 다음 작업 시작 전에 참고 가능해야 한다.
+- PRD와 `AGENTS.md` 수정은 회고와 누적 근거 자료를 바탕으로 수동 승인 후 반영한다.
