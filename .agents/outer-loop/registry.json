@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0025",
-    "task_id": "TASK-0002",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0025/TASK-0002-seed-input-sql-executable.md",
+    "task_id": "TASK-0003",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0025/TASK-0003-seed-evidence-sql-executable.md",
     "spec_summary_path": null
   },
   "proposals": [
