@@ -13,7 +13,8 @@
 - 운영용 응답 의미와 예시 읽기 기준은 [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md) 에서 본다.
 - 실제 대표 검증에서 어떤 준비 오류가 있었는지는 [TASK-0004-response-doc-runtime-alignment.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0020/TASK-0004-response-doc-runtime-alignment.md) 를 먼저 참고한다.
 - 기준 파일과 자동 검증을 같이 관리하는 방법은 [SPEC-0022-summary.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0022/SPEC-0022-summary.md) 를 참고한다.
-- 실제 적용 순서와 점검 체크리스트를 더 세밀하게 읽을 때는 현재 활성 단계 문서와 task 문서를 함께 본다.
+- 활성 spec과 task 문서는 이번 단계의 작업 경계를 설명하는 보조 자료다.
+- 준비 데이터 적용 순서와 점검 체크리스트 자체는 이 문서와 준비 데이터 파일만 읽고도 따라갈 수 있게 정리한다.
 
 ## 빠르게 따라가는 기본 순서
 1. 대표 검증 시나리오를 먼저 정한다.
@@ -63,6 +64,13 @@
 - 실행 근거 확인 SQL은 대표 검증 하나를 확인하는 SQL 파일 하나로 둔다.
 - 서로 다른 대표 검증 시나리오를 한 파일에 섞지 않는다.
 - 즉 retry 준비 파일과 rerun 조치 이력 파일은 분리하고, 결과 확인 SQL도 시나리오별로 나눈다.
+
+## 시나리오별 파일 선택 기준
+| 대표 검증 시나리오 | 앱 기동 전 준비 데이터 | 앱 종료 후 확인 SQL | 설명 |
+| --- | --- | --- | --- |
+| `retry` | `source-execution/retry-source-execution-seed.example.sql` | `runtime-evidence/retry-runtime-evidence-check.example.sql` | 기존 실행 1건을 먼저 만들어 둔 뒤 retry 요청을 실행하는 흐름 |
+| `rerun-acknowledge` | `control-action-history/rerun-acknowledge-action-history-seed.example.sql` | `runtime-evidence/rerun-runtime-evidence-check.example.sql` | acknowledge 상태를 준비한 뒤 rerun query/list/history 또는 action 응답을 확인하는 흐름 |
+| `rerun-unacknowledge` | `control-action-history/rerun-acknowledge-action-history-seed.example.sql` | `runtime-evidence/rerun-runtime-evidence-check.example.sql` | unacknowledge는 이미 acknowledge된 실행을 되돌리는 시나리오라 현재 단계에서는 acknowledge 준비 데이터와 rerun 확인 SQL 조합을 재사용한다 |
 
 ## 준비 데이터 적용 순서
 - 기본 순서는 아래와 같다.
@@ -161,6 +169,17 @@
 - 준비 데이터 파일에는 반복 가능한 준비 규칙과 예시 SQL 뼈대만 남기고, 실제 실행 결과 값은 회고와 실행 근거에 남긴다.
 - 기준 파일은 응답 의미가 바뀔 때만 수정한다. 준비 데이터 파일이 바뀌었다는 이유만으로 기준 파일을 같이 갱신하지 않는다.
 - 반대로 대표 검증 결과가 새로 나왔다고 해서 준비 데이터 파일 이름 규칙까지 바로 바꾸지 않는다. 먼저 새 시나리오인지, 기존 파일 갱신인지부터 판단한다.
+
+## 준비 데이터 파일 첫 줄 주석 기준
+- 새 작업자가 문서와 준비 데이터 파일만 같이 읽고도 절차를 따라가려면, 각 파일 첫 줄 주석에서 아래 네 가지가 바로 보여야 한다.
+  - 어떤 대표 검증 시나리오용 파일인지
+  - 앱 기동 전, 앱 실행 중, 앱 종료 후 중 언제 쓰는 파일인지
+  - 바로 앞 단계 또는 바로 다음 단계가 무엇인지
+  - 어떤 확인 SQL 또는 어떤 대표 요청과 이어지는지
+- source execution seed 파일은 `앱 기동 전 입력`, `다음 단계는 앱 기동 후 retry 요청 실행`이 보여야 한다.
+- control action history seed 파일은 `앱 기동 전 입력`, `다음 단계는 rerun query/list/history 또는 action 검증`이 보여야 한다.
+- runtime evidence check 파일은 `앱 종료 후 실행`, `어떤 시나리오 결과를 확인하는 SQL인지`가 보여야 한다.
+- 이 기준은 실제 SQL 구문을 완성하라는 뜻이 아니다. 현재 단계에서는 파일 머리말만 읽어도 적용 시점과 연결 순서를 놓치지 않게 만드는 데 목적이 있다.
 
 ## 현재 만드는 첫 파일 뼈대
 - `source-execution/retry-source-execution-seed.example.sql`

@@ -1,3 +1,4 @@
--- rerun 조치 이력 대표 검증 전에 local H2에 넣는 관리자 조치 이력 예시 파일
--- 실제 INSERT 구문과 적용 순서는 후속 spec에서 정리한다.
--- 이번 단계에서는 이름 규칙과 저장 위치, 파일 단위 기준만 고정한다.
+-- 시나리오: rerun-acknowledge 대표 검증용 관리자 조치 이력 예시 파일
+-- 적용 시점: 앱 기동 전에 local H2에 넣어 조치 이력 상태를 준비한다.
+-- 다음 단계: 앱 기동 뒤 rerun query, list, history 또는 action 응답을 확인하고, 앱 종료 후 rerun-runtime-evidence-check.example.sql 로 근거 row를 확인한다.
+-- 이번 단계에서는 적용 시점과 연결 순서만 고정하고, 실제 INSERT 구문은 후속 spec에서 정리한다.
