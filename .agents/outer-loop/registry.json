@@ -2,9 +2,9 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0022",
-    "task_id": "TASK-0003",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0022/TASK-0003-fixture-update-boundary.md",
-    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0021/SPEC-0021-summary.md"
+    "task_id": "TASK-0004",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0022/TASK-0004-fixture-governance-closeout.md",
+    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0022/SPEC-0022-summary.md"
   },
   "proposals": [
     {

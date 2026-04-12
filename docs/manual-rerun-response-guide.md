@@ -4,6 +4,12 @@
 이 문서는 운영자가 수동 재실행 관련 응답을 읽을 때 각 응답이 어떤 질문에 답하는지 빠르게 이해하도록 돕는 가이드다.
 이 문서의 목적은 새 기능을 정의하는 것이 아니라, 이미 존재하는 rerun, retry, query, list, history, action 응답의 역할을 운영자 관점에서 구분하는 것이다.
 
+## 처음 수정할 때 빠른 순서
+- 먼저 `기준 파일 갱신 순서`를 읽고, 이번에 바꾸려는 예시가 어떤 응답과 어떤 시점을 설명하는지 정한다.
+- 그다음 대응하는 기준 파일과 `ManualRerunResponseGuideFixtureTest`를 같은 변경에서 함께 맞춘다.
+- 기준 파일에 없는 값이 대표 실제 앱 검증에서 보이더라도, 문서 의미가 바뀐 경우가 아니면 그대로 옮기지 않는다.
+- 마지막에 대상 테스트와 전체 `cleanTest test`를 순서대로 다시 확인한다.
+
 ## 먼저 정리할 기본 원칙
 - 같은 `executionKey`라도 모든 응답이 같은 역할을 가지지 않는다.
 - `query`와 `list`는 현재 상태를 읽기 위한 응답이다.
@@ -32,7 +38,7 @@
 | rerun history 응답 | `src/test/resources/manual-rerun-response-guide/rerun-history-after-acknowledge.json` |
 | rerun action 응답 | `src/test/resources/manual-rerun-response-guide/rerun-action-after-acknowledge.json` |
 
-이 기준 파일은 guide 예시와 1:1로 대응하는 문서용 예시 파일이다. 현재는 이 파일과 실제 응답 기대값을 자동 검증으로 연결해, 예시가 달라지면 테스트에서 바로 드러나게 관리한다.
+이 기준 파일은 가이드 예시와 1:1로 대응하는 문서용 예시 파일이다. 현재는 이 파일과 실제 응답 기대값을 자동 검증으로 연결해, 예시가 달라지면 테스트에서 바로 드러나게 관리한다.
 자동 검증 테스트 위치는 `src/test/java/com/agilerunner/api/controller/review/ManualRerunResponseGuideFixtureTest.java`다.
 
 ## 기준 파일 이름 규칙
@@ -49,11 +55,11 @@
 - retry 예시는 원본 execution과 파생 execution 관계가 중요하므로, `retrySourceExecutionKey`가 드러나는 row를 기준 파일로 둔다.
 
 ## 기준 파일 갱신 순서
-- guide 문구를 먼저 읽고, 이번에 바꾸려는 예시가 어떤 응답과 어떤 시점을 설명하는지부터 고정한다.
-- guide 본문이 바뀌면 대응하는 기준 파일 경로를 같이 확인하고, 새 예시가 필요하면 `src/test/resources/manual-rerun-response-guide/` 아래에 이름 규칙에 맞는 파일을 추가한다.
+- 가이드 문구를 먼저 읽고, 이번에 바꾸려는 예시가 어떤 응답과 어떤 시점을 설명하는지부터 고정한다.
+- 가이드 본문이 바뀌면 대응하는 기준 파일 경로를 같이 확인하고, 새 예시가 필요하면 `src/test/resources/manual-rerun-response-guide/` 아래에 이름 규칙에 맞는 파일을 추가한다.
 - 기준 파일을 추가하거나 수정하면 `src/test/java/com/agilerunner/api/controller/review/ManualRerunResponseGuideFixtureTest.java`의 같은 예시 비교 테스트도 같은 작업에서 함께 갱신한다.
-- 기준 파일과 fixture test를 맞춘 뒤에 관련 controller/service targeted test와 full `cleanTest test`를 순서대로 다시 확인한다.
-- 문서만 바꾸고 기준 파일 또는 fixture test를 따로 미루지 않는다. guide, 기준 파일, 자동 검증 테스트는 한 번에 같은 변경으로 닫는다.
+- 기준 파일과 기준 파일 비교 테스트를 맞춘 뒤에 관련 controller/service 대상 테스트와 전체 `cleanTest test`를 순서대로 다시 확인한다.
+- 문서만 바꾸고 기준 파일 또는 기준 파일 비교 테스트를 따로 미루지 않는다. 가이드, 기준 파일, 자동 검증 테스트는 한 번에 같은 변경으로 닫는다.
 
 ## 대표 실제 앱 검증과 기준 파일의 경계
 - 대표 실제 앱 검증은 실제 실행 흐름이 지금도 같은 의미로 동작하는지 확인하는 근거다.
