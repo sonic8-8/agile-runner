@@ -2,9 +2,9 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0021",
-    "task_id": "TASK-0003",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0021/TASK-0003-response-example-auto-validation.md",
-    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0020/SPEC-0020-summary.md"
+    "task_id": "TASK-0004",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0021/TASK-0004-response-example-drift-closeout.md",
+    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0021/SPEC-0021-summary.md"
   },
   "proposals": [
     {

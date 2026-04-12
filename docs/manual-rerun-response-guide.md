@@ -33,6 +33,8 @@
 | rerun action 응답 | `src/test/resources/manual-rerun-response-guide/rerun-action-after-acknowledge.json` |
 
 이 기준 파일은 guide 예시와 1:1로 대응하는 문서용 예시 파일이다. 현재는 이 파일과 실제 응답 기대값을 자동 검증으로 연결해, 예시가 달라지면 테스트에서 바로 드러나게 관리한다.
+자동 검증 테스트 위치는 `src/test/java/com/agilerunner/api/controller/review/ManualRerunResponseGuideFixtureTest.java`다.
+즉 문서를 고칠 때는 guide 본문만 보지 말고, 기준 파일과 자동 검증 테스트를 함께 확인해야 한다.
 
 ## 응답별로 답하는 질문
 
