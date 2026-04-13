@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0026",
-    "task_id": "TASK-0002",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0026/TASK-0002-seed-apply-command-guide.md",
+    "task_id": "TASK-0003",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0026/TASK-0003-execution-key-and-h2-query-guide.md",
     "spec_summary_path": null
   },
   "proposals": [

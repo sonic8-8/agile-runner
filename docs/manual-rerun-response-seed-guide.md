@@ -14,7 +14,7 @@
 - 실제 대표 검증에서 어떤 준비 오류가 있었는지는 [TASK-0004-response-doc-runtime-alignment.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0020/TASK-0004-response-doc-runtime-alignment.md) 를 먼저 참고한다.
 - 기준 파일과 자동 검증을 같이 관리하는 방법은 [SPEC-0022-summary.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0022/SPEC-0022-summary.md) 를 참고한다.
 - 현재 활성 문서와 작업 문서는 이번 단계의 작업 경계를 설명하는 보조 자료다.
-- 준비 데이터 적용 순서와 점검 체크리스트 자체는 이 문서와 준비 데이터 파일만 읽고도 따라갈 수 있게 정리한다.
+- 준비 데이터 적용 순서와 점검 체크리스트 자체는 이 문서에서 규칙과 선택 기준을 먼저 보고, 실제 명령은 `manual-rerun-response-seed-command-guide.md`를 함께 읽어 따라가는 구조로 정리한다.
 
 ## 빠르게 따라가는 기본 순서
 1. 대표 검증 시나리오를 먼저 정한다.
@@ -201,6 +201,7 @@
 
 ## 후속 단계에서 다룰 것
 - 대표 검증 결과를 문서 예시 기준 파일로 옮기는 작업
-- 준비 데이터 적용 보조 명령과 H2 조회 보조 명령 정리
+- 대표 검증 전체 절차를 자동화하거나 반복 실행을 더 줄이는 보조 스크립트
 
-이 내용은 후속 spec에서 이어서 다룬다.
+- 준비 데이터 적용과 H2 조회 보조 명령 자체는 [manual-rerun-response-seed-command-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-seed-command-guide.md) 에서 다룬다.
+- 위 후속 항목은 이후 spec에서 이어서 다룬다.
