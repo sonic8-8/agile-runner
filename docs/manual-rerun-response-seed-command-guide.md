@@ -346,12 +346,20 @@ ORDER BY id ASC;
 - H2 조회 명령 실행
 
 ## 초안이 멈춰야 하는 조건
-- 시작 전 확인 명령에서 이미 같은 포트를 쓰는 앱 프로세스가 보이면 초안을 시작하지 않는다.
-- 시작 전 확인 명령에서 `org.h2.tools.RunScript`, `org.h2.tools.Shell` 프로세스가 이미 보이면 초안을 시작하지 않는다.
-- 공통 정리 SQL 또는 준비 데이터 적용 SQL 실행이 0이 아닌 종료 코드면 바로 멈춘다.
-- 앱 기동 명령이 실패하거나 HTTP 요청을 보내기 전 앱 기동 확인이 되지 않으면 바로 멈춘다.
-- retry 응답에서 파생 실행 키를 읽지 못하면 이후 단건 조회와 H2 조회로 넘어가지 않는다.
-- 앱 종료 뒤 H2 조회 명령이 실패하면 이후 의미 해석 절차로 넘어가지 않는다.
+현재 단계에서는 실제 스크립트 종료 코드를 구현하지 않는다.
+대신 다음 단계에서 실제 초안을 만들면 어떤 종료 상태 이름과 종료 코드를 먼저 검토해야 하는지 후보를 문서로 고정한다.
+
+## 파일 후보별 실패 종료 흐름
+| 후보 파일 | 멈춰야 하는 상황 | 종료 상태 이름 후보 | 종료 코드 후보 | 남겨야 하는 출력 | 사람이 이어받는 지점 |
+| --- | --- | --- | --- | --- | --- |
+| `prepare-seed.sh` | 포트 충돌, H2 도구 중복 실행, 정리 SQL 실패, 준비 데이터 적용 SQL 실패 | `PREPARE_STOPPED` | `10`, `11`, `12`, `13` | `prepare.log` | 입력한 SQL 파일 경로와 중단 원인을 먼저 확인 |
+| `run-rerun.sh` | 앱 기동 실패, 단건 조회 실패, 이력 조회 실패, 관리자 조치 실패, 조치 후 단건 조회 실패 | `RERUN_STOPPED` | `20`, `21`, `22`, `23`, `24` | `rerun-query-before.json`, `rerun-history.json`, `rerun-action.json`, `rerun-query-after.json` 중 확보된 파일 | 마지막으로 남은 응답 파일과 실패 지점을 비교 |
+| `run-retry.sh` | 앱 기동 실패, retry 요청 실패, 파생 실행 키 미추출, 파생 단건 조회 실패 | `RETRY_STOPPED` | `30`, `31`, `32`, `33` | `retry-response.json`, `retry-derived-execution-key.txt`, `retry-derived-query.json` 중 확보된 파일 | retry 응답과 파생 실행 키 추출 결과를 먼저 확인 |
+| `collect-evidence.sh` | 앱 종료 미확인, H2 조회 실패, H2 잠금 의심 | `EVIDENCE_STOPPED` | `40`, `41`, `42` | `rerun-webhook-execution.txt`, `rerun-action-audit.txt`, `retry-webhook-execution.txt`, `retry-agent-execution-log.txt` 중 확보된 파일 | 앱 종료 여부와 H2 잠금 여부를 먼저 확인 |
+
+- 종료 상태 이름 후보는 실제 구현에 그대로 박는 값이 아니라, 다음 단계에서 종료 흐름을 논의할 때 먼저 비교할 기준 이름이다.
+- 종료 코드 후보도 지금 단계에서는 고정 규칙이 아니라, 파일 후보별로 서로 다른 실패를 구분하기 위해 우선 검토할 값 묶음이다.
+- 따라서 이번 작업은 “어떤 실패를 같은 종료 상태로 묶을지”를 문서로 정리하는 단계이고, 실제 쉘 종료 코드 구현은 다음 단계 비대상이다.
 
 ## 계속 수동으로 남길 확인 단계
 - rerun 단건 조회, 이력 조회, 관리자 조치 응답, 조치 후 단건 조회의 의미 비교
@@ -362,17 +370,18 @@ ORDER BY id ASC;
 - 회고 작성과 제안 필요 여부 판단
 
 ## 초안이 남기고 사람이 이어받는 출력 파일
-- 초안 후보 단계가 남기는 직접 출력
-  - `RETRY_RESPONSE_FILE`
-  - `RERUN_QUERY_BEFORE_FILE`
-  - `RERUN_HISTORY_FILE`
-  - `RERUN_ACTION_FILE`
-  - `RERUN_QUERY_AFTER_FILE`
-  - `RETRY_DERIVED_QUERY_FILE`
-  - H2 조회 결과 텍스트
-- 사람이 이어받는 시점
-  - 응답 파일과 H2 조회 결과가 모두 준비된 뒤
-  - 그다음부터는 사람이 응답 의미 비교, 실행 근거 해석, 회고 작성으로 이어간다
+### 파일 후보별 인계 지점
+| 후보 파일 | 초안이 남기는 직접 출력 | 사람이 이어받을 때 먼저 볼 것 | 계속 수동으로 남는 판단 |
+| --- | --- | --- | --- |
+| `prepare-seed.sh` | `prepare.log` | 포트 충돌, H2 도구 중복 실행, SQL 실패 여부 | 잘못 고른 준비 데이터인지, 환경 문제인지 판단 |
+| `run-rerun.sh` | `rerun-query-before.json`, `rerun-history.json`, `rerun-action.json`, `rerun-query-after.json` | 어떤 응답 파일까지 성공했고 어디서 끊겼는지 | 응답 의미 비교, 현재 상태 해석, 다음 조치 판단 |
+| `run-retry.sh` | `retry-response.json`, `retry-derived-execution-key.txt`, `retry-derived-query.json` | 파생 실행 키가 실제로 추출됐는지, 마지막 응답 파일이 무엇인지 | retry 응답과 파생 실행 상태 의미 비교 |
+| `collect-evidence.sh` | `rerun-webhook-execution.txt`, `rerun-action-audit.txt`, `retry-webhook-execution.txt`, `retry-agent-execution-log.txt` | 앱 종료 여부, H2 잠금 여부, 어떤 조회 파일까지 확보됐는지 | H2 결과 의미 해석, 응답과 실행 근거 비교, 회고 작성 |
+
+### 사람이 이어받는 시점
+- 응답 파일 또는 H2 조회 결과 텍스트가 하나라도 남은 시점부터 사람의 확인 단계가 시작될 수 있다.
+- 다만 대표 검증 결론을 닫으려면 응답 파일과 H2 조회 결과가 모두 준비된 뒤에 의미 비교를 마쳐야 한다.
+- 즉 초안 후보는 결과 파일을 남기고 멈추는 데 집중하고, 사람이 이어받는 단계는 그 결과를 읽고 뜻을 비교하는 데 집중한다.
 
 ## 기존 대표 검증 참고 순서
 이 절은 현재 가이드에 이미 있던 대표 검증 참고 순서를 유지한 부분이다.

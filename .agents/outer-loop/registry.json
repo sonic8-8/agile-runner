@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0029",
-    "task_id": "TASK-0002",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0029/TASK-0002-script-structure-and-io-contract.md",
+    "task_id": "TASK-0003",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0029/TASK-0003-script-stop-flow-and-handoff.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0028/SPEC-0028-summary.md"
   },
   "proposals": [
