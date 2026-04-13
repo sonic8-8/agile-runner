@@ -21,6 +21,26 @@
 - H2 파일을 외부에서 여는 보조 명령은 앱 종료 후에만 수행한다.
 - 같은 H2 파일을 여러 셸에서 동시에 열지 않는다.
 
+## 이 문서에서 스크립트 후보로 보는 단계와 수동 확인 단계
+이 문서는 아직 실제 스크립트를 제공하지 않는다.
+대신 현재 대표 검증 절차를 나중에 스크립트로 묶는다면 어디까지가 후보이고, 어디부터는 사람이 직접 실행 근거를 읽어야 하는지 경계를 먼저 정리한다.
+
+| 단계 | 주 입력 | 주 출력 | 현재 판단 | 사람이 직접 확인할 것 |
+| --- | --- | --- | --- | --- |
+| 시작 전 포트/H2 프로세스 확인 | `APP_PORT`, 현재 실행 중인 프로세스 목록 | 포트 사용 여부, H2 명령줄 도구 실행 여부 | 스크립트 후보 | 포트 충돌이나 H2 셸 중복 실행이 실제 검증 실패로 이어질 위험이 있는지 판단 |
+| 준비 데이터 정리 SQL 실행 | reset SQL 파일, `JDBC_URL` | 정리 완료된 H2 상태 | 스크립트 후보 | 삭제 범위가 현재 대표 검증 시나리오와 맞는지 확인 |
+| 준비 데이터 적용 SQL 실행 | 준비 데이터 SQL 파일 경로, `JDBC_URL` | 대표 검증 시작 전 H2 입력 상태 | 스크립트 후보 | 현재 시나리오에 맞는 파일을 골랐는지 확인 |
+| 앱 기동 | `SPRING_PROFILES_ACTIVE`, `SERVER_PORT` | 실행 중인 local 앱 | 스크립트 후보 | 앱이 실제로 기동됐는지, 시작 실패가 없는지 확인 |
+| 대표 검증 HTTP 요청 실행 | `BASE_URL`, 실행 키 값, 요청 본문 | 응답 본문 파일, HTTP 상태 | 스크립트 후보 | 응답 값이 기대 시나리오와 맞는지 판단 |
+| retry 파생 실행 키 추출 | retry 응답 파일 | 파생 실행 키 값 | 스크립트 후보 | 추출된 실행 키가 비어 있지 않은지 확인 |
+| 앱 종료 | bootRun 프로세스 | 종료된 앱 상태 | 스크립트 후보 | 종료가 실제로 완료됐는지 확인 |
+| H2 조회 명령 실행 | `JDBC_URL`, 실행 키, 조회 SQL | H2 결과 텍스트 | 스크립트 후보 | lock 오류인지, 실제 schema/runtime 문제인지 구분 |
+| 응답과 H2 결과 의미 해석 | 응답 파일, H2 조회 결과 | 대표 검증 결론, 회고 근거 | 수동 확인 단계 | `availableActions`, `retrySourceExecutionKey`, 감사 이력 행 의미가 같은 실행 기준으로 맞는지 판단 |
+
+- 위 표에서 `스크립트 후보`는 명령 실행 자체를 묶는 후보라는 뜻이다.
+- `수동 확인 단계`는 명령이 끝난 뒤 결과 의미를 해석하고 회고에 남기는 단계다.
+- 즉, 명령 실행은 스크립트가 도울 수 있어도 `응답 값이 맞는지`, `H2 결과가 무엇을 뜻하는지`, `실패가 lock인지 코드 문제인지`는 사람이 직접 닫아야 한다.
+
 ## 공통 환경 변수 예시
 ```bash
 export APP_PORT=18080
@@ -123,7 +143,7 @@ printf '%s\n' "${RETRY_DERIVED_EXECUTION_KEY}"
 
 - `jq` 없이도 `curl`, `tr`, `sed`만으로 파생 실행 키를 읽는 기본 예시다.
 - `RETRY_RESPONSE_FILE`은 retry 응답을 한 번 더 확인하거나 회고에 근거를 남길 때 같이 쓸 수 있다.
-- 비어 있는 값이 나오면 retry 응답이 실제로 `executionKey`를 반환했는지 먼저 확인한다.
+- 비어 있는 값이 나오면 retry 응답이 실제로 실행 키 값을 반환했는지 먼저 확인한다.
 
 ## rerun 대표 검증 요청 명령
 ```bash
@@ -157,7 +177,7 @@ curl -sS \
   > "${RETRY_DERIVED_QUERY_FILE}"
 ```
 
-- retry는 응답에서 받은 `RETRY_DERIVED_EXECUTION_KEY`를 곧바로 단건 조회와 H2 evidence 확인에 다시 쓴다.
+- retry는 응답에서 받은 `RETRY_DERIVED_EXECUTION_KEY`를 곧바로 단건 조회와 H2 실행 근거 확인에 다시 쓴다.
 - `RETRY_DERIVED_QUERY_FILE`은 파생 실행의 query 응답을 남겨 두는 기본 예시다.
 
 ## 앱 종료 예시
@@ -192,7 +212,8 @@ ORDER BY applied_at ASC, id ASC;
 ```
 
 - rerun 대표 검증은 준비 데이터 파일이 넣은 고정 실행 키를 그대로 다시 쓴다.
-- 실제 컬럼 구성은 `runtime-evidence/rerun-runtime-evidence-check.example.sql`과 같은 기준으로 읽는다.
+- 실제 컬럼 구성은 rerun 실행 근거 확인 SQL 파일을 기준으로 읽는다.
+  - `src/test/resources/manual-rerun-response-seed/runtime-evidence/rerun-runtime-evidence-check.example.sql`
 
 ## retry 파생 실행 근거 H2 조회 명령
 ```bash
@@ -212,7 +233,8 @@ ORDER BY id ASC;
 ```
 
 - retry 대표 검증은 준비 데이터 파일이 넣은 원본 실행 키로 요청을 시작하지만, 앱 종료 뒤 H2 조회는 응답에서 받은 파생 실행 키를 기준으로 이어간다.
-- 실제 컬럼 구성은 `runtime-evidence/retry-runtime-evidence-check.example.sql`과 같은 기준으로 읽는다.
+- 실제 컬럼 구성은 retry 실행 근거 확인 SQL 파일을 기준으로 읽는다.
+  - `src/test/resources/manual-rerun-response-seed/runtime-evidence/retry-runtime-evidence-check.example.sql`
 
 ## 어떤 응답에서 받은 실행 키를 어디에 다시 쓰는가
 - `rerun-acknowledge`, `rerun-unacknowledge`
@@ -220,9 +242,27 @@ ORDER BY id ASC;
   - 단건 조회, 이력 조회, 관리자 조치 요청, 앱 종료 뒤 H2 조회까지 같은 실행 키로 이어진다.
 - `retry`
   - 요청 경로에는 `RETRY_SOURCE_EXECUTION_KEY`를 쓴다.
-  - retry 응답에서 받은 `executionKey`를 `RETRY_DERIVED_EXECUTION_KEY`로 저장한다.
+  - retry 응답에서 받은 실행 키 값을 `RETRY_DERIVED_EXECUTION_KEY`로 저장한다.
   - 이후 파생 실행 단건 조회와 H2 `WEBHOOK_EXECUTION`, `AGENT_EXECUTION_LOG` 조회는 모두 `RETRY_DERIVED_EXECUTION_KEY`를 기준으로 이어간다.
 - 즉 원본 실행 키는 retry 요청 시작점이고, 파생 실행 키는 요청 직후 확인과 앱 종료 뒤 근거 확인의 기준이다.
+
+## 입력 값과 출력 근거 자료 경계
+- 입력 값
+  - `APP_PORT`, `BASE_URL`, `JDBC_URL`, `H2_JAR`
+  - `RERUN_EXECUTION_KEY`, `RETRY_SOURCE_EXECUTION_KEY`
+  - 준비 데이터 SQL 파일 경로
+  - retry 요청 본문, 관리자 조치 요청 본문
+- 출력 근거 자료
+  - `RETRY_RESPONSE_FILE`
+  - `RERUN_QUERY_BEFORE_FILE`
+  - `RERUN_HISTORY_FILE`
+  - `RERUN_ACTION_FILE`
+  - `RERUN_QUERY_AFTER_FILE`
+  - `RETRY_DERIVED_QUERY_FILE`
+  - H2 조회 결과 텍스트
+- 이 문서에서 말하는 `출력 근거 자료`는 명령 결과를 임시로 담아 두는 파일이나 조회 결과다.
+- 회고 문서에 남기는 최종 근거는 이 출력 근거 자료를 사람이 읽고 정리한 뒤에 만들어진다.
+- 따라서 다음 단계에서 스크립트를 검토하더라도, 회고와 제안 여부 판단까지 자동으로 넘기는 범위는 현재 비대상으로 둔다.
 
 ## 대표 검증 시나리오별 시작 순서
 ### retry
