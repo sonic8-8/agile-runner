@@ -31,6 +31,11 @@ export H2_JAR="$(find \"$HOME/.gradle/caches/modules-2/files-2.1/com.h2database/
 export RERUN_EXECUTION_KEY="EXECUTION:MANUAL_RERUN:example-rerun"
 export RETRY_SOURCE_EXECUTION_KEY="EXECUTION:MANUAL_RERUN:example-retry-source"
 export RETRY_RESPONSE_FILE="/tmp/manual-rerun-retry-response.json"
+export RERUN_QUERY_BEFORE_FILE="/tmp/manual-rerun-rerun-query-before.json"
+export RERUN_HISTORY_FILE="/tmp/manual-rerun-rerun-history.json"
+export RERUN_ACTION_FILE="/tmp/manual-rerun-rerun-action.json"
+export RERUN_QUERY_AFTER_FILE="/tmp/manual-rerun-rerun-query-after.json"
+export RETRY_DERIVED_QUERY_FILE="/tmp/manual-rerun-retry-derived-query.json"
 ```
 
 ## 시작 전 확인 명령
@@ -120,6 +125,45 @@ printf '%s\n' "${RETRY_DERIVED_EXECUTION_KEY}"
 - `RETRY_RESPONSE_FILE`은 retry 응답을 한 번 더 확인하거나 회고에 근거를 남길 때 같이 쓸 수 있다.
 - 비어 있는 값이 나오면 retry 응답이 실제로 `executionKey`를 반환했는지 먼저 확인한다.
 
+## rerun 대표 검증 요청 명령
+```bash
+curl -sS \
+  "${BASE_URL}/reviews/rerun/${RERUN_EXECUTION_KEY}" \
+  > "${RERUN_QUERY_BEFORE_FILE}"
+
+curl -sS \
+  "${BASE_URL}/reviews/rerun/${RERUN_EXECUTION_KEY}/actions/history" \
+  > "${RERUN_HISTORY_FILE}"
+
+curl -sS -X POST \
+  "${BASE_URL}/reviews/rerun/${RERUN_EXECUTION_KEY}/actions" \
+  -H 'Content-Type: application/json' \
+  -d '{"action":"UNACKNOWLEDGE","note":"대표 검증용 확인 해제"}' \
+  > "${RERUN_ACTION_FILE}"
+
+curl -sS \
+  "${BASE_URL}/reviews/rerun/${RERUN_EXECUTION_KEY}" \
+  > "${RERUN_QUERY_AFTER_FILE}"
+```
+
+- rerun 준비 실행은 `RERUN_EXECUTION_KEY` 하나로 단건 조회, 이력 조회, 관리자 조치 요청, 조치 후 단건 조회를 이어간다.
+- `RERUN_QUERY_BEFORE_FILE`, `RERUN_HISTORY_FILE`, `RERUN_ACTION_FILE`, `RERUN_QUERY_AFTER_FILE`은 응답 본문을 남겨 두는 기본 예시다.
+- 실제 대표 검증에서는 조치 전 `availableActions=["UNACKNOWLEDGE"]`, 조치 후 `availableActions=["ACKNOWLEDGE"]`인지 같이 확인한다.
+
+## retry 파생 실행 단건 조회 명령
+```bash
+curl -sS \
+  "${BASE_URL}/reviews/rerun/${RETRY_DERIVED_EXECUTION_KEY}" \
+  > "${RETRY_DERIVED_QUERY_FILE}"
+```
+
+- retry는 응답에서 받은 `RETRY_DERIVED_EXECUTION_KEY`를 곧바로 단건 조회와 H2 evidence 확인에 다시 쓴다.
+- `RETRY_DERIVED_QUERY_FILE`은 파생 실행의 query 응답을 남겨 두는 기본 예시다.
+
+## 앱 종료 예시
+- `bootRun`을 앞 포그라운드 셸에서 띄웠다면 `Ctrl+C`로 종료한다.
+- 앱 종료 뒤에만 `앱 종료 후 확인 전 점검 명령`과 H2 조회 명령을 실행한다.
+
 ## 앱 종료 후 확인 전 점검 명령
 ```bash
 pgrep -af "GradleMain|gradle.*bootRun" || true
@@ -186,8 +230,8 @@ ORDER BY id ASC;
 2. 공통 정리 명령 실행
 3. retry 원본 실행 준비 명령 실행
 4. 앱 기동
-5. retry 요청 실행과 응답 파일 저장
-6. 응답에서 `RETRY_DERIVED_EXECUTION_KEY` 추출
+5. retry 응답 저장과 파생 실행 키 추출 명령 실행
+6. retry 파생 실행 단건 조회 명령 실행
 7. 앱 종료
 8. 앱 종료 후 확인 전 점검 명령 실행
 9. retry 파생 실행 근거 H2 조회 명령 실행
@@ -197,7 +241,7 @@ ORDER BY id ASC;
 2. 공통 정리 명령 실행
 3. rerun acknowledge 상태 준비 명령 실행
 4. 앱 기동
-5. 단건 조회, 이력 조회, 관리자 조치 요청과 확인 흐름 실행
+5. rerun 대표 검증 요청 명령 실행
 6. 앱 종료
 7. 앱 종료 후 확인 전 점검 명령 실행
 8. rerun 실행 근거 H2 조회 명령 실행
@@ -205,6 +249,5 @@ ORDER BY id ASC;
 ## 이 문서에서 아직 하지 않는 것
 - 대표 검증 전체 절차를 한 번에 자동화하는 스크립트
 - 실제 대표 검증에서 얻은 UUID 값을 기준 파일이나 준비 데이터 파일에 바로 반영하는 작업
-- 실제 대표 검증을 다시 실행하는 일 자체
 
 이 범위는 다음 단계에서 정리한다.
