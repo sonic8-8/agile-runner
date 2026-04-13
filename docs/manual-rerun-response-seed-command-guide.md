@@ -264,18 +264,75 @@ ORDER BY id ASC;
 - 회고 문서에 남기는 최종 근거는 이 출력 근거 자료를 사람이 읽고 정리한 뒤에 만들어진다.
 - 따라서 다음 단계에서 스크립트를 검토하더라도, 회고와 제안 여부 판단까지 자동으로 넘기는 범위는 현재 비대상으로 둔다.
 
-## 초안 범위로 묶을 명령 묶음 후보
-이 절과 바로 아래 `초안 입력 값과 출력 파일 묶음` 절이 이번 단계에서 직접 정리하는 범위다.
+## 초안 파일 후보 구조
+이 절과 바로 아래 `초안 입력 인자와 출력 파일 계약`, `초안이 직접 다룰 명령 묶음` 절이 이번 작업에서 직접 정리하는 범위다.
 
-현재 단계 기준으로는 아래 세 묶음을 따로 검토하는 편이 안전하다.
+현재 단계 기준으로는 아래 4개 파일 후보로 나누는 편이 가장 읽기 쉽다.
+
+| 후보 파일 | 역할 | 직접 다루는 범위 | 이 단계에서 하지 않는 것 |
+| --- | --- | --- | --- |
+| `scripts/manual-rerun-response/prepare-seed.sh` | 시작 전 점검과 준비 데이터 정리/적용 | 포트 확인, H2 도구 중복 확인, 정리 SQL 실행과 준비 데이터 적용 SQL 실행 | 응답 값 해석 |
+| `scripts/manual-rerun-response/run-rerun.sh` | rerun 대표 요청 흐름 실행 | 앱 기동, 단건 조회, 이력 조회, 관리자 조치, 조치 후 단건 조회, JSON 저장 | 응답 의미 판단 |
+| `scripts/manual-rerun-response/run-retry.sh` | retry 대표 요청 흐름 실행 | 앱 기동, retry 요청, 파생 실행 키 추출, 파생 단건 조회, JSON 저장 | 파생 실행 의미 판단 |
+| `scripts/manual-rerun-response/collect-evidence.sh` | 앱 종료 뒤 실행 근거 수집 | 앱 종료 확인, H2 조회, 텍스트 결과 저장 | H2 결과 의미 판단 |
+
+- 현재 단계에서는 위 파일을 실제로 추가하지 않는다.
+- 이번 단계 목표는 파일 수를 최종 확정하는 것이 아니라, 다음 단계에서 실제 초안을 만든다면 어디부터 시작할지 후보 구조를 고정하는 것이다.
+
+## 초안 입력 인자와 출력 파일 계약
+초안 파일 후보는 입력 인자와 출력 파일 이름을 지금 문서 기준으로 그대로 이어받는 쪽을 우선 검토한다.
+
+### 공통 입력 인자
+- `APP_PORT`
+- `BASE_URL`
+- `JDBC_URL`
+- `H2_JAR`
+- `OUTPUT_DIR`
+
+### 파일별 입력 인자
+- `prepare-seed.sh`
+  - `SEED_RESET_SQL`
+  - `SEED_APPLY_SQL`
+- `run-rerun.sh`
+  - `RERUN_EXECUTION_KEY`
+  - `RERUN_ACTION_BODY`
+- `run-retry.sh`
+  - `RETRY_SOURCE_EXECUTION_KEY`
+  - `RETRY_REQUEST_BODY`
+- `collect-evidence.sh`
+  - `RERUN_EXECUTION_KEY` 또는 `RETRY_DERIVED_EXECUTION_KEY`
+  - `EVIDENCE_MODE` (`rerun` 또는 `retry`)
+
+### 파일별 출력 파일
+- `prepare-seed.sh`
+  - `prepare.log`
+- `run-rerun.sh`
+  - `rerun-query-before.json`
+  - `rerun-history.json`
+  - `rerun-action.json`
+  - `rerun-query-after.json`
+- `run-retry.sh`
+  - `retry-response.json`
+  - `retry-derived-execution-key.txt`
+  - `retry-derived-query.json`
+- `collect-evidence.sh`
+  - `rerun-webhook-execution.txt`
+  - `rerun-action-audit.txt`
+  - `retry-webhook-execution.txt`
+  - `retry-agent-execution-log.txt`
+
+### 기존 보조 명령 문서와 초안 파일 후보의 책임 분리
+- 현재 가이드는 시나리오 선택, 준비 데이터 파일 선택, 응답 의미 설명, H2 결과 해석, 회고 연결을 담당한다.
+- 초안 파일 후보는 명령 실행과 결과 파일 저장까지만 담당한다.
+- 즉, 파일 후보가 생겨도 이 문서는 계속 `어떤 시나리오에서 무엇을 읽는지`를 설명하는 기준 문서로 남는다.
+
+## 초안이 직접 다룰 명령 묶음
+현재 단계 기준으로는 아래 세 묶음을 스크립트 후보가 직접 다루는 범위로 본다.
 
 ### 1. 준비 단계 묶음
 - 시작 전 포트/H2 프로세스 확인
 - 공통 정리 명령 실행
 - 시나리오에 맞는 준비 데이터 적용 명령 실행
-
-이 묶음은 대표 검증 전에 H2 입력 상태를 맞추는 단계다.
-중단 기준과 파일 선택 판단은 다음 단계에서 따로 정리한다.
 
 ### 2. 앱 실행과 대표 요청 묶음
 - 앱 기동
@@ -283,45 +340,10 @@ ORDER BY id ASC;
 - retry인 경우 파생 실행 키 추출
 - 필요한 응답 파일 저장
 
-이 묶음은 실제 HTTP 응답을 남기는 단계다.
-응답 값 해석과 파생 실행 키 검증 기준은 다음 단계에서 따로 정리한다.
-
-### 3. 종료와 실행 근거 확인 묶음
+### 3. 종료와 실행 근거 수집 묶음
 - 앱 종료
 - 앱 종료 후 확인 전 점검 명령 실행
 - H2 조회 명령 실행
-
-이 묶음은 실제 앱 실행 뒤 근거를 읽는 단계다.
-조회 결과 해석과 실패 구분 기준은 다음 단계에서 따로 정리한다.
-
-## 초안 입력 값과 출력 파일 묶음
-초안 범위를 검토할 때는 입력 값과 출력 파일도 한 번에 같은 묶음으로 읽는 편이 안전하다.
-
-### 공통 입력 값
-- `APP_PORT`
-- `BASE_URL`
-- `JDBC_URL`
-- `H2_JAR`
-
-### 시나리오 입력 값
-- rerun 계열
-  - `RERUN_EXECUTION_KEY`
-- retry 계열
-  - `RETRY_SOURCE_EXECUTION_KEY`
-
-### 공통 출력 파일 후보
-- `RETRY_RESPONSE_FILE`
-- `RERUN_QUERY_BEFORE_FILE`
-- `RERUN_HISTORY_FILE`
-- `RERUN_ACTION_FILE`
-- `RERUN_QUERY_AFTER_FILE`
-- `RETRY_DERIVED_QUERY_FILE`
-
-### 초안 바깥에 남길 출력 근거
-- H2 조회 결과 텍스트
-- 응답 파일을 사람이 읽고 정리한 회고 근거
-
-즉, 응답 파일 생성까지는 초안 범위 후보로 보더라도, H2 결과 의미 해석과 회고 정리는 계속 수동 단계로 남긴다.
 
 ## 초안이 멈춰야 하는 조건
 - 시작 전 확인 명령에서 이미 같은 포트를 쓰는 앱 프로세스가 보이면 초안을 시작하지 않는다.
@@ -354,7 +376,7 @@ ORDER BY id ASC;
 
 ## 기존 대표 검증 참고 순서
 이 절은 현재 가이드에 이미 있던 대표 검증 참고 순서를 유지한 부분이다.
-이번 단계에서 직접 닫는 범위는 위 `초안 범위로 묶을 명령 묶음 후보`, `초안 입력 값과 출력 파일 묶음`, `초안이 멈춰야 하는 조건`, `계속 수동으로 남길 확인 단계`, `초안이 남기고 사람이 이어받는 출력 파일` 절까지로 본다.
+이번 단계에서 직접 닫는 범위는 위 `초안 파일 후보 구조`, `초안 입력 인자와 출력 파일 계약`, `초안이 직접 다룰 명령 묶음`, `초안이 멈춰야 하는 조건`, `계속 수동으로 남길 확인 단계`, `초안이 남기고 사람이 이어받는 출력 파일` 절까지로 본다.
 
 ### retry
 1. 시작 전 확인 명령 실행
