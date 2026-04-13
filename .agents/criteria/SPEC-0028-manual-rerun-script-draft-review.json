@@ -1,0 +1,34 @@
+{
+  "spec_id": "SPEC-0028",
+  "name": "운영용 조회 응답 준비 데이터 반복 검증 스크립트 초안 검토",
+  "criteria": [
+    {
+      "key": "manual-rerun-script-draft-safety-net-preserved",
+      "target": "SPEC-0027 마감 근거와 현재 가이드 문서가 초안 검토 시작 근거로 충분한지",
+      "test_view": "관련 대상 테스트와 전체 테스트가 유지되고, SPEC-0027 단계 요약 문서와 보조 명령 가이드가 현재 검토 문서에 연결되는지 본다.",
+      "pass_condition": "현재 대표 검증 근거와 가이드 문서만으로 스크립트 초안 검토를 시작할 수 있다는 회고와 테스트 근거가 남는다.",
+      "fail_condition": "직전 단계 마감 근거가 누락되거나, 초안 검토 시작 안전망 없이 바로 구현 논의로 넘어간다."
+    },
+    {
+      "key": "manual-rerun-script-draft-boundary-documented",
+      "target": "초안 범위로 묶을 명령 묶음과 입력/출력 파일 경계가 문서에서 구분되는지",
+      "test_view": "준비 데이터 정리/적용, 앱 기동, 대표 요청, 실행 키 추출, 앱 종료, H2 조회 중 어디까지를 초안 범위로 묶는지 재구성할 수 있는지 본다.",
+      "pass_condition": "문서만 읽고 초안 범위, 입력 값, 출력 파일, 중간 산출물을 재구성할 수 있다.",
+      "fail_condition": "초안 범위가 모호하거나, 실제 구현과 검토 범위가 섞여 읽힌다."
+    },
+    {
+      "key": "manual-rerun-script-draft-stop-condition-documented",
+      "target": "초안이 멈춰야 하는 실패 조건과 계속 수동으로 남길 확인 단계가 문서에 정리되는지",
+      "test_view": "잠금 오류, 응답 값 해석, H2 결과 의미 해석, 회고 작성 같은 단계가 초안 비대상으로 분리되는지 본다.",
+      "pass_condition": "실패 중단 조건과 수동 확인 유지 조건이 문서에서 분리되어 읽힌다.",
+      "fail_condition": "초안이 어디서 멈춰야 하는지 모호하거나, 수동 확인 단계가 자동화 범위와 섞인다."
+    },
+    {
+      "key": "manual-rerun-script-draft-closeout-completed",
+      "target": "현재 단계의 초안 검토 판단과 다음 단계 방향이 마감 문서에 남는지",
+      "test_view": "작업 회고와 단계 요약 문서에서 초안 검토 판단, 후속 방향, 남은 위험이 읽히는지 본다.",
+      "pass_condition": "단계 요약 문서까지 작성되고, 실제 스크립트 초안 구현 검토로 넘어갈지 여부가 근거와 함께 남는다.",
+      "fail_condition": "마감 없이 다음 단계로 넘어가거나, 후속 방향이 문서에 남지 않는다."
+    }
+  ]
+}

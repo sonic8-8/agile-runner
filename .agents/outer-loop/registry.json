@@ -1,9 +1,9 @@
 {
   "version": 1,
   "latest": {
-    "spec_id": "SPEC-0027",
-    "task_id": "TASK-0004",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0027/TASK-0004-script-review-closeout.md",
+    "spec_id": "SPEC-0028",
+    "task_id": "TASK-0001",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0028/TASK-0001-script-draft-review-safety-net.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0027/SPEC-0027-summary.md"
   },
   "proposals": [
