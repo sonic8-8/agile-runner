@@ -78,7 +78,6 @@
 - 추가 도구 설치를 전제하지 않는 기본 명령을 우선 검토한다.
 
 ### 관련 파일 후보
-- `docs/manual-rerun-response-seed-guide.md`
 - `docs/manual-rerun-response-seed-command-guide.md`
 - `src/test/resources/manual-rerun-response-seed/`
 
