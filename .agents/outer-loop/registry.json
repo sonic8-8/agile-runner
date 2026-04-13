@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0028",
-    "task_id": "TASK-0002",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0028/TASK-0002-script-draft-boundary-documented.md",
+    "task_id": "TASK-0003",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0028/TASK-0003-script-draft-stop-condition-documented.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0027/SPEC-0027-summary.md"
   },
   "proposals": [

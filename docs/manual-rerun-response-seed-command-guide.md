@@ -106,7 +106,7 @@ java -cp "${H2_JAR}" org.h2.tools.RunScript \
 - 이 명령은 `retry` 대표 검증을 시작하기 전에 실행한다.
 - 실제 retry 요청과 파생 실행 키 추출은 아래 후속 섹션에서 이어진다.
 
-## rerun acknowledge 상태 준비 명령
+## rerun acknowledge 시나리오 준비 명령
 ```bash
 java -cp "${H2_JAR}" org.h2.tools.RunScript \
   -url "${JDBC_URL}" \
@@ -323,9 +323,38 @@ ORDER BY id ASC;
 
 즉, 응답 파일 생성까지는 초안 범위 후보로 보더라도, H2 결과 의미 해석과 회고 정리는 계속 수동 단계로 남긴다.
 
+## 초안이 멈춰야 하는 조건
+- 시작 전 확인 명령에서 이미 같은 포트를 쓰는 앱 프로세스가 보이면 초안을 시작하지 않는다.
+- 시작 전 확인 명령에서 `org.h2.tools.RunScript`, `org.h2.tools.Shell` 프로세스가 이미 보이면 초안을 시작하지 않는다.
+- 공통 정리 SQL 또는 준비 데이터 적용 SQL 실행이 0이 아닌 종료 코드면 바로 멈춘다.
+- 앱 기동 명령이 실패하거나 HTTP 요청을 보내기 전 앱 기동 확인이 되지 않으면 바로 멈춘다.
+- retry 응답에서 파생 실행 키를 읽지 못하면 이후 단건 조회와 H2 조회로 넘어가지 않는다.
+- 앱 종료 뒤 H2 조회 명령이 실패하면 이후 의미 해석 절차로 넘어가지 않는다.
+
+## 계속 수동으로 남길 확인 단계
+- rerun 단건 조회, 이력 조회, 관리자 조치 응답, 조치 후 단건 조회의 의미 비교
+- retry 응답과 파생 실행 단건 조회 응답의 의미 비교
+- `availableActions`, `retrySourceExecutionKey`, `currentActionState` 같은 필드 해석
+- H2 `WEBHOOK_EXECUTION`, `AGENT_EXECUTION_LOG`, `MANUAL_RERUN_CONTROL_ACTION_AUDIT` 결과 의미 해석
+- H2 잠금 오류인지, 실행 순서 문제인지, 코드 문제인지 구분
+- 회고 작성과 제안 필요 여부 판단
+
+## 초안이 남기고 사람이 이어받는 출력 파일
+- 초안 후보 단계가 남기는 직접 출력
+  - `RETRY_RESPONSE_FILE`
+  - `RERUN_QUERY_BEFORE_FILE`
+  - `RERUN_HISTORY_FILE`
+  - `RERUN_ACTION_FILE`
+  - `RERUN_QUERY_AFTER_FILE`
+  - `RETRY_DERIVED_QUERY_FILE`
+  - H2 조회 결과 텍스트
+- 사람이 이어받는 시점
+  - 응답 파일과 H2 조회 결과가 모두 준비된 뒤
+  - 그다음부터는 사람이 응답 의미 비교, 실행 근거 해석, 회고 작성으로 이어간다
+
 ## 기존 대표 검증 참고 순서
 이 절은 현재 가이드에 이미 있던 대표 검증 참고 순서를 유지한 부분이다.
-이번 단계에서 직접 닫는 범위는 위 `초안 범위로 묶을 명령 묶음 후보`, `초안 입력 값과 출력 파일 묶음` 절까지로 본다.
+이번 단계에서 직접 닫는 범위는 위 `초안 범위로 묶을 명령 묶음 후보`, `초안 입력 값과 출력 파일 묶음`, `초안이 멈춰야 하는 조건`, `계속 수동으로 남길 확인 단계`, `초안이 남기고 사람이 이어받는 출력 파일` 절까지로 본다.
 
 ### retry
 1. 시작 전 확인 명령 실행
@@ -341,7 +370,7 @@ ORDER BY id ASC;
 ### rerun-acknowledge / rerun-unacknowledge
 1. 시작 전 확인 명령 실행
 2. 공통 정리 명령 실행
-3. rerun acknowledge 상태 준비 명령 실행
+3. rerun acknowledge 시나리오 준비 명령 실행
 4. 앱 기동
 5. rerun 대표 검증 요청 명령 실행
 6. 앱 종료
