@@ -13,7 +13,7 @@
 ## 같이 읽는 문서
 - 시나리오별 준비 데이터 파일 선택 기준과 파일 머리말은 [manual-rerun-response-seed-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-seed-guide.md) 에서 먼저 본다.
 - 응답 의미와 대표 검증 결과를 어떻게 읽는지는 [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md) 에서 본다.
-- 준비 데이터 SQL과 실제 앱/H2 대표 검증이 실제로 어떻게 맞았는지는 [TASK-0004-seed-representative-application-verified.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0025/TASK-0004-seed-representative-application-verified.md) 를 참고한다.
+- 실제 초안 파일 기준 대표 검증이 어떻게 맞았는지는 [TASK-0004-script-draft-representative-verified.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0030/TASK-0004-script-draft-representative-verified.md) 를 참고한다.
 
 ## 시작 전에 먼저 확인할 근거
 - 직전 단계 전체 판단은 [SPEC-0030-summary.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0030/SPEC-0030-summary.md) 에서 먼저 본다.
@@ -25,6 +25,41 @@
   - [ManualRerunResponseSeedEvidenceSqlTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunResponseSeedEvidenceSqlTest.java)
 - 위 근거와 테스트가 그대로 유효하면, 다음 단계는 새 안전망을 만드는 대신 현재 가이드 정리부터 시작해도 된다.
 
+
+## 빠른 적용 순서
+### 재실행 대표 검증
+1. 공통 환경 변수와 출력 디렉토리를 먼저 잡는다.
+2. 재실행용 임시 SQL 복사본과 정리 SQL을 만든다.
+3. `prepare-seed.sh`로 정리 SQL과 적용 SQL을 실행한다.
+4. `run-rerun.sh`로 앱 기동, 단건 조회, 이력 조회, 관리자 조치, 조치 후 단건 조회를 한 번에 실행한다.
+5. `collect-evidence.sh`로 앱 종료 뒤 H2 실행 근거를 모은다.
+6. `rerun-query-before.json`, `rerun-history.json`, `rerun-action.json`, `rerun-query-after.json`, `rerun-webhook-execution.txt`, `rerun-action-audit.txt`를 같은 실행 키 기준으로 읽는다.
+
+### 재시도 대표 검증
+1. 공통 환경 변수와 출력 디렉토리를 먼저 잡는다.
+2. 재시도 원본 실행용 임시 SQL 복사본과 정리 SQL을 만든다.
+3. `prepare-seed.sh`로 정리 SQL과 적용 SQL을 실행한다.
+4. `run-retry.sh`로 앱 기동, 재시도 요청, 파생 실행 키 추출, 파생 실행 단건 조회를 한 번에 실행한다.
+5. `retry-derived-execution-key.txt`에서 파생 실행 키를 다시 읽어 환경 변수로 잡는다.
+6. `collect-evidence.sh`로 앱 종료 뒤 파생 실행 기준 H2 실행 근거를 모은다.
+7. `retry-response.json`, `retry-derived-query.json`, `retry-webhook-execution.txt`, `retry-agent-execution-log.txt`를 파생 실행 키 기준으로 읽고, 원본 실행 연결은 `retrySourceExecutionKey`와 `WEBHOOK_EXECUTION.retry_source_execution_key`에서 다시 확인한다.
+
+## 빠른 적용 순서에서 다시 쓰는 입력, 출력, 다음 단계 입력
+| 단계 | 바로 넣는 입력 | 바로 남는 출력 | 다음 단계에서 다시 쓰는 값 |
+| --- | --- | --- | --- |
+| 공통 환경 준비 | `APP_PORT`, `BASE_URL`, `JDBC_URL`, `H2_JAR`, `VERIFY_TS`, `OUTPUT_ROOT` | `RERUN_DIR`, `RETRY_DIR` | 재실행/재시도 모든 단계 |
+| 재실행 임시 SQL 준비 | `RERUN_SUFFIX`, 예시 SQL 경로 | `rerun-apply.sql`, `rerun-reset.sql`, `RERUN_EXECUTION_KEY`, `RERUN_DELIVERY_ID` | `prepare-seed.sh`, `run-rerun.sh`, `collect-evidence.sh` |
+| 재시도 임시 SQL 준비 | `RETRY_SOURCE_SUFFIX`, 예시 SQL 경로 | `retry-apply.sql`, `retry-reset.sql`, `RETRY_SOURCE_EXECUTION_KEY`, `RETRY_SOURCE_DELIVERY_ID` | `prepare-seed.sh`, `run-retry.sh` |
+| `prepare-seed.sh` | `OUTPUT_DIR`, `SEED_RESET_SQL`, `SEED_APPLY_SQL`, `JDBC_URL`, `H2_JAR` | `prepare.log` | 다음 단계가 정리/적용 성공 여부를 여기서 먼저 확인 |
+| `run-rerun.sh` | `OUTPUT_DIR`, `BASE_URL`, `RERUN_EXECUTION_KEY`, `RERUN_ACTION_BODY` | `rerun-query-before.json`, `rerun-history.json`, `rerun-action.json`, `rerun-query-after.json`, `app.pid` | `collect-evidence.sh`, 수동 의미 확인 |
+| `run-retry.sh` | `OUTPUT_DIR`, `BASE_URL`, `RETRY_SOURCE_EXECUTION_KEY`, `RETRY_REQUEST_BODY` | `retry-response.json`, `retry-derived-execution-key.txt`, `retry-derived-query.json`, `app.pid` | 파생 실행 키 추출, `collect-evidence.sh`, 수동 의미 확인 |
+| 파생 실행 키 다시 읽기 | `retry-derived-execution-key.txt` | `RETRY_DERIVED_EXECUTION_KEY` | `collect-evidence.sh`, H2 조회 해석 |
+| `collect-evidence.sh` 재실행 | `OUTPUT_DIR`, `EVIDENCE_MODE=rerun`, `RERUN_EXECUTION_KEY` | `rerun-webhook-execution.txt`, `rerun-action-audit.txt` | 최종 수동 판단 |
+| `collect-evidence.sh` 재시도 | `OUTPUT_DIR`, `EVIDENCE_MODE=retry`, `RETRY_DERIVED_EXECUTION_KEY` | `retry-webhook-execution.txt`, `retry-agent-execution-log.txt` | 최종 수동 판단 |
+
+여기까지가 새 작업자가 적용 순서와 입력/출력 흐름을 다시 잡을 때 먼저 보는 기준이다.
+실행 키 재사용 기준, 출력 파일 해석 기준, 종료 코드와 마감 판단은 아래 참고 섹션에 남기고, 현재 task에서는 위치를 빠르게 찾게 만드는 데까지만 정리한다.
+
 ## 공통 전제
 - 앱은 `local` 프로필 기준으로 띄운다.
 - 준비 데이터 정리와 적용은 앱 기동 전에 마친다.
@@ -33,7 +68,7 @@
 - 같은 H2 파일을 여러 셸에서 동시에 열지 않는다.
 - 실제 앱/H2 대표 검증은 기존 예시 키를 그대로 재사용하지 않고, 임시 SQL 복사본에 새 접미사를 넣어 새 실행 키와 전달 식별자를 만든다.
 
-## 실제 초안 파일이 맡는 단계와 수동 확인 단계
+## 참고: 스크립트 책임과 수동 확인 경계
 | 단계 | 주 입력 | 주 출력 | 현재 담당 | 사람이 직접 확인할 것 |
 | --- | --- | --- | --- | --- |
 | 시작 전 포트/H2 프로세스 확인과 준비 데이터 적용 | `APP_PORT`, `JDBC_URL`, `H2_JAR`, 정리/적용 SQL | `prepare.log`, 정리/적용된 H2 상태 | `prepare-seed.sh` | 선택한 SQL 파일 경로와 시나리오 일치 여부 |
@@ -189,7 +224,7 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 ./scripts/manual-rerun-response/collect-evidence.sh
 ```
 
-## 어떤 실행 키를 어디에 다시 쓰는가
+## 참고: 어떤 실행 키를 어디에 다시 쓰는가
 - 재실행 대표 검증
   - `RERUN_EXECUTION_KEY`를 준비 데이터 적용, 단건 조회, 이력 조회, 관리자 조치, 조치 후 단건 조회, H2 조회까지 그대로 쓴다.
   - `RERUN_DELIVERY_ID`는 회고에 함께 남기는 대표 전달 식별자다.
@@ -200,7 +235,7 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
   - `RETRY_SOURCE_DELIVERY_ID`는 원본 실행 전달 식별자다.
 - 즉 재시도는 원본 실행 키와 파생 실행 키가 서로 다르고, 대표 검증 결론은 파생 실행 키 기준으로 닫는다.
 
-## 출력 파일과 수동 확인 포인트
+## 참고: 출력 파일과 수동 확인 포인트
 | 파일 | 남는 출력 | 사람이 먼저 확인할 것 |
 | --- | --- | --- |
 | `prepare-seed.sh` | `prepare.log` | 포트 충돌, H2 도구 중복, 정리/적용 SQL 실패 여부 |
@@ -208,7 +243,7 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 | `run-retry.sh` | `retry-response.json`, `retry-derived-execution-key.txt`, `retry-derived-query.json`, `app.pid` | 파생 실행 키가 실제로 남았는지, 마지막 응답 파일이 무엇인지 |
 | `collect-evidence.sh` | `rerun-webhook-execution.txt`, `rerun-action-audit.txt`, `retry-webhook-execution.txt`, `retry-agent-execution-log.txt` | 앱 종료 여부, H2 잠금 여부, 어떤 H2 조회 파일까지 남았는지 |
 
-## 종료 코드와 중단 조건
+## 참고: 종료 코드와 중단 조건
 | 파일 | 중단 상황 | 종료 코드 |
 | --- | --- | --- |
 | `prepare-seed.sh` | 포트 충돌, H2 도구 중복, 정리 SQL 실패, 준비 데이터 적용 SQL 실패 | `10`, `11`, `12`, `13` |
@@ -226,7 +261,6 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 - H2 잠금 오류인지, 실행 순서 문제인지, 코드 문제인지 구분
 - 회고와 제안 필요 여부 판단
 
-## 현재 단계 판단
-- 현재 단계 기준으로는 실제 초안 파일 네 개와 실제 앱/H2 대표 검증 흐름이 모두 연결됐다.
-- 즉 명령 실행은 초안 파일로 다시 수행할 수 있고, 사람은 응답 의미 해석과 H2 결과 비교, 회고 작성에 집중하면 된다.
-- 다음 단계는 초안 파일 자체를 더 늘리는 것보다, 이 초안 파일을 더 쉽게 적용하고 유지할 수 있게 정리하는 쪽이 맞다. 현재 단계에서는 이 문장을 시작 안전망 근거로만 사용하고, 실제 활성 단계 이름과 작업 범위는 `.agents/active/spec.md`, `.agents/active/tasks.md`를 기준으로 다시 확인한다.
+## 참고: 마지막 확인 포인트
+- 이 문서 상단만 보면 적용 순서와 입력/출력 흐름을 다시 잡을 수 있다.
+- 응답 의미 비교와 H2 결과 해석이 필요하면 아래 참고 섹션과 [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md), [TASK-0004-script-draft-representative-verified.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0030/TASK-0004-script-draft-representative-verified.md) 를 함께 본다.
