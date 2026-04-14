@@ -5,161 +5,158 @@
 각 작업은 하나의 명확한 결과, 검증 기준, GitHub 이슈 연결 규칙을 가져야 한다.
 
 ## 현재 활성 단계
-- ID: `SPEC-0030`
-- 이름: `운영용 조회 응답 준비 데이터 반복 검증 스크립트 초안 구현`
+- ID: `SPEC-0031`
+- 이름: `운영용 조회 응답 반복 검증 스크립트 적용 절차와 출력 기준 정리`
 - 기준 문서:
   - `.agents/active/spec.md`
-  - `.agents/criteria/SPEC-0030-manual-rerun-script-draft-implementation.json`
+  - `.agents/criteria/SPEC-0031-manual-rerun-script-application-verification.json`
 
 ## 공통 규칙
 - 구현 순서는 `TASK-0001 -> TASK-0002 -> TASK-0003 -> TASK-0004`로 고정한다.
 - 각 작업 시작 전 해당 작업용 GitHub 이슈를 새로 연결한다.
 - 각 작업은 연결된 검증 기준과 테스트 근거가 없으면 완료로 보지 않는다.
 - 기존 `POST /reviews/rerun`, `POST /reviews/rerun/{executionKey}/retry`, `GET /reviews/rerun/{executionKey}`, `GET /reviews/rerun/executions`, `GET /reviews/rerun/{executionKey}/actions/history`, `POST /reviews/rerun/{executionKey}/actions` 계약은 유지한다.
-- 이번 단계는 대표 검증 스크립트 초안 파일 구현과 대표 검증에 집중한다.
-- `TASK-0001` 시작 전 `SPEC-0029` 단계 요약 문서와 현재 가이드 문서가 실제 초안 파일 구현 시작 안전망으로 충분한지 먼저 확인한다.
+- 이번 단계는 대표 검증 스크립트 적용 절차와 출력 기준 정리에 집중한다.
+- `TASK-0001` 시작 전 `SPEC-0030` 단계 요약 문서와 현재 보조 명령 가이드가 실제 적용 검증 정리 시작 안전망으로 충분한지 먼저 확인한다.
 
 ## 요약 표
 | 작업 | 이름 | 핵심 목표 | 연결 검증 기준 | 핵심 검증 | 이슈 |
 | --- | --- | --- | --- | --- | --- |
-| `TASK-0001` | 초안 구현 시작 전 기존 기준과 안전망 확인 | 실제 파일 구현 시작 전 기존 판단과 자동 검증 유지 확인 | `manual-rerun-script-draft-safety-net-preserved` | 회귀 테스트 + 직전 단계 요약과 가이드 근거 확인 | 새 이슈 |
-| `TASK-0002` | 준비와 정리 초안 파일 구현 | 준비 데이터 정리와 적용 흐름을 실제 파일로 옮기기 | `manual-rerun-script-draft-prepare-implemented` | 대상 테스트 + 전체 테스트 + 임시 출력 파일 생성 확인 | 새 이슈 |
-| `TASK-0003` | rerun, retry, 실행 근거 수집 초안 파일 구현 | rerun/retry 요청과 실행 근거 수집 흐름을 실제 파일로 옮기기 | `manual-rerun-script-draft-run-flow-implemented` | 대상 테스트 + 전체 테스트 + 출력 파일과 종료 흐름 확인 | 새 이슈 |
-| `TASK-0004` | 초안 파일 대표 검증과 단계 마감 | 실제 초안 파일로 대표 재실행 검증과 대표 재시도 검증을 닫기 | `manual-rerun-script-draft-representative-verified` | 대상 테스트 + 전체 테스트 + 실제 앱/H2 대표 검증 | 새 이슈 |
+| `TASK-0001` | 적용 검증 시작 전 기존 근거와 안전망 확인 | 적용 검증 정리를 시작해도 되는 기존 판단과 자동 검증 유지 확인 | `manual-rerun-script-application-safety-net-preserved` | 회귀 테스트 + 직전 단계 요약과 가이드 근거 확인 | 새 이슈 |
+| `TASK-0002` | 스크립트 적용 순서와 입력/출력 파일 사용 흐름 정리 | 이미 있는 적용 순서를 문서에서 바로 찾게 만들기 | `manual-rerun-script-application-order-documented` | 대상 테스트 + 전체 테스트 + 적용 순서 재구성 근거 확인 | 새 이슈 |
+| `TASK-0003` | 대표 검증 결과와 출력 파일 매핑 정리 | 이미 있는 출력 해석 기준을 한 번에 찾게 정리 | `manual-rerun-script-application-output-mapping-documented` | 대상 테스트 + 전체 테스트 + 출력 파일 매핑 재구성 근거 확인 | 새 이슈 |
+| `TASK-0004` | 스크립트 적용 가이드 대표 검증과 단계 마감 | 정리된 가이드 기준으로 대표 검증을 다시 수행하고 마감 근거 남기기 | `manual-rerun-script-application-representative-verified` | 대상 테스트 + 전체 테스트 + 실제 앱/H2 대표 검증 | 새 이슈 |
 
 ## TASK-0001
 ### 이름
-초안 구현 시작 전 기존 기준과 안전망 확인
+적용 검증 시작 전 기존 근거와 안전망 확인
 
 ### 목표
-- 대표 검증 스크립트 초안 구현 단계를 시작하기 전에 `SPEC-0029` 마감 근거와 현재 가이드가 시작 안전망으로 충분한지 확인한다.
+- 대표 검증 스크립트 적용 절차와 출력 기준 정리 단계를 시작하기 전에 `SPEC-0030` 마감 근거와 현재 가이드가 시작 안전망으로 충분한지 확인한다.
 
 ### 구현 범위
 - 기존 회고와 관련 controller/service 테스트를 우선 재사용한다.
 - 아래 기준을 먼저 확인한다.
-  - 대표 검증에서 실제 초안 파일로 옮길 명령 묶음 정리
-  - 실제 구현으로 넘어가도 되는 판단 근거 정리
+  - 대표 검증에서 실제 적용 순서를 정리할 수 있는 기존 근거 확보
+  - 실제 적용 정리 단계로 넘어가도 되는 판단 근거 정리
   - 자동 검증 테스트 유지
   - 재실행/재시도 대표 검증 근거 유지
-  - `SPEC-0029` 단계 요약 문서 연결
+  - `SPEC-0030` 단계 요약 문서 연결
 - 기존 안전망이 충분하면 근거를 회고에 남기고, 부족한 경우만 최소 문서 보강을 검토한다.
 
 ### 비대상
-- 실제 초안 파일 추가
+- 새 스크립트 파일 추가
 - 실제 앱/H2 대표 검증 재실행
 
 ### 연결 검증 기준
-- `manual-rerun-script-draft-safety-net-preserved`
+- `manual-rerun-script-application-safety-net-preserved`
 
 ### 완료 조건
-- 스크립트 초안 구현 단계의 시작 근거가 충분하다는 회고와 테스트 근거가 남는다.
+- 스크립트 적용 절차와 출력 기준 정리 단계의 시작 근거가 충분하다는 회고와 테스트 근거가 남는다.
 
 ### 검증
 - 관련 대상 테스트 실행 통과
 - 저장소 표준 전체 테스트 명령 통과
-- `SPEC-0029` 단계 요약 문서와 `SPEC-0026 / TASK-0004` 회고 경로 명시
+- `SPEC-0030` 단계 요약 문서와 대표 검증 회고 경로 명시
 
 ### GitHub 이슈
 - 새 이슈 생성
-- 권장 제목: `[BE] 초안 구현 시작 전 기존 기준과 안전망 확인`
+- 권장 제목: `[BE] 적용 검증 시작 전 기존 근거와 안전망 확인`
 
 ## TASK-0002
 ### 이름
-준비와 정리 초안 파일 구현
+스크립트 적용 순서와 입력/출력 파일 사용 흐름 정리
 
 ### 목표
-- 시작 전 점검, 정리 SQL 실행, 준비 데이터 적용 SQL 실행 흐름을 `prepare-seed.sh` 초안 파일로 옮긴다.
+- 새 작업자가 대표 검증을 다시 수행할 때 이미 문서에 흩어져 있는 적용 순서와 입력/출력 파일 흐름을 한 번에 찾게 정리한다.
 
 ### 구현 범위
-- 아래 기준을 실제 파일에 반영한다.
-  - `scripts/manual-rerun-response/prepare-seed.sh` 추가
-  - 입력 인자와 출력 파일 이름 반영
-  - 시작 전 점검, 정리 SQL 실행, 준비 데이터 적용 SQL 실행 흐름 반영
-  - 기존 보조 명령 가이드와 책임 경계 유지
+- 아래 기준을 문서에 반영한다.
+  - 이미 있는 적용 순서를 빠른 진입 섹션으로 재배열
+  - 재실행, 재시도별 필수 입력 변수와 출력 디렉토리 사용 흐름을 한 자리에서 찾게 정리
+  - 각 스크립트가 어느 단계까지 맡는지 흩어진 설명을 다시 구분
+  - 기존 보조 명령 가이드와 응답 가이드 책임 경계 유지
 
 ### 관련 파일 후보
 - `docs/manual-rerun-response-seed-command-guide.md`
 - `docs/manual-rerun-response-seed-guide.md`
-- `scripts/manual-rerun-response/prepare-seed.sh`
-- `.agents/outer-loop/retrospectives/SPEC-0029/SPEC-0029-summary.md`
-- 위 단계 요약 문서는 실제 초안 구현 단계로 넘어가도 된다는 마감 문서다.
+- `scripts/manual-rerun-response/`
+- `.agents/outer-loop/retrospectives/SPEC-0030/SPEC-0030-summary.md`
+- 위 단계 요약 문서는 실제 스크립트 초안 구현이 끝났다는 마감 문서다.
 
 ### 비대상
-- rerun/retry 요청 스크립트 구현
+- 새 스크립트 구현
 - 실제 앱/H2 대표 검증 재실행
 - 새 대표 검증 시나리오 추가
 
 ### 연결 검증 기준
-- `manual-rerun-script-draft-prepare-implemented`
+- `manual-rerun-script-application-order-documented`
 
 ### 완료 조건
-- `prepare-seed.sh`가 현재 문서 기준 입력 인자와 출력 파일을 사용해 실행된다.
-- 시작 전 점검, 정리 SQL 실행, 준비 데이터 적용 SQL 실행 흐름이 파일 안에서 구분된다.
+- 운영자가 어떤 순서로 `prepare-seed.sh`, `run-rerun.sh`, `run-retry.sh`, `collect-evidence.sh`를 적용하는지 문서만 보고 다시 따라갈 수 있다.
+- 각 단계의 입력 변수와 출력 파일 디렉토리 사용 흐름이 문서에 명시된다.
+- 문서만 읽고 적용 순서를 재구성한 리뷰 근거가 회고에 남는다.
 
 ### 검증
 - 관련 대상 테스트 실행 통과
 - 저장소 표준 전체 테스트 명령 통과
-- 스크립트 경계와 입력/출력 리뷰 통과
-- 임시 디렉토리 기준 준비 로그 파일 생성 확인
-- 임시 H2 메모리 또는 임시 H2 파일 DB 기준 정리 SQL과 준비 데이터 적용 SQL 실행 확인
-- 실패 입력에서 관측 가능한 non-zero 종료 코드 확인
+- 스크립트 적용 순서와 입력/출력 문서 리뷰 통과
+- 문서만 읽고 적용 순서를 재구성한 체크리스트 또는 리뷰 메모 확보
 
 ### GitHub 이슈
 - 새 이슈 생성
-- 권장 제목: `[BE] 준비와 정리 초안 파일 구현`
+- 권장 제목: `[BE] 스크립트 적용 순서와 입력 출력 흐름 정리`
 
 ## TASK-0003
 ### 이름
-rerun, retry, 실행 근거 수집 초안 파일 구현
+대표 검증 결과와 출력 파일 매핑 정리
 
 ### 목표
-- rerun, retry, 실행 근거 수집 흐름을 `run-rerun.sh`, `run-retry.sh`, `collect-evidence.sh` 초안 파일로 옮긴다.
+- 재실행, 재시도 대표 검증에서 어떤 출력 파일을 먼저 읽고, 어떤 문서와 대조해야 하는지 정리해 출력 해석 비용을 낮춘다.
 
 ### 구현 범위
-- 아래 기준을 실제 파일에 반영한다.
-  - rerun/retry 요청과 응답 파일 저장
-  - retry 파생 실행 키 추출과 후속 query 실행
-  - 앱 종료 확인과 H2 조회 결과 저장
-  - 파일별 종료 흐름과 수동 확인 인계 지점 반영
+- 아래 기준을 문서에 반영한다.
+  - 재실행, 재시도 출력 파일과 판단 근거를 한 표로 다시 묶기
+  - 요약 파일, 응답 가이드, 회고, 출력 파일 역할을 한 곳에서 다시 구분
+  - 재실행, 재시도에서 먼저 열어야 할 파일과 마지막에 보는 근거를 다시 배치
+  - 파생 실행 키와 전달 식별자 읽는 위치를 한 번에 찾게 정리
+- 기준 근거 문서는 현재 보조 명령 가이드와 `SPEC-0030 / TASK-0004` 회고로 두고, 개별 `.tmp` 산출물은 예시 근거로만 다룬다.
 
 ### 관련 파일 후보
 - `docs/manual-rerun-response-seed-command-guide.md`
-- `scripts/manual-rerun-response/run-rerun.sh`
-- `scripts/manual-rerun-response/run-retry.sh`
-- `scripts/manual-rerun-response/collect-evidence.sh`
-- `.agents/outer-loop/retrospectives/SPEC-0029/TASK-0003-script-stop-flow-and-handoff.md`
-- 위 회고 문서는 종료 흐름과 인계 지점을 실제 구현 전에 먼저 문서로 닫은 근거 문서다.
+- `docs/manual-rerun-response-guide.md`
+- `.agents/outer-loop/retrospectives/SPEC-0030/TASK-0004-script-draft-representative-verified.md`
+- 위 회고 문서는 출력 파일과 실행 근거가 실제 대표 검증에서 어떻게 맞았는지 정리한 근거 문서다.
 
 ### 비대상
+- 새 스크립트 구현
 - 실제 앱/H2 대표 검증 재실행
-- 새 대표 검증 시나리오 추가
 - 단계 요약 문서 마감 판단
 
 ### 연결 검증 기준
-- `manual-rerun-script-draft-run-flow-implemented`
+- `manual-rerun-script-application-output-mapping-documented`
 
 ### 완료 조건
-- `run-rerun.sh`, `run-retry.sh`, `collect-evidence.sh`가 현재 문서 기준 명령 흐름과 출력 파일을 만든다.
-- 종료 흐름과 수동 확인 인계 지점이 실제 파일 경계와 맞는다.
+- 운영자가 출력 파일, 요약 파일, 응답 가이드, 회고를 어떤 순서로 대조해야 하는지 문서로 다시 따라갈 수 있다.
+- 재실행, 재시도 각각에서 핵심 출력 파일과 마지막 판단 근거가 분리돼 적힌다.
+- 문서만 읽고 출력 파일 매핑을 재구성한 리뷰 근거가 회고에 남는다.
 
 ### 검증
 - 관련 대상 테스트 실행 통과
 - 저장소 표준 전체 테스트 명령 통과
-- 스크립트 경계와 가독성 리뷰 통과
-- 임시 디렉토리 기준 rerun, retry, 실행 근거 출력 파일 생성 확인
-- 임시 H2 메모리 또는 임시 H2 파일 DB 기준 조회 결과 저장 확인
-- 실패 입력에서 non-zero 종료 코드와 후속 파일 미생성 확인
+- 출력 파일 매핑과 해석 경계 문서 리뷰 통과
+- 문서만 읽고 출력 파일 매핑을 재구성한 체크리스트 또는 리뷰 메모 확보
 
 ### GitHub 이슈
 - 새 이슈 생성
-- 권장 제목: `[BE] rerun, retry, 실행 근거 수집 초안 파일 구현`
+- 권장 제목: `[BE] 대표 검증 결과와 출력 파일 매핑 정리`
 
 ## TASK-0004
 ### 이름
-초안 파일 대표 검증과 단계 마감
+스크립트 적용 가이드 대표 검증과 단계 마감
 
 ### 목표
-- 실제 초안 파일로 대표 재실행 검증과 대표 재시도 검증을 수행하고 단계 마감 근거를 남긴다.
+- 정리된 스크립트 적용 가이드를 기준으로 대표 재실행 검증과 대표 재시도 검증을 다시 수행하고 단계 마감 근거를 남긴다.
 
 ### 구현 범위
 - 대표 검증 보조 명령 가이드와 실제 초안 파일을 함께 써 대표 재실행 검증과 대표 재시도 검증을 수행한다.
@@ -173,7 +170,7 @@ rerun, retry, 실행 근거 수집 초안 파일 구현
 - `docs/manual-rerun-response-seed-command-guide.md`
 - `scripts/manual-rerun-response/`
 - `.agents/prd.md`
-- `.agents/outer-loop/retrospectives/SPEC-0029/`
+- `.agents/outer-loop/retrospectives/SPEC-0030/`
 
 ### 비대상
 - 새 대표 검증 시나리오 추가
@@ -181,12 +178,12 @@ rerun, retry, 실행 근거 수집 초안 파일 구현
 - 장기 저장소 도입
 
 ### 연결 검증 기준
-- `manual-rerun-script-draft-representative-verified`
+- `manual-rerun-script-application-representative-verified`
 
 ### 완료 조건
-- 대표 재실행 검증과 대표 재시도 검증이 초안 파일로 다시 수행된다.
+- 대표 재실행 검증과 대표 재시도 검증이 정리된 적용 가이드 기준으로 다시 수행된다.
 - 새 전달 식별자와 실행 키가 함께 기록된다.
-- 앱 종료 뒤 H2 조회까지 포함해 출력 파일, 응답, H2 실행 근거, 문서 기준이 같은 실행 키 기준으로 맞는다.
+- 앱 종료 뒤 H2 조회까지 포함해 출력 파일, 요약 파일, 응답, H2 실행 근거, 문서 기준이 같은 실행 키 기준으로 맞는다.
 - 단계 요약 문서까지 작성할 수 있는 마감 근거가 남는다.
 
 ### 검증
@@ -197,4 +194,4 @@ rerun, retry, 실행 근거 수집 초안 파일 구현
 
 ### GitHub 이슈
 - 새 이슈 생성
-- 권장 제목: `[BE] 초안 파일 대표 검증과 단계 마감`
+- 권장 제목: `[BE] 스크립트 적용 가이드 대표 검증과 단계 마감`

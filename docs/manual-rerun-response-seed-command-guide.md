@@ -15,6 +15,16 @@
 - 응답 의미와 대표 검증 결과를 어떻게 읽는지는 [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md) 에서 본다.
 - 준비 데이터 SQL과 실제 앱/H2 대표 검증이 실제로 어떻게 맞았는지는 [TASK-0004-seed-representative-application-verified.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0025/TASK-0004-seed-representative-application-verified.md) 를 참고한다.
 
+## 시작 전에 먼저 확인할 근거
+- 직전 단계 전체 판단은 [SPEC-0030-summary.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0030/SPEC-0030-summary.md) 에서 먼저 본다.
+- 마지막 대표 검증에서 어떤 실행 키, 전달 식별자, 출력 파일을 함께 남겼는지는 [TASK-0004-script-draft-representative-verified.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0030/TASK-0004-script-draft-representative-verified.md) 에서 먼저 본다.
+- 현재 자동 검증 안전망은 아래 테스트가 맡는다.
+  - [ManualRerunRunFlowScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunRunFlowScriptTest.java)
+  - [ManualRerunSeedCommandScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunSeedCommandScriptTest.java)
+  - [ManualRerunResponseSeedSqlTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunResponseSeedSqlTest.java)
+  - [ManualRerunResponseSeedEvidenceSqlTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunResponseSeedEvidenceSqlTest.java)
+- 위 근거와 테스트가 그대로 유효하면, 다음 단계는 새 안전망을 만드는 대신 현재 가이드 정리부터 시작해도 된다.
+
 ## 공통 전제
 - 앱은 `local` 프로필 기준으로 띄운다.
 - 준비 데이터 정리와 적용은 앱 기동 전에 마친다.
@@ -219,4 +229,4 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 ## 현재 단계 판단
 - 현재 단계 기준으로는 실제 초안 파일 네 개와 실제 앱/H2 대표 검증 흐름이 모두 연결됐다.
 - 즉 명령 실행은 초안 파일로 다시 수행할 수 있고, 사람은 응답 의미 해석과 H2 결과 비교, 회고 작성에 집중하면 된다.
-- 다음 단계는 초안 파일 자체를 더 늘리는 것보다, 이 초안 파일을 더 쉽게 적용하고 유지할 수 있게 정리하는 쪽이 맞다. 후속 단계 식별자는 `SPEC-0031 운영용 조회 응답 준비 데이터 반복 검증 스크립트 적용 검증 정리`를 쓴다.
+- 다음 단계는 초안 파일 자체를 더 늘리는 것보다, 이 초안 파일을 더 쉽게 적용하고 유지할 수 있게 정리하는 쪽이 맞다. 현재 단계에서는 이 문장을 시작 안전망 근거로만 사용하고, 실제 활성 단계 이름과 작업 범위는 `.agents/active/spec.md`, `.agents/active/tasks.md`를 기준으로 다시 확인한다.
