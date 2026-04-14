@@ -5,172 +5,166 @@
 각 작업은 하나의 명확한 결과, 검증 기준, GitHub 이슈 연결 규칙을 가져야 한다.
 
 ## 현재 활성 단계
-- ID: `SPEC-0031`
-- 이름: `운영용 조회 응답 반복 검증 스크립트 적용 절차와 출력 기준 정리`
+- ID: `SPEC-0032`
+- 이름: `운영용 조회 응답 반복 검증 스크립트 유지 기준 정리`
 - 기준 문서:
   - `.agents/active/spec.md`
-  - `.agents/criteria/SPEC-0031-manual-rerun-script-application-verification.json`
+  - `.agents/criteria/SPEC-0032-manual-rerun-script-maintenance.json`
 
 ## 공통 규칙
 - 구현 순서는 `TASK-0001 -> TASK-0002 -> TASK-0003 -> TASK-0004`로 고정한다.
 - 각 작업 시작 전 해당 작업용 GitHub 이슈를 새로 연결한다.
 - 각 작업은 연결된 검증 기준과 테스트 근거가 없으면 완료로 보지 않는다.
-- 기존 `POST /reviews/rerun`, `POST /reviews/rerun/{executionKey}/retry`, `GET /reviews/rerun/{executionKey}`, `GET /reviews/rerun/executions`, `GET /reviews/rerun/{executionKey}/actions/history`, `POST /reviews/rerun/{executionKey}/actions` 계약은 유지한다.
-- 이번 단계는 대표 검증 스크립트 적용 절차와 출력 기준 정리에 집중한다.
-- `TASK-0001` 시작 전 `SPEC-0030` 단계 요약 문서와 현재 보조 명령 가이드가 실제 적용 검증 정리 시작 안전망으로 충분한지 먼저 확인한다.
+- 기존 재실행, 재시도, 단건 조회, 목록 조회, 이력 조회, 관리자 조치 계약은 유지한다.
+- 이번 단계는 스크립트와 가이드, 기준 파일, 테스트의 유지 기준 정리에 집중한다.
+- `TASK-0001` 시작 전 `SPEC-0031` 단계 요약 문서와 현재 보조 명령 가이드, 자동 검증 테스트가 유지 기준 정리 시작 안전망으로 충분한지 먼저 확인한다.
 
 ## 요약 표
 | 작업 | 이름 | 핵심 목표 | 연결 검증 기준 | 핵심 검증 | 이슈 |
 | --- | --- | --- | --- | --- | --- |
-| `TASK-0001` | 적용 검증 시작 전 기존 근거와 안전망 확인 | 적용 검증 정리를 시작해도 되는 기존 판단과 자동 검증 유지 확인 | `manual-rerun-script-application-safety-net-preserved` | 회귀 테스트 + 직전 단계 요약과 가이드 근거 확인 | 새 이슈 |
-| `TASK-0002` | 스크립트 적용 순서와 입력/출력 파일 사용 흐름 정리 | 이미 있는 적용 순서를 문서에서 바로 찾게 만들기 | `manual-rerun-script-application-order-documented` | 대상 테스트 + 전체 테스트 + 적용 순서 재구성 근거 확인 | 새 이슈 |
-| `TASK-0003` | 대표 검증 결과와 출력 파일 매핑 정리 | 이미 있는 출력 해석 기준을 한 번에 찾게 정리 | `manual-rerun-script-application-output-mapping-documented` | 대상 테스트 + 전체 테스트 + 출력 파일 매핑 재구성 근거 확인 | 새 이슈 |
-| `TASK-0004` | 스크립트 적용 가이드 대표 검증과 단계 마감 | 정리된 가이드 기준으로 대표 검증을 다시 수행하고 마감 근거 남기기 | `manual-rerun-script-application-representative-verified` | 대상 테스트 + 전체 테스트 + 실제 앱/H2 대표 검증 | 새 이슈 |
+| `TASK-0001` | 유지 기준 시작 전 기존 근거와 안전망 확인 | 유지 기준 정리를 시작해도 되는 기존 판단과 자동 검증 유지 확인 | `manual-rerun-script-maintenance-safety-net-preserved` | 회귀 테스트 + 직전 단계 요약과 가이드 근거 확인 | 새 이슈 |
+| `TASK-0002` | 변경 시 함께 갱신해야 하는 문서와 기준 파일 정리 | 스크립트 변경 시 같이 봐야 하는 문서와 기준 파일 범위 고정 | `manual-rerun-script-maintenance-sync-boundary-documented` | 대상 테스트 + 전체 테스트 + 갱신 범위 재구성 근거 확인 | 새 이슈 |
+| `TASK-0003` | 출력 파일 이름 변경과 문서 어긋남 감지 기준 정리 | 출력 파일 변경 시 어디서 먼저 어긋남을 잡아야 하는지 정리 | `manual-rerun-script-maintenance-drift-detection-documented` | 대상 테스트 + 전체 테스트 + 감지 순서 재구성 근거 확인 | 새 이슈 |
+| `TASK-0004` | 유지 보수 체크리스트와 단계 마감 | 이후 변경 시 따라야 하는 점검 순서와 마감 기준 정리 | `manual-rerun-script-maintenance-checklist-closeout-documented` | 대상 테스트 + 전체 테스트 + 문서 마감 리뷰 | 새 이슈 |
 
 ## TASK-0001
 ### 이름
-적용 검증 시작 전 기존 근거와 안전망 확인
+유지 기준 시작 전 기존 근거와 안전망 확인
 
 ### 목표
-- 대표 검증 스크립트 적용 절차와 출력 기준 정리 단계를 시작하기 전에 `SPEC-0030` 마감 근거와 현재 가이드가 시작 안전망으로 충분한지 확인한다.
+- 반복 검증 스크립트 유지 기준 정리 단계를 시작하기 전에 `SPEC-0031` 마감 근거와 현재 가이드, 자동 검증이 시작 안전망으로 충분한지 확인한다.
 
 ### 구현 범위
-- 기존 회고와 관련 controller/service 테스트를 우선 재사용한다.
+- 기존 단계 요약, 마지막 회고, 보조 명령 가이드, 관련 테스트를 우선 재사용한다.
 - 아래 기준을 먼저 확인한다.
-  - 대표 검증에서 실제 적용 순서를 정리할 수 있는 기존 근거 확보
-  - 실제 적용 정리 단계로 넘어가도 되는 판단 근거 정리
+  - 스크립트 유지 기준을 정리할 수 있는 기존 근거 확보
+  - 실제 유지 기준 정리 단계로 넘어가도 되는 판단 근거 정리
   - 자동 검증 테스트 유지
-  - 재실행/재시도 대표 검증 근거 유지
-  - `SPEC-0030` 단계 요약 문서 연결
+  - `SPEC-0031` 단계 요약 문서 연결
 - 기존 안전망이 충분하면 근거를 회고에 남기고, 부족한 경우만 최소 문서 보강을 검토한다.
-
-### 비대상
-- 새 스크립트 파일 추가
-- 실제 앱/H2 대표 검증 재실행
-
-### 연결 검증 기준
-- `manual-rerun-script-application-safety-net-preserved`
-
-### 완료 조건
-- 스크립트 적용 절차와 출력 기준 정리 단계의 시작 근거가 충분하다는 회고와 테스트 근거가 남는다.
-
-### 검증
-- 관련 대상 테스트 실행 통과
-- 저장소 표준 전체 테스트 명령 통과
-- `SPEC-0030` 단계 요약 문서와 대표 검증 회고 경로 명시
-
-### GitHub 이슈
-- 새 이슈 생성
-- 권장 제목: `[BE] 적용 검증 시작 전 기존 근거와 안전망 확인`
-
-## TASK-0002
-### 이름
-스크립트 적용 순서와 입력/출력 파일 사용 흐름 정리
-
-### 목표
-- 새 작업자가 대표 검증을 다시 수행할 때 이미 문서에 흩어져 있는 적용 순서와 입력/출력 파일 흐름을 한 번에 찾게 정리한다.
-
-### 구현 범위
-- 아래 기준을 문서에 반영한다.
-  - 이미 있는 적용 순서를 빠른 진입 섹션으로 재배열
-  - 재실행, 재시도별 필수 입력 변수와 출력 디렉토리 사용 흐름을 한 자리에서 찾게 정리
-  - 각 스크립트가 어느 단계까지 맡는지 흩어진 설명을 다시 구분
-  - 기존 보조 명령 가이드와 응답 가이드 책임 경계 유지
-
-### 관련 파일 후보
-- `docs/manual-rerun-response-seed-command-guide.md`
-- `docs/manual-rerun-response-seed-guide.md`
-- `scripts/manual-rerun-response/`
-- `.agents/outer-loop/retrospectives/SPEC-0030/SPEC-0030-summary.md`
-- 위 단계 요약 문서는 실제 스크립트 초안 구현이 끝났다는 마감 문서다.
 
 ### 비대상
 - 새 스크립트 구현
 - 실제 앱/H2 대표 검증 재실행
-- 새 대표 검증 시나리오 추가
 
 ### 연결 검증 기준
-- `manual-rerun-script-application-order-documented`
+- `manual-rerun-script-maintenance-safety-net-preserved`
 
 ### 완료 조건
-- 운영자가 어떤 순서로 `prepare-seed.sh`, `run-rerun.sh`, `run-retry.sh`, `collect-evidence.sh`를 적용하는지 문서만 보고 다시 따라갈 수 있다.
-- 각 단계의 입력 변수와 출력 파일 디렉토리 사용 흐름이 문서에 명시된다.
-- 문서만 읽고 적용 순서를 재구성한 리뷰 근거가 회고에 남는다.
+- 스크립트 유지 기준 정리 단계의 시작 근거가 충분하다는 회고와 테스트 근거가 남는다.
 
 ### 검증
 - 관련 대상 테스트 실행 통과
 - 저장소 표준 전체 테스트 명령 통과
-- 스크립트 적용 순서와 입력/출력 문서 리뷰 통과
-- 문서만 읽고 적용 순서를 재구성한 체크리스트 또는 리뷰 메모 확보
+- `SPEC-0031` 단계 요약 문서와 대표 검증 회고 경로 명시
 
 ### GitHub 이슈
 - 새 이슈 생성
-- 권장 제목: `[BE] 스크립트 적용 순서와 입력 출력 흐름 정리`
+- 권장 제목: `[BE] 유지 기준 시작 전 기존 근거와 안전망 확인`
 
-## TASK-0003
+## TASK-0002
 ### 이름
-대표 검증 결과와 출력 파일 매핑 정리
+변경 시 함께 갱신해야 하는 문서와 기준 파일 정리
 
 ### 목표
-- 재실행, 재시도 대표 검증에서 어떤 출력 파일을 먼저 읽고, 어떤 문서와 대조해야 하는지 정리해 출력 해석 비용을 낮춘다.
+- 스크립트나 가이드를 바꿀 때 어떤 문서, 기준 파일, 테스트를 같이 봐야 하는지 한 번에 찾게 정리한다.
 
 ### 구현 범위
 - 아래 기준을 문서에 반영한다.
-  - 재실행, 재시도 출력 파일과 판단 근거를 한 표로 다시 묶기
-  - 요약 파일, 응답 가이드, 회고, 출력 파일 역할을 한 곳에서 다시 구분
-  - 재실행, 재시도에서 먼저 열어야 할 파일과 마지막에 보는 근거를 다시 배치
-  - 파생 실행 키와 전달 식별자 읽는 위치를 한 번에 찾게 정리
-- 기준 근거 문서는 현재 보조 명령 가이드와 `SPEC-0030 / TASK-0004` 회고로 두고, 개별 `.tmp` 산출물은 예시 근거로만 다룬다.
+  - 스크립트 변경 시 같이 갱신해야 하는 문서 목록 정리
+  - 기준 파일과 회고, 단계 요약, 가이드 문서의 역할 경계 정리
+  - 자동 검증 테스트가 어떤 어긋남을 먼저 잡는지 정리
+  - 유지 기준 문서와 기존 보조 명령 가이드 책임 경계 유지
 
 ### 관련 파일 후보
 - `docs/manual-rerun-response-seed-command-guide.md`
 - `docs/manual-rerun-response-guide.md`
-- `.agents/outer-loop/retrospectives/SPEC-0030/TASK-0004-script-draft-representative-verified.md`
-- 위 회고 문서는 출력 파일과 실행 근거가 실제 대표 검증에서 어떻게 맞았는지 정리한 근거 문서다.
+- `.agents/outer-loop/retrospectives/SPEC-0031/SPEC-0031-summary.md`
+- `.agents/outer-loop/retrospectives/SPEC-0031/TASK-0004-script-application-representative-verified.md`
+- `src/test/java/com/agilerunner/client/agentruntime/`
 
 ### 비대상
 - 새 스크립트 구현
 - 실제 앱/H2 대표 검증 재실행
-- 단계 요약 문서 마감 판단
+- 출력 파일 이름 변경 자체
 
 ### 연결 검증 기준
-- `manual-rerun-script-application-output-mapping-documented`
+- `manual-rerun-script-maintenance-sync-boundary-documented`
 
 ### 완료 조건
-- 운영자가 출력 파일, 요약 파일, 응답 가이드, 회고를 어떤 순서로 대조해야 하는지 문서로 다시 따라갈 수 있다.
-- 재실행, 재시도 각각에서 핵심 출력 파일과 마지막 판단 근거가 분리돼 적힌다.
-- 문서만 읽고 출력 파일 매핑을 재구성한 리뷰 근거가 회고에 남는다.
+- 운영자가 스크립트나 가이드 변경 시 같이 갱신해야 하는 문서와 기준 파일을 문서만으로 다시 찾을 수 있다.
+- 문서만 읽고 갱신 범위를 재구성한 리뷰 근거가 회고에 남는다.
 
 ### 검증
 - 관련 대상 테스트 실행 통과
 - 저장소 표준 전체 테스트 명령 통과
-- 출력 파일 매핑과 해석 경계 문서 리뷰 통과
-- 문서만 읽고 출력 파일 매핑을 재구성한 체크리스트 또는 리뷰 메모 확보
+- 문서와 기준 파일 경계 리뷰 통과
 
 ### GitHub 이슈
 - 새 이슈 생성
-- 권장 제목: `[BE] 대표 검증 결과와 출력 파일 매핑 정리`
+- 권장 제목: `[BE] 변경 시 함께 갱신할 문서와 기준 파일 정리`
 
-## TASK-0004
+## TASK-0003
 ### 이름
-스크립트 적용 가이드 대표 검증과 단계 마감
+출력 파일 이름 변경과 문서 어긋남 감지 기준 정리
 
 ### 목표
-- 정리된 스크립트 적용 가이드를 기준으로 대표 재실행 검증과 대표 재시도 검증을 다시 수행하고 단계 마감 근거를 남긴다.
+- 출력 파일 이름이나 경로가 바뀔 때 어떤 문서와 테스트에서 먼저 어긋남을 확인해야 하는지 정리한다.
 
 ### 구현 범위
-- 대표 검증 보조 명령 가이드와 실제 초안 파일을 함께 써 대표 재실행 검증과 대표 재시도 검증을 수행한다.
-- 대표 검증에는 이전 검증과 겹치지 않는 새 전달 식별자를 사용하고, 필요하면 전달 식별자도 함께 회고에 남긴다.
-- 응답 파일, 파생 실행 키, H2 실행 근거를 같은 실행 키 기준으로 확인한다.
-- 앱 종료 뒤 H2 명령줄 도구 또는 SQL 조회 도구로 실행 근거를 다시 확인한다.
-- 대상 테스트와 저장소 표준 전체 테스트 명령을 다시 돌려 초안 파일 추가로 기존 자동 검증 흐름이 깨지지 않았는지 확인한다.
-- 필요하면 가이드와 회고를 최소 보정한다.
+- 아래 기준을 문서에 반영한다.
+  - 출력 파일 이름 변경 시 가장 먼저 점검할 문서와 테스트 정리
+  - 문서 어긋남을 빨리 발견하는 체크 포인트 정리
+  - 출력 파일 이름, 기준 파일, 회고, 단계 요약 사이의 연결 고리 정리
+  - 자동 검증 테스트와 수동 점검의 경계 유지
 
 ### 관련 파일 후보
 - `docs/manual-rerun-response-seed-command-guide.md`
-- `scripts/manual-rerun-response/`
+- `docs/manual-rerun-response-guide.md`
+- `src/test/java/com/agilerunner/client/agentruntime/ManualRerunRunFlowScriptTest.java`
+- `src/test/java/com/agilerunner/client/agentruntime/ManualRerunSeedCommandScriptTest.java`
+- `.agents/outer-loop/retrospectives/SPEC-0031/`
+
+### 비대상
+- 출력 파일 이름 실제 변경
+- 새 스크립트 구현
+- 실제 앱/H2 대표 검증 재실행
+
+### 연결 검증 기준
+- `manual-rerun-script-maintenance-drift-detection-documented`
+
+### 완료 조건
+- 운영자가 출력 파일 이름이나 경로가 바뀔 때 어떤 문서와 테스트에서 먼저 어긋남을 찾아야 하는지 문서만으로 다시 따라갈 수 있다.
+- 문서만 읽고 감지 순서를 재구성한 리뷰 근거가 회고에 남는다.
+
+### 검증
+- 관련 대상 테스트 실행 통과
+- 저장소 표준 전체 테스트 명령 통과
+- 감지 기준 문서 리뷰 통과
+
+### GitHub 이슈
+- 새 이슈 생성
+- 권장 제목: `[BE] 출력 파일 이름 변경과 어긋남 감지 기준 정리`
+
+## TASK-0004
+### 이름
+유지 보수 체크리스트와 단계 마감
+
+### 목표
+- 이후 변경 시 따라야 하는 점검 순서와 마감 판단 기준을 체크리스트로 정리하고 단계를 닫는다.
+
+### 구현 범위
+- 아래 기준을 문서에 반영한다.
+  - 유지 보수 체크리스트 초안 작성
+  - 체크리스트에서 문서, 기준 파일, 테스트, 회고를 어떤 순서로 확인하는지 정리
+  - 이후 변경 시 마감 판단 기준 정리
+  - 단계 요약 문서까지 작성해 현재 단계 마감 근거 정리
+
+### 관련 파일 후보
+- `docs/manual-rerun-response-seed-command-guide.md`
+- `.agents/outer-loop/retrospectives/SPEC-0032/`
 - `.agents/prd.md`
-- `.agents/outer-loop/retrospectives/SPEC-0030/`
+- `.agents/outer-loop/README.md`
 
 ### 비대상
 - 새 대표 검증 시나리오 추가
@@ -178,20 +172,18 @@
 - 장기 저장소 도입
 
 ### 연결 검증 기준
-- `manual-rerun-script-application-representative-verified`
+- `manual-rerun-script-maintenance-checklist-closeout-documented`
 
 ### 완료 조건
-- 대표 재실행 검증과 대표 재시도 검증이 정리된 적용 가이드 기준으로 다시 수행된다.
-- 새 전달 식별자와 실행 키가 함께 기록된다.
-- 앱 종료 뒤 H2 조회까지 포함해 출력 파일, 요약 파일, 응답, H2 실행 근거, 문서 기준이 같은 실행 키 기준으로 맞는다.
+- 유지 보수 체크리스트와 단계 마감 근거가 문서로 남는다.
+- 이후 변경의 점검 순서를 문서만으로 다시 구성할 수 있다.
 - 단계 요약 문서까지 작성할 수 있는 마감 근거가 남는다.
 
 ### 검증
 - 대상 테스트
 - 저장소 표준 전체 테스트 명령
-- 실제 앱/H2 대표 검증
-- 마감 리뷰
+- 문서 마감 리뷰
 
 ### GitHub 이슈
 - 새 이슈 생성
-- 권장 제목: `[BE] 스크립트 적용 가이드 대표 검증과 단계 마감`
+- 권장 제목: `[BE] 유지 보수 체크리스트와 단계 마감`
