@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0031",
-    "task_id": "TASK-0002",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0031/TASK-0002-script-application-order-and-io-flow.md",
+    "task_id": "TASK-0003",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0031/TASK-0003-script-output-mapping.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0030/SPEC-0030-summary.md"
   },
   "proposals": [

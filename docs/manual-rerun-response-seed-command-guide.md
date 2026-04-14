@@ -58,7 +58,34 @@
 | `collect-evidence.sh` 재시도 | `OUTPUT_DIR`, `EVIDENCE_MODE=retry`, `RETRY_DERIVED_EXECUTION_KEY` | `retry-webhook-execution.txt`, `retry-agent-execution-log.txt` | 최종 수동 판단 |
 
 여기까지가 새 작업자가 적용 순서와 입력/출력 흐름을 다시 잡을 때 먼저 보는 기준이다.
-실행 키 재사용 기준, 출력 파일 해석 기준, 종료 코드와 마감 판단은 아래 참고 섹션에 남기고, 현재 task에서는 위치를 빠르게 찾게 만드는 데까지만 정리한다.
+실행 키 재사용 기준, 출력 파일 해석 기준, 종료 코드와 마감 판단은 아래 참고 섹션에 남기고, 이 문서에서는 위치를 빠르게 찾게 만드는 데까지만 정리한다.
+
+## 대표 검증 결과를 읽는 순서
+### 재실행 대표 검증
+| 순서 | 먼저 여는 파일 | 여기서 먼저 확인하는 것 | 같이 대조할 문서나 파일 | 마지막에 닫는 판단 |
+| --- | --- | --- | --- | --- |
+| 1 | `prepare.log` | 정리 SQL과 적용 SQL이 정상 종료됐는지 | 없음 | 준비 단계 통과 여부 |
+| 2 | `rerun-query-before.json` | 조치 전 현재 상태와 `availableActions` | [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md)의 `query` 설명 | 조치 전 현재 상태가 기대와 맞는지 |
+| 3 | `rerun-history.json`, `rerun-action.json`, `rerun-query-after.json` | 조치 직후 상태가 어떻게 바뀌었는지 | 응답 가이드의 `history`, `action`, `query` 설명 | 조치 후 응답 의미가 서로 맞는지 |
+| 4 | `rerun-webhook-execution.txt`, `rerun-action-audit.txt` | H2 실행 근거와 audit row가 남았는지 | 위 응답 파일과 같은 실행 키 | 응답과 H2가 같은 실행을 설명하는지 |
+| 5 | `TASK-0004-script-draft-representative-verified.md` | 실제 대표 검증에서 어떤 결론으로 닫았는지 | 위 출력 파일 전부 | 최종 사람 판단 근거 |
+
+### 재시도 대표 검증
+| 순서 | 먼저 여는 파일 | 여기서 먼저 확인하는 것 | 같이 대조할 문서나 파일 | 마지막에 닫는 판단 |
+| --- | --- | --- | --- | --- |
+| 1 | `prepare.log` | 정리 SQL과 적용 SQL이 정상 종료됐는지 | 없음 | 준비 단계 통과 여부 |
+| 2 | `retry-response.json` | 원본 실행 기준 재시도 응답과 파생 실행 키 | 응답 가이드의 `retry` 설명 | 어떤 파생 실행을 이후 단계에서 계속 볼지 |
+| 3 | `retry-derived-execution-key.txt`, `retry-derived-query.json` | 파생 실행 키와 파생 실행 현재 상태 | 응답 가이드의 `query` 설명 | 파생 실행 응답 의미가 기대와 맞는지 |
+| 4 | `retry-webhook-execution.txt`, `retry-agent-execution-log.txt` | H2에서 파생 실행과 원본 실행 연결이 보이는지 | `retry-response.json`, `retrySourceExecutionKey` | 원본 실행과 파생 실행 연결이 맞는지 |
+| 5 | `TASK-0004-script-draft-representative-verified.md` | 실제 대표 검증에서 어떤 결론으로 닫았는지 | 위 출력 파일 전부 | 최종 사람 판단 근거 |
+
+## 파일별 역할과 마지막 판단 기준
+| 파일 또는 문서 | 기본 역할 | 이 파일만으로 끝내면 안 되는 이유 | 마지막 판단에서 맡는 위치 |
+| --- | --- | --- | --- |
+| `summary.json` | 대표 검증 결과를 기계적으로 다시 읽기 위한 요약 | 내부 키와 파생 값이 많아 사람 설명 없이 읽기 어렵다 | 빠른 인덱스 |
+| [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md) | 각 응답이 어떤 질문에 답하는지 설명 | 실제 대표 검증에서 어떤 파일이 남았는지 직접 보여 주지는 않는다 | 응답 의미 해석 기준 |
+| `prepare.log`, `rerun-*.json`, `retry-*.json`, `*-webhook-execution.txt`, `*-action-audit.txt`, `*-agent-execution-log.txt` | 대표 검증에서 실제로 남은 원시 근거 | 파일이 흩어져 있어 읽는 순서 없이 보면 해석 비용이 높다 | 실행별 직접 근거 |
+| `TASK-0004-script-draft-representative-verified.md` | 대표 검증에서 어떤 실행 키, 전달 식별자, 결론으로 닫았는지 설명 | 새 대표 검증을 다시 돌리면 값은 달라질 수 있다 | 최종 사람 판단 근거 |
 
 ## 공통 전제
 - 앱은 `local` 프로필 기준으로 띄운다.
@@ -80,7 +107,9 @@
 - 초안 파일은 명령 실행과 결과 파일 저장까지 맡는다.
 - 대표 검증 결론, H2 결과 의미 해석, 회고와 제안 필요 여부 판단은 계속 사람이 직접 닫는다.
 
-## 공통 환경 변수 예시
+## 기존 절차 참고
+
+### 공통 환경 변수 예시
 ```bash
 export APP_PORT=18080
 export BASE_URL="http://localhost:${APP_PORT}"
@@ -94,7 +123,7 @@ export RETRY_DIR="${OUTPUT_ROOT}/retry"
 mkdir -p "${RERUN_DIR}" "${RETRY_DIR}"
 ```
 
-## 대표 검증용 임시 SQL 복사본 만들기
+### 대표 검증용 임시 SQL 복사본 만들기
 ### 재실행 준비 데이터 임시 복사본
 ```bash
 export RERUN_SUFFIX="spec0030-rerun-${VERIFY_TS}"
@@ -152,7 +181,7 @@ WHERE execution_key = '${RETRY_SOURCE_EXECUTION_KEY}'
 EOF
 ```
 
-## 재실행 대표 검증 흐름
+### 재실행 대표 검증 흐름
 ### 1. 준비 데이터 정리와 적용
 ```bash
 OUTPUT_DIR="${RERUN_DIR}" \
@@ -185,7 +214,7 @@ RERUN_EXECUTION_KEY="${RERUN_EXECUTION_KEY}" \
 ./scripts/manual-rerun-response/collect-evidence.sh
 ```
 
-## 재시도 대표 검증 흐름
+### 재시도 대표 검증 흐름
 ### 1. 준비 데이터 정리와 적용
 ```bash
 OUTPUT_DIR="${RETRY_DIR}" \
