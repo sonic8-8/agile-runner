@@ -300,7 +300,9 @@ class ManualRerunRunFlowScriptTest {
     assertThat(exitCode)
         .withFailMessage(collectLog)
         .isZero();
-    assertThat(Files.readString(outputDir.resolve("rerun-webhook-execution.txt"))).contains(rerunExecutionKey);
+    assertThat(Files.readString(outputDir.resolve("rerun-webhook-execution.txt")))
+        .contains(rerunExecutionKey)
+        .contains(rerunExecutionKey.replace("EXECUTION:MANUAL_RERUN:", "MANUAL_RERUN_DELIVERY:"));
     assertThat(Files.readString(outputDir.resolve("rerun-action-audit.txt"))).contains("ACKNOWLEDGE");
   }
 
@@ -323,7 +325,9 @@ class ManualRerunRunFlowScriptTest {
     assertThat(exitCode)
         .withFailMessage(collectLog)
         .isZero();
-    assertThat(Files.readString(outputDir.resolve("retry-webhook-execution.txt"))).contains(derivedExecutionKey);
+    assertThat(Files.readString(outputDir.resolve("retry-webhook-execution.txt")))
+        .contains(derivedExecutionKey)
+        .contains(derivedExecutionKey.replace("EXECUTION:MANUAL_RERUN:", "MANUAL_RERUN_DELIVERY:"));
     assertThat(Files.readString(outputDir.resolve("retry-agent-execution-log.txt"))).contains("review-generated");
   }
 
@@ -584,9 +588,10 @@ class ManualRerunRunFlowScriptTest {
     try (Connection connection = openConnection(h2Path); Statement statement = connection.createStatement()) {
       statement.execute("DROP TABLE IF EXISTS WEBHOOK_EXECUTION");
       statement.execute("DROP TABLE IF EXISTS MANUAL_RERUN_CONTROL_ACTION_AUDIT");
-      statement.execute("CREATE TABLE WEBHOOK_EXECUTION (execution_key VARCHAR(255), status VARCHAR(32), error_code VARCHAR(128), failure_disposition VARCHAR(64), execution_start_type VARCHAR(64), execution_control_mode VARCHAR(32), write_performed BOOLEAN, retry_source_execution_key VARCHAR(255))");
+      statement.execute("CREATE TABLE WEBHOOK_EXECUTION (execution_key VARCHAR(255), delivery_id VARCHAR(255), status VARCHAR(32), error_code VARCHAR(128), failure_disposition VARCHAR(64), execution_start_type VARCHAR(64), execution_control_mode VARCHAR(32), write_performed BOOLEAN, retry_source_execution_key VARCHAR(255))");
       statement.execute("CREATE TABLE MANUAL_RERUN_CONTROL_ACTION_AUDIT (id INT PRIMARY KEY, execution_key VARCHAR(255), action VARCHAR(64), action_status VARCHAR(64), note VARCHAR(255), applied_at TIMESTAMP)");
-      statement.execute("INSERT INTO WEBHOOK_EXECUTION (execution_key, status, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed, retry_source_execution_key) VALUES ('" + rerunExecutionKey + "', 'FAILED', 'GITHUB_APP_CONFIGURATION_MISSING', 'MANUAL_ACTION_REQUIRED', 'MANUAL_RERUN', 'DRY_RUN', FALSE, NULL)");
+      String rerunDeliveryId = rerunExecutionKey.replace("EXECUTION:MANUAL_RERUN:", "MANUAL_RERUN_DELIVERY:");
+      statement.execute("INSERT INTO WEBHOOK_EXECUTION (execution_key, delivery_id, status, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed, retry_source_execution_key) VALUES ('" + rerunExecutionKey + "', '" + rerunDeliveryId + "', 'FAILED', 'GITHUB_APP_CONFIGURATION_MISSING', 'MANUAL_ACTION_REQUIRED', 'MANUAL_RERUN', 'DRY_RUN', FALSE, NULL)");
       statement.execute("INSERT INTO MANUAL_RERUN_CONTROL_ACTION_AUDIT (id, execution_key, action, action_status, note, applied_at) VALUES (1, '" + rerunExecutionKey + "', 'ACKNOWLEDGE', 'APPLIED', '운영자 확인 완료', TIMESTAMP '" + LocalDateTime.of(2026, 4, 13, 10, 0, 0) + "')");
     }
   }
@@ -596,9 +601,10 @@ class ManualRerunRunFlowScriptTest {
     try (Connection connection = openConnection(h2Path); Statement statement = connection.createStatement()) {
       statement.execute("DROP TABLE IF EXISTS WEBHOOK_EXECUTION");
       statement.execute("DROP TABLE IF EXISTS AGENT_EXECUTION_LOG");
-      statement.execute("CREATE TABLE WEBHOOK_EXECUTION (execution_key VARCHAR(255), retry_source_execution_key VARCHAR(255), status VARCHAR(32), error_code VARCHAR(128), failure_disposition VARCHAR(64), execution_start_type VARCHAR(64), execution_control_mode VARCHAR(32), write_performed BOOLEAN)");
+      statement.execute("CREATE TABLE WEBHOOK_EXECUTION (execution_key VARCHAR(255), delivery_id VARCHAR(255), retry_source_execution_key VARCHAR(255), status VARCHAR(32), error_code VARCHAR(128), failure_disposition VARCHAR(64), execution_start_type VARCHAR(64), execution_control_mode VARCHAR(32), write_performed BOOLEAN)");
       statement.execute("CREATE TABLE AGENT_EXECUTION_LOG (id INT PRIMARY KEY, execution_key VARCHAR(255), retry_source_execution_key VARCHAR(255), step_name VARCHAR(64), status VARCHAR(32), error_code VARCHAR(128), failure_disposition VARCHAR(64))");
-      statement.execute("INSERT INTO WEBHOOK_EXECUTION (execution_key, retry_source_execution_key, status, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed) VALUES ('" + derivedExecutionKey + "', '" + sourceExecutionKey + "', 'FAILED', 'GITHUB_APP_CONFIGURATION_MISSING', 'MANUAL_ACTION_REQUIRED', 'MANUAL_RERUN', 'DRY_RUN', FALSE)");
+      String derivedDeliveryId = derivedExecutionKey.replace("EXECUTION:MANUAL_RERUN:", "MANUAL_RERUN_DELIVERY:");
+      statement.execute("INSERT INTO WEBHOOK_EXECUTION (execution_key, delivery_id, retry_source_execution_key, status, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed) VALUES ('" + derivedExecutionKey + "', '" + derivedDeliveryId + "', '" + sourceExecutionKey + "', 'FAILED', 'GITHUB_APP_CONFIGURATION_MISSING', 'MANUAL_ACTION_REQUIRED', 'MANUAL_RERUN', 'DRY_RUN', FALSE)");
       statement.execute("INSERT INTO AGENT_EXECUTION_LOG (id, execution_key, retry_source_execution_key, step_name, status, error_code, failure_disposition) VALUES (1, '" + derivedExecutionKey + "', '" + sourceExecutionKey + "', 'review-generated', 'FAILED', 'GITHUB_APP_CONFIGURATION_MISSING', 'MANUAL_ACTION_REQUIRED')");
     }
   }

@@ -1,441 +1,222 @@
 # 운영용 조회 응답 준비 데이터 적용 보조 명령 가이드
 
 ## 문서 목적
-이 문서는 운영용 조회 응답 대표 검증 전에 준비 데이터 SQL을 적용하고 정리할 때 반복해서 쓰는 기본 명령 예시를 정리한다.
-현재 단계에서는 `rerun` 준비 실행과 `retry` 원본 실행을 로컬 H2 파일 DB에 넣거나 정리하는 명령, retry 응답에서 파생 실행 키를 읽는 명령, 앱 종료 뒤 H2 실행 근거를 확인하는 명령을 한 흐름으로 정리하는 데 집중한다.
+이 문서는 운영용 조회 응답 대표 검증에서 준비 데이터 SQL을 적용하고, 실제 초안 파일로 재실행/재시도 요청을 실행하고, 앱 종료 뒤 H2 실행 근거를 확인하는 기본 절차를 정리한다.
+현재 단계에서는 `prepare-seed.sh`, `run-rerun.sh`, `run-retry.sh`, `collect-evidence.sh`를 실제로 쓰는 흐름을 기준으로 본다.
 
 ## 이 문서를 먼저 읽어야 하는 경우
-- 대표 검증 전에 어떤 명령부터 실행해야 하는지 바로 감이 안 잡힐 때
-- 준비 데이터 SQL 파일은 준비됐지만 로컬 H2에 어떤 순서로 적용해야 하는지 다시 확인하고 싶을 때
-- 기존 예시 결과 행이나 이전 대표 검증 실행 흔적을 어디까지 정리해야 하는지 헷갈릴 때
-- retry 응답에서 받은 실행 키를 이후 조회와 H2 확인에 어디까지 다시 써야 하는지 헷갈릴 때
+- 대표 검증을 다시 돌릴 때 어떤 스크립트부터 실행해야 하는지 바로 감이 안 잡힐 때
+- 예시 SQL은 준비됐지만 실제 검증에서는 어떤 식으로 임시 복사본을 만들어 써야 하는지 헷갈릴 때
+- 재시도 응답에서 얻은 파생 실행 키를 이후 조회와 H2 확인에 어디까지 다시 써야 하는지 헷갈릴 때
+- 스크립트가 멈춘 뒤 어디까지는 파일이 남고, 어디서부터 사람이 의미를 직접 판단해야 하는지 다시 확인하고 싶을 때
 
 ## 같이 읽는 문서
-- 시나리오별 파일 선택 기준과 준비 순서는 [manual-rerun-response-seed-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-seed-guide.md) 에서 먼저 본다.
-- 응답 의미와 대표 검증 실행 결과를 어떻게 읽는지는 [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md) 에서 본다.
-- 준비 데이터 SQL이 실제 대표 검증 절차에서 어떻게 쓰였는지는 [TASK-0004-seed-representative-application-verified.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0025/TASK-0004-seed-representative-application-verified.md) 를 참고한다.
+- 시나리오별 준비 데이터 파일 선택 기준과 파일 머리말은 [manual-rerun-response-seed-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-seed-guide.md) 에서 먼저 본다.
+- 응답 의미와 대표 검증 결과를 어떻게 읽는지는 [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md) 에서 본다.
+- 준비 데이터 SQL과 실제 앱/H2 대표 검증이 실제로 어떻게 맞았는지는 [TASK-0004-seed-representative-application-verified.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0025/TASK-0004-seed-representative-application-verified.md) 를 참고한다.
 
 ## 공통 전제
 - 앱은 `local` 프로필 기준으로 띄운다.
-- 대표 검증 전 준비 데이터 적용과 정리는 앱 기동 전에 마친다.
-- H2 파일을 외부에서 여는 보조 명령은 앱 종료 후에만 수행한다.
+- 준비 데이터 정리와 적용은 앱 기동 전에 마친다.
+- 실제 앱/H2 대표 검증은 `준비 데이터 정리/적용 -> 앱 기동 -> 요청 실행 -> 앱 종료 -> H2 조회` 순서로 진행한다.
+- H2 파일 DB는 앱 종료 뒤에만 외부에서 조회한다.
 - 같은 H2 파일을 여러 셸에서 동시에 열지 않는다.
+- 실제 앱/H2 대표 검증은 기존 예시 키를 그대로 재사용하지 않고, 임시 SQL 복사본에 새 접미사를 넣어 새 실행 키와 전달 식별자를 만든다.
 
-## 이 문서에서 스크립트 후보로 보는 단계와 수동 확인 단계
-이 문서는 아직 실제 스크립트를 제공하지 않는다.
-대신 현재 대표 검증 절차를 나중에 스크립트로 묶는다면 어디까지가 후보이고, 어디부터는 사람이 직접 실행 근거를 읽어야 하는지 경계를 먼저 정리한다.
-
-| 단계 | 주 입력 | 주 출력 | 현재 판단 | 사람이 직접 확인할 것 |
+## 실제 초안 파일이 맡는 단계와 수동 확인 단계
+| 단계 | 주 입력 | 주 출력 | 현재 담당 | 사람이 직접 확인할 것 |
 | --- | --- | --- | --- | --- |
-| 시작 전 포트/H2 프로세스 확인 | `APP_PORT`, 현재 실행 중인 프로세스 목록 | 포트 사용 여부, H2 명령줄 도구 실행 여부 | 스크립트 후보 | 포트 충돌 여부, H2 셸 중복 실행 여부 확인 |
-| 준비 데이터 정리 SQL 실행 | reset SQL 파일, `JDBC_URL` | 정리 완료된 H2 상태 | 스크립트 후보 | 정리 대상 SQL 파일 경로 확인 |
-| 준비 데이터 적용 SQL 실행 | 준비 데이터 SQL 파일 경로, `JDBC_URL` | 대표 검증 시작 전 H2 입력 상태 | 스크립트 후보 | 시나리오에 맞는 준비 데이터 SQL 파일 경로 확인 |
-| 앱 기동 | `SPRING_PROFILES_ACTIVE`, `SERVER_PORT` | local 프로필로 실행 중인 앱 | 스크립트 후보 | 앱 기동 완료 여부 확인 |
-| 대표 검증 HTTP 요청 실행 | `BASE_URL`, 실행 키 값, 요청 본문 | 응답 본문 파일, HTTP 상태 | 스크립트 후보 | 응답 파일 저장 여부 확인 |
-| retry 파생 실행 키 추출 | retry 응답 파일 | 파생 실행 키 값 | 스크립트 후보 | 파생 실행 키 추출 결과 확인 |
-| 앱 종료 | bootRun 프로세스 | 종료된 앱 상태 | 스크립트 후보 | 종료 완료 여부 확인 |
-| H2 조회 명령 실행 | `JDBC_URL`, 실행 키, 조회 SQL | H2 결과 텍스트 | 스크립트 후보 | H2 조회 결과 파일 확보 여부 확인 |
-| 응답과 H2 결과 의미 해석 | 응답 파일, H2 조회 결과 | 대표 검증 결론, 회고 근거 | 수동 확인 단계 | 응답 값과 H2 결과 의미 비교 |
+| 시작 전 포트/H2 프로세스 확인과 준비 데이터 적용 | `APP_PORT`, `JDBC_URL`, `H2_JAR`, 정리/적용 SQL | `prepare.log`, 정리/적용된 H2 상태 | `prepare-seed.sh` | 선택한 SQL 파일 경로와 시나리오 일치 여부 |
+| 재실행 대표 요청 실행 | `BASE_URL`, `RERUN_EXECUTION_KEY`, `RERUN_ACTION_BODY` | `rerun-query-before.json`, `rerun-history.json`, `rerun-action.json`, `rerun-query-after.json`, `app.pid` | `run-rerun.sh` | 응답 의미 비교 |
+| 재시도 대표 요청 실행 | `BASE_URL`, `RETRY_SOURCE_EXECUTION_KEY`, `RETRY_REQUEST_BODY` | `retry-response.json`, `retry-derived-execution-key.txt`, `retry-derived-query.json`, `app.pid` | `run-retry.sh` | 재시도 응답과 파생 실행 의미 비교 |
+| 앱 종료 뒤 실행 근거 수집 | `JDBC_URL`, `H2_JAR`, `EVIDENCE_MODE`, 실행 키 | 재실행 또는 재시도 H2 조회 결과 텍스트 | `collect-evidence.sh` | H2 결과 의미 해석 |
+| 응답과 H2 결과 결론 정리 | 응답 파일, H2 조회 결과, 회고 경로 | 대표 검증 결론 | 수동 확인 단계 | 응답과 H2 의미 일치 여부, 회고 작성 |
 
-- 위 표에서 `스크립트 후보`는 명령 실행 자체를 묶는 후보라는 뜻이다.
-- `수동 확인 단계`는 명령이 끝난 뒤 결과 의미를 해석하고 회고에 남기는 단계다.
-- 즉, 명령 실행은 스크립트 후보로 볼 수 있어도 응답 값과 H2 결과 의미 비교는 계속 사람이 직접 닫아야 한다.
+- 초안 파일은 명령 실행과 결과 파일 저장까지 맡는다.
+- 대표 검증 결론, H2 결과 의미 해석, 회고와 제안 필요 여부 판단은 계속 사람이 직접 닫는다.
 
 ## 공통 환경 변수 예시
 ```bash
 export APP_PORT=18080
 export BASE_URL="http://localhost:${APP_PORT}"
 export H2_DB_PATH="$HOME/.agile-runner/agent-runtime/agile-runner"
-export JDBC_URL="jdbc:h2:file:${H2_DB_PATH};MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE"
+export JDBC_URL="jdbc:h2:file:${H2_DB_PATH};MODE=PostgreSQL;DB_CLOSE_ON_EXIT=FALSE"
 export H2_JAR="$(find \"$HOME/.gradle/caches/modules-2/files-2.1/com.h2database/h2\" -name 'h2-*.jar' | sort | tail -n 1)"
-export RERUN_EXECUTION_KEY="EXECUTION:MANUAL_RERUN:example-rerun"
-export RETRY_SOURCE_EXECUTION_KEY="EXECUTION:MANUAL_RERUN:example-retry-source"
-export RETRY_RESPONSE_FILE="/tmp/manual-rerun-retry-response.json"
-export RERUN_QUERY_BEFORE_FILE="/tmp/manual-rerun-rerun-query-before.json"
-export RERUN_HISTORY_FILE="/tmp/manual-rerun-rerun-history.json"
-export RERUN_ACTION_FILE="/tmp/manual-rerun-rerun-action.json"
-export RERUN_QUERY_AFTER_FILE="/tmp/manual-rerun-rerun-query-after.json"
-export RETRY_DERIVED_QUERY_FILE="/tmp/manual-rerun-retry-derived-query.json"
+export VERIFY_TS="$(date +%Y%m%d-%H%M%S)"
+export OUTPUT_ROOT="$PWD/.tmp/manual-rerun-response-${VERIFY_TS}"
+export RERUN_DIR="${OUTPUT_ROOT}/rerun"
+export RETRY_DIR="${OUTPUT_ROOT}/retry"
+mkdir -p "${RERUN_DIR}" "${RETRY_DIR}"
 ```
 
-## 시작 전 확인 명령
+## 대표 검증용 임시 SQL 복사본 만들기
+### 재실행 준비 데이터 임시 복사본
 ```bash
-lsof -i :"${APP_PORT}" || true
-pgrep -af "org.h2.tools.RunScript|org.h2.tools.Shell" || true
-```
+export RERUN_SUFFIX="spec0030-rerun-${VERIFY_TS}"
+export RERUN_EXECUTION_KEY="EXECUTION:MANUAL_RERUN:${RERUN_SUFFIX}"
+export RERUN_DELIVERY_ID="MANUAL_RERUN_DELIVERY:${RERUN_SUFFIX}"
+export RERUN_APPLY_SQL="${RERUN_DIR}/rerun-apply.sql"
+export RERUN_RESET_SQL="${RERUN_DIR}/rerun-reset.sql"
 
-- 포트가 비어 있고 H2 명령줄 도구가 떠 있지 않은 상태에서 시작한다.
-- 여기서는 프로세스 존재 여부만 확인한다. H2 결과 조회 명령은 아래 실행 근거 확인 절에서 따로 다룬다.
+sed "s/example-rerun/${RERUN_SUFFIX}/g" \
+  src/test/resources/manual-rerun-response-seed/control-action-history/rerun-acknowledge-action-history-seed.example.sql \
+  > "${RERUN_APPLY_SQL}"
 
-## 대표 검증 전에 공통으로 쓰는 정리 명령
-다음 정리 SQL은 고정 예시 실행과, 그 예시를 원본으로 삼아 생성된 retry 파생 실행을 함께 지우는 기본 예시다.
-
-```bash
-cat <<'SQL' >/tmp/manual-rerun-response-seed-reset.sql
+cat <<EOF > "${RERUN_RESET_SQL}"
 DELETE FROM MANUAL_RERUN_CONTROL_ACTION_AUDIT
-WHERE execution_key = 'EXECUTION:MANUAL_RERUN:example-rerun';
+WHERE execution_key = '${RERUN_EXECUTION_KEY}';
 
 DELETE FROM AGENT_EXECUTION_LOG
-WHERE execution_key = 'EXECUTION:MANUAL_RERUN:example-rerun'
-   OR execution_key = 'EXECUTION:MANUAL_RERUN:example-retry-source'
-   OR retry_source_execution_key = 'EXECUTION:MANUAL_RERUN:example-retry-source';
+WHERE execution_key = '${RERUN_EXECUTION_KEY}'
+   OR retry_source_execution_key = '${RERUN_EXECUTION_KEY}';
 
 DELETE FROM WEBHOOK_EXECUTION
-WHERE execution_key = 'EXECUTION:MANUAL_RERUN:example-rerun'
-   OR execution_key = 'EXECUTION:MANUAL_RERUN:example-retry-source'
-   OR retry_source_execution_key = 'EXECUTION:MANUAL_RERUN:example-retry-source';
-SQL
-
-java -cp "${H2_JAR}" org.h2.tools.RunScript \
-  -url "${JDBC_URL}" \
-  -user sa \
-  -script /tmp/manual-rerun-response-seed-reset.sql
+WHERE execution_key = '${RERUN_EXECUTION_KEY}'
+   OR retry_source_execution_key = '${RERUN_EXECUTION_KEY}';
+EOF
 ```
 
-- retry 파생 실행은 실행 키가 매번 달라질 수 있으므로, 정리할 때는 `retry_source_execution_key` 기준 삭제를 같이 쓴다.
-- 이 정리 명령은 대표 검증 시작 전에 한 번 실행하는 기본 예시다.
-
-## retry 원본 실행 준비 명령
+### 재시도 원본 실행 임시 복사본
 ```bash
-java -cp "${H2_JAR}" org.h2.tools.RunScript \
-  -url "${JDBC_URL}" \
-  -user sa \
-  -script src/test/resources/manual-rerun-response-seed/source-execution/retry-source-execution-seed.example.sql
+export RETRY_SOURCE_SUFFIX="spec0030-retry-source-${VERIFY_TS}"
+export RETRY_SOURCE_EXECUTION_KEY="EXECUTION:MANUAL_RERUN:${RETRY_SOURCE_SUFFIX}"
+export RETRY_SOURCE_DELIVERY_ID="MANUAL_RERUN_DELIVERY:${RETRY_SOURCE_SUFFIX}"
+export RETRY_APPLY_SQL="${RETRY_DIR}/retry-apply.sql"
+export RETRY_RESET_SQL="${RETRY_DIR}/retry-reset.sql"
+
+sed "s/example-retry-source/${RETRY_SOURCE_SUFFIX}/g" \
+  src/test/resources/manual-rerun-response-seed/source-execution/retry-source-execution-seed.example.sql \
+  > "${RETRY_APPLY_SQL}"
+
+cat <<EOF > "${RETRY_RESET_SQL}"
+DELETE FROM MANUAL_RERUN_CONTROL_ACTION_AUDIT
+WHERE execution_key = '${RETRY_SOURCE_EXECUTION_KEY}'
+   OR execution_key IN (
+     SELECT execution_key
+     FROM WEBHOOK_EXECUTION
+     WHERE retry_source_execution_key = '${RETRY_SOURCE_EXECUTION_KEY}'
+   );
+
+DELETE FROM AGENT_EXECUTION_LOG
+WHERE execution_key = '${RETRY_SOURCE_EXECUTION_KEY}'
+   OR retry_source_execution_key = '${RETRY_SOURCE_EXECUTION_KEY}';
+
+DELETE FROM WEBHOOK_EXECUTION
+WHERE execution_key = '${RETRY_SOURCE_EXECUTION_KEY}'
+   OR retry_source_execution_key = '${RETRY_SOURCE_EXECUTION_KEY}';
+EOF
 ```
 
-- 이 명령은 `retry` 대표 검증을 시작하기 전에 실행한다.
-- 실제 retry 요청과 파생 실행 키 추출은 아래 후속 섹션에서 이어진다.
-
-## 확인 상태 시나리오 준비 명령
+## 재실행 대표 검증 흐름
+### 1. 준비 데이터 정리와 적용
 ```bash
-java -cp "${H2_JAR}" org.h2.tools.RunScript \
-  -url "${JDBC_URL}" \
-  -user sa \
-  -script src/test/resources/manual-rerun-response-seed/control-action-history/rerun-acknowledge-action-history-seed.example.sql
+OUTPUT_DIR="${RERUN_DIR}" \
+APP_PORT="${APP_PORT}" \
+SEED_RESET_SQL="${RERUN_RESET_SQL}" \
+SEED_APPLY_SQL="${RERUN_APPLY_SQL}" \
+JDBC_URL="${JDBC_URL}" \
+H2_JAR="${H2_JAR}" \
+./scripts/manual-rerun-response/prepare-seed.sh
 ```
 
-- 이 명령은 `rerun-acknowledge`, `rerun-unacknowledge` 대표 검증을 시작하기 전에 실행한다.
-- 실제 단건 조회, 이력 조회, 관리자 조치 요청과 확인 흐름은 아래 시나리오 순서에서 이어진다.
-
-## 앱 기동 명령
+### 2. 재실행 요청 흐름 실행
 ```bash
-SPRING_PROFILES_ACTIVE=local \
-SERVER_PORT="${APP_PORT}" \
-./scripts/gradlew-java21.sh bootRun --console=plain
+OUTPUT_DIR="${RERUN_DIR}" \
+APP_PORT="${APP_PORT}" \
+BASE_URL="${BASE_URL}" \
+RERUN_EXECUTION_KEY="${RERUN_EXECUTION_KEY}" \
+RERUN_ACTION_BODY='{"action":"UNACKNOWLEDGE","note":"대표 검증용 확인 해제"}' \
+APP_START_TIMEOUT_SECONDS=60 \
+./scripts/manual-rerun-response/run-rerun.sh
 ```
 
-## retry 응답 저장과 파생 실행 키 추출 명령
+### 3. 앱 종료 뒤 실행 근거 수집
 ```bash
-curl -sS -X POST \
-  "${BASE_URL}/reviews/rerun/${RETRY_SOURCE_EXECUTION_KEY}/retry" \
-  -H 'Content-Type: application/json' \
-  -d '{"executionControlMode":"DRY_RUN"}' \
-  > "${RETRY_RESPONSE_FILE}"
+OUTPUT_DIR="${RERUN_DIR}" \
+JDBC_URL="${JDBC_URL}" \
+H2_JAR="${H2_JAR}" \
+EVIDENCE_MODE=rerun \
+RERUN_EXECUTION_KEY="${RERUN_EXECUTION_KEY}" \
+./scripts/manual-rerun-response/collect-evidence.sh
+```
 
-export RETRY_DERIVED_EXECUTION_KEY="$(
-  tr -d '\n' < "${RETRY_RESPONSE_FILE}" \
-    | sed -n 's/.*"executionKey":"\([^"]*\)".*/\1/p'
-)"
+## 재시도 대표 검증 흐름
+### 1. 준비 데이터 정리와 적용
+```bash
+OUTPUT_DIR="${RETRY_DIR}" \
+APP_PORT="${APP_PORT}" \
+SEED_RESET_SQL="${RETRY_RESET_SQL}" \
+SEED_APPLY_SQL="${RETRY_APPLY_SQL}" \
+JDBC_URL="${JDBC_URL}" \
+H2_JAR="${H2_JAR}" \
+./scripts/manual-rerun-response/prepare-seed.sh
+```
 
-test -n "${RETRY_DERIVED_EXECUTION_KEY}"
+### 2. 재시도 요청 흐름 실행
+```bash
+OUTPUT_DIR="${RETRY_DIR}" \
+APP_PORT="${APP_PORT}" \
+BASE_URL="${BASE_URL}" \
+RETRY_SOURCE_EXECUTION_KEY="${RETRY_SOURCE_EXECUTION_KEY}" \
+RETRY_REQUEST_BODY='{"executionControlMode":"DRY_RUN"}' \
+APP_START_TIMEOUT_SECONDS=60 \
+./scripts/manual-rerun-response/run-retry.sh
+```
+
+### 3. 파생 실행 키 읽기
+```bash
+export RETRY_DERIVED_EXECUTION_KEY="$(cat "${RETRY_DIR}/retry-derived-execution-key.txt")"
 printf '%s\n' "${RETRY_DERIVED_EXECUTION_KEY}"
 ```
 
-- `jq` 없이도 `curl`, `tr`, `sed`만으로 파생 실행 키를 읽는 기본 예시다.
-- `RETRY_RESPONSE_FILE`은 retry 응답을 한 번 더 확인하거나 회고에 근거를 남길 때 같이 쓸 수 있다.
-- 파생 실행 키 검증 기준과 실패 중단 조건은 다음 단계에서 따로 정리한다.
-
-## rerun 대표 검증 요청 명령
+### 4. 앱 종료 뒤 실행 근거 수집
 ```bash
-curl -sS \
-  "${BASE_URL}/reviews/rerun/${RERUN_EXECUTION_KEY}" \
-  > "${RERUN_QUERY_BEFORE_FILE}"
-
-curl -sS \
-  "${BASE_URL}/reviews/rerun/${RERUN_EXECUTION_KEY}/actions/history" \
-  > "${RERUN_HISTORY_FILE}"
-
-curl -sS -X POST \
-  "${BASE_URL}/reviews/rerun/${RERUN_EXECUTION_KEY}/actions" \
-  -H 'Content-Type: application/json' \
-  -d '{"action":"UNACKNOWLEDGE","note":"대표 검증용 확인 해제"}' \
-  > "${RERUN_ACTION_FILE}"
-
-curl -sS \
-  "${BASE_URL}/reviews/rerun/${RERUN_EXECUTION_KEY}" \
-  > "${RERUN_QUERY_AFTER_FILE}"
+OUTPUT_DIR="${RETRY_DIR}" \
+JDBC_URL="${JDBC_URL}" \
+H2_JAR="${H2_JAR}" \
+EVIDENCE_MODE=retry \
+RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
+./scripts/manual-rerun-response/collect-evidence.sh
 ```
 
-- rerun 준비 실행은 `RERUN_EXECUTION_KEY` 하나로 단건 조회, 이력 조회, 관리자 조치 요청, 조치 후 단건 조회를 이어간다.
-- `RERUN_QUERY_BEFORE_FILE`, `RERUN_HISTORY_FILE`, `RERUN_ACTION_FILE`, `RERUN_QUERY_AFTER_FILE`은 응답 본문을 남겨 두는 기본 예시다.
-- 실제 대표 검증에서 어떤 응답 값을 확인할지는 다음 단계에서 따로 정리한다.
+## 어떤 실행 키를 어디에 다시 쓰는가
+- 재실행 대표 검증
+  - `RERUN_EXECUTION_KEY`를 준비 데이터 적용, 단건 조회, 이력 조회, 관리자 조치, 조치 후 단건 조회, H2 조회까지 그대로 쓴다.
+  - `RERUN_DELIVERY_ID`는 회고에 함께 남기는 대표 전달 식별자다.
+- 재시도 대표 검증
+  - `RETRY_SOURCE_EXECUTION_KEY`는 준비 데이터 적용과 retry 요청 시작점에 쓴다.
+  - 재시도 응답 뒤에는 `retry-derived-execution-key.txt`에 저장된 `RETRY_DERIVED_EXECUTION_KEY`를 단건 조회와 H2 조회 기준으로 다시 쓴다.
+  - 파생 실행 단건 조회 응답에는 원본 실행 키 필드인 `retrySourceExecutionKey`가 없으므로, 원본 실행과 파생 실행의 연결은 재시도 응답과 H2 `WEBHOOK_EXECUTION` 행에서 다시 확인한다.
+  - `RETRY_SOURCE_DELIVERY_ID`는 원본 실행 전달 식별자다.
+- 즉 재시도는 원본 실행 키와 파생 실행 키가 서로 다르고, 대표 검증 결론은 파생 실행 키 기준으로 닫는다.
 
-## retry 파생 실행 단건 조회 명령
-```bash
-curl -sS \
-  "${BASE_URL}/reviews/rerun/${RETRY_DERIVED_EXECUTION_KEY}" \
-  > "${RETRY_DERIVED_QUERY_FILE}"
-```
+## 출력 파일과 수동 확인 포인트
+| 파일 | 남는 출력 | 사람이 먼저 확인할 것 |
+| --- | --- | --- |
+| `prepare-seed.sh` | `prepare.log` | 포트 충돌, H2 도구 중복, 정리/적용 SQL 실패 여부 |
+| `run-rerun.sh` | `rerun-query-before.json`, `rerun-history.json`, `rerun-action.json`, `rerun-query-after.json`, `app.pid` | 어떤 응답 파일까지 성공했고 어디서 끊겼는지 |
+| `run-retry.sh` | `retry-response.json`, `retry-derived-execution-key.txt`, `retry-derived-query.json`, `app.pid` | 파생 실행 키가 실제로 남았는지, 마지막 응답 파일이 무엇인지 |
+| `collect-evidence.sh` | `rerun-webhook-execution.txt`, `rerun-action-audit.txt`, `retry-webhook-execution.txt`, `retry-agent-execution-log.txt` | 앱 종료 여부, H2 잠금 여부, 어떤 H2 조회 파일까지 남았는지 |
 
-- retry는 응답에서 받은 `RETRY_DERIVED_EXECUTION_KEY`를 곧바로 단건 조회와 H2 실행 근거 확인에 다시 쓴다.
-- `RETRY_DERIVED_QUERY_FILE`은 파생 실행의 query 응답을 남겨 두는 기본 예시다.
+## 종료 코드와 중단 조건
+| 파일 | 중단 상황 | 종료 코드 |
+| --- | --- | --- |
+| `prepare-seed.sh` | 포트 충돌, H2 도구 중복, 정리 SQL 실패, 준비 데이터 적용 SQL 실패 | `10`, `11`, `12`, `13` |
+| `run-rerun.sh` | 앱 기동 실패, 단건 조회 실패, 이력 조회 실패, 관리자 조치 실패, 조치 후 단건 조회 실패 | `20`, `21`, `22`, `23`, `24` |
+| `run-retry.sh` | 앱 기동 실패, 재시도 요청 실패, 파생 실행 키 추출 실패, 파생 단건 조회 실패 | `30`, `31`, `32`, `33` |
+| `collect-evidence.sh` | 앱 종료 미확인, H2 조회 실패, H2 잠금 의심 | `40`, `41`, `42` |
 
-## 앱 종료 예시
-- `bootRun`을 앞 포그라운드 셸에서 띄웠다면 `Ctrl+C`로 종료한다.
-- 앱 종료 뒤에만 `앱 종료 후 확인 전 점검 명령`과 H2 조회 명령을 실행한다.
+- `collect-evidence.sh`가 `42`를 반환하면 바로 코드 문제로 단정하지 않고, H2 잠금 시그니처와 동시 조회 여부를 먼저 본다.
+- 실제 앱/H2 대표 검증은 위 종료 코드가 `0`인 상태와 남은 출력 파일을 함께 보고 닫는다.
 
-## 앱 종료 후 확인 전 점검 명령
-```bash
-pgrep -af "GradleMain|gradle.*bootRun" || true
-pgrep -af "org.h2.tools.RunScript|org.h2.tools.Shell" || true
-```
-
-- 앱 종료 뒤에도 `bootRun` 프로세스가 남아 있지 않은지 먼저 본다.
-- H2 조회 명령줄 도구가 이미 떠 있으면 순차 조회 규칙에 맞지 않으므로 먼저 정리한다.
-- 잠금 오류와 중단 기준은 다음 단계에서 따로 정리한다.
-
-## rerun 실행 근거 H2 조회 명령
-```bash
-java -cp "${H2_JAR}" org.h2.tools.Shell \
-  -url "${JDBC_URL}" \
-  -user sa \
-  -sql "
-SELECT execution_key, status, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed
-FROM WEBHOOK_EXECUTION
-WHERE execution_key = '${RERUN_EXECUTION_KEY}';
-
-SELECT execution_key, action, action_status, note, applied_at
-FROM MANUAL_RERUN_CONTROL_ACTION_AUDIT
-WHERE execution_key = '${RERUN_EXECUTION_KEY}'
-ORDER BY applied_at ASC, id ASC;
-"
-```
-
-- rerun 대표 검증은 준비 데이터 파일이 넣은 고정 실행 키를 그대로 다시 쓴다.
-- 실제 컬럼 구성은 rerun 실행 근거 확인 SQL 파일을 기준으로 읽는다.
-  - `src/test/resources/manual-rerun-response-seed/runtime-evidence/rerun-runtime-evidence-check.example.sql`
-
-## retry 파생 실행 근거 H2 조회 명령
-```bash
-java -cp "${H2_JAR}" org.h2.tools.Shell \
-  -url "${JDBC_URL}" \
-  -user sa \
-  -sql "
-SELECT execution_key, retry_source_execution_key, status, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed
-FROM WEBHOOK_EXECUTION
-WHERE execution_key = '${RETRY_DERIVED_EXECUTION_KEY}';
-
-SELECT execution_key, retry_source_execution_key, step_name, status, error_code, failure_disposition
-FROM AGENT_EXECUTION_LOG
-WHERE execution_key = '${RETRY_DERIVED_EXECUTION_KEY}'
-ORDER BY id ASC;
-"
-```
-
-- retry 대표 검증은 준비 데이터 파일이 넣은 원본 실행 키로 요청을 시작하지만, 앱 종료 뒤 H2 조회는 응답에서 받은 파생 실행 키를 기준으로 이어간다.
-- 실제 컬럼 구성은 retry 실행 근거 확인 SQL 파일을 기준으로 읽는다.
-  - `src/test/resources/manual-rerun-response-seed/runtime-evidence/retry-runtime-evidence-check.example.sql`
-
-## 어떤 응답에서 받은 실행 키를 어디에 다시 쓰는가
-- `rerun-acknowledge`, `rerun-unacknowledge`
-  - 준비 데이터 파일이 넣은 `RERUN_EXECUTION_KEY`를 그대로 쓴다.
-  - 단건 조회, 이력 조회, 관리자 조치 요청, 앱 종료 뒤 H2 조회까지 같은 실행 키로 이어진다.
-- `retry`
-  - 요청 경로에는 `RETRY_SOURCE_EXECUTION_KEY`를 쓴다.
-  - retry 응답에서 받은 실행 키 값을 `RETRY_DERIVED_EXECUTION_KEY`로 저장한다.
-  - 이후 파생 실행 단건 조회와 H2 `WEBHOOK_EXECUTION`, `AGENT_EXECUTION_LOG` 조회는 모두 `RETRY_DERIVED_EXECUTION_KEY`를 기준으로 이어간다.
-- 즉 원본 실행 키는 retry 요청 시작점이고, 파생 실행 키는 요청 직후 확인과 앱 종료 뒤 근거 확인의 기준이다.
-
-## 입력 값과 출력 근거 자료 경계
-- 입력 값
-  - `APP_PORT`, `BASE_URL`, `JDBC_URL`, `H2_JAR`
-  - `RERUN_EXECUTION_KEY`, `RETRY_SOURCE_EXECUTION_KEY`
-  - 준비 데이터 SQL 파일 경로
-  - retry 요청 본문, 관리자 조치 요청 본문
-- 출력 근거 자료
-  - `RETRY_RESPONSE_FILE`
-  - `RERUN_QUERY_BEFORE_FILE`
-  - `RERUN_HISTORY_FILE`
-  - `RERUN_ACTION_FILE`
-  - `RERUN_QUERY_AFTER_FILE`
-  - `RETRY_DERIVED_QUERY_FILE`
-  - H2 조회 결과 텍스트
-- 이 문서에서 말하는 `출력 근거 자료`는 명령 결과를 임시로 담아 두는 파일이나 조회 결과다.
-- 회고 문서에 남기는 최종 근거는 이 출력 근거 자료를 사람이 읽고 정리한 뒤에 만들어진다.
-- 따라서 다음 단계에서 스크립트를 검토하더라도, 회고와 제안 여부 판단까지 자동으로 넘기는 범위는 현재 비대상으로 둔다.
-
-## 초안 파일 후보 구조
-이 절과 바로 아래 `초안 입력 인자와 출력 파일 계약`, `초안이 직접 다룰 명령 묶음` 절이 이번 작업에서 직접 정리하는 범위다.
-
-현재 단계 기준으로는 아래 4개 파일 후보로 나누는 편이 가장 읽기 쉽다.
-
-| 후보 파일 | 역할 | 직접 다루는 범위 | 이 단계에서 하지 않는 것 |
-| --- | --- | --- | --- |
-| `scripts/manual-rerun-response/prepare-seed.sh` | 시작 전 점검과 준비 데이터 정리/적용 | 포트 확인, H2 도구 중복 확인, 정리 SQL 실행과 준비 데이터 적용 SQL 실행 | 응답 값 해석 |
-| `scripts/manual-rerun-response/run-rerun.sh` | rerun 대표 요청 흐름 실행 | 앱 기동, 단건 조회, 이력 조회, 관리자 조치, 조치 후 단건 조회, JSON 저장 | 응답 의미 판단 |
-| `scripts/manual-rerun-response/run-retry.sh` | retry 대표 요청 흐름 실행 | 앱 기동, retry 요청, 파생 실행 키 추출, 파생 단건 조회, JSON 저장 | 파생 실행 의미 판단 |
-| `scripts/manual-rerun-response/collect-evidence.sh` | 앱 종료 뒤 실행 근거 수집 | 앱 종료 확인, H2 조회, 텍스트 결과 저장 | H2 결과 의미 판단 |
-
-- 현재 단계에서는 위 파일을 실제로 추가하지 않는다.
-- 이번 단계 목표는 파일 수를 최종 확정하는 것이 아니라, 다음 단계에서 실제 초안을 만든다면 어디부터 시작할지 후보 구조를 고정하는 것이다.
-
-## 초안 입력 인자와 출력 파일 계약
-초안 파일 후보는 입력 인자와 출력 파일 이름을 지금 문서 기준으로 그대로 이어받는 쪽을 우선 검토한다.
-
-### 공통 입력 인자
-- `APP_PORT`
-- `BASE_URL`
-- `JDBC_URL`
-- `H2_JAR`
-- `OUTPUT_DIR`
-
-### 파일별 입력 인자
-- `prepare-seed.sh`
-  - `SEED_RESET_SQL`
-  - `SEED_APPLY_SQL`
-- `run-rerun.sh`
-  - `RERUN_EXECUTION_KEY`
-  - `RERUN_ACTION_BODY`
-- `run-retry.sh`
-  - `RETRY_SOURCE_EXECUTION_KEY`
-  - `RETRY_REQUEST_BODY`
-- `collect-evidence.sh`
-  - `RERUN_EXECUTION_KEY` 또는 `RETRY_DERIVED_EXECUTION_KEY`
-  - `EVIDENCE_MODE` (`rerun` 또는 `retry`)
-
-### 파일별 출력 파일
-- `prepare-seed.sh`
-  - `prepare.log`
-- `run-rerun.sh`
-  - `rerun-query-before.json`
-  - `rerun-history.json`
-  - `rerun-action.json`
-  - `rerun-query-after.json`
-- `run-retry.sh`
-  - `retry-response.json`
-  - `retry-derived-execution-key.txt`
-  - `retry-derived-query.json`
-- `collect-evidence.sh`
-  - `rerun-webhook-execution.txt`
-  - `rerun-action-audit.txt`
-  - `retry-webhook-execution.txt`
-  - `retry-agent-execution-log.txt`
-
-### 기존 보조 명령 문서와 초안 파일 후보의 책임 분리
-- 현재 가이드는 시나리오 선택, 준비 데이터 파일 선택, 응답 의미 설명, H2 결과 해석, 회고 연결을 담당한다.
-- 초안 파일 후보는 명령 실행과 결과 파일 저장까지만 담당한다.
-- 즉, 파일 후보가 생겨도 이 문서는 계속 `어떤 시나리오에서 무엇을 읽는지`를 설명하는 기준 문서로 남는다.
-
-## 초안이 직접 다룰 명령 묶음
-현재 단계 기준으로는 아래 세 묶음을 스크립트 후보가 직접 다루는 범위로 본다.
-
-### 1. 준비 단계 묶음
-- 시작 전 포트/H2 프로세스 확인
-- 공통 정리 명령 실행
-- 시나리오에 맞는 준비 데이터 적용 명령 실행
-
-### 2. 앱 실행과 대표 요청 묶음
-- 앱 기동
-- rerun 대표 검증 요청 또는 retry 요청 실행
-- retry인 경우 파생 실행 키 추출
-- 필요한 응답 파일 저장
-
-### 3. 종료와 실행 근거 수집 묶음
-- 앱 종료
-- 앱 종료 후 확인 전 점검 명령 실행
-- H2 조회 명령 실행
-
-## 초안이 멈춰야 하는 조건
-현재 단계에서는 실제 스크립트 종료 코드를 구현하지 않는다.
-대신 다음 단계에서 실제 초안을 만들면 어떤 종료 상태 이름과 종료 코드를 먼저 검토해야 하는지 후보를 문서로 고정한다.
-
-## 파일 후보별 실패 종료 흐름
-| 후보 파일 | 멈춰야 하는 상황 | 종료 상태 이름 후보 | 종료 코드 후보 | 남겨야 하는 출력 | 사람이 이어받는 지점 |
-| --- | --- | --- | --- | --- | --- |
-| `prepare-seed.sh` | 포트 충돌, H2 도구 중복 실행, 정리 SQL 실패, 준비 데이터 적용 SQL 실패 | `PREPARE_STOPPED` | `10`, `11`, `12`, `13` | `prepare.log` | 입력한 SQL 파일 경로와 중단 원인을 먼저 확인 |
-| `run-rerun.sh` | 앱 기동 실패, 단건 조회 실패, 이력 조회 실패, 관리자 조치 실패, 조치 후 단건 조회 실패 | `RERUN_STOPPED` | `20`, `21`, `22`, `23`, `24` | `rerun-query-before.json`, `rerun-history.json`, `rerun-action.json`, `rerun-query-after.json` 중 확보된 파일 | 마지막으로 남은 응답 파일과 실패 지점을 비교 |
-| `run-retry.sh` | 앱 기동 실패, retry 요청 실패, 파생 실행 키 미추출, 파생 단건 조회 실패 | `RETRY_STOPPED` | `30`, `31`, `32`, `33` | `retry-response.json`, `retry-derived-execution-key.txt`, `retry-derived-query.json` 중 확보된 파일 | retry 응답과 파생 실행 키 추출 결과를 먼저 확인 |
-| `collect-evidence.sh` | 앱 종료 미확인, H2 조회 실패, H2 잠금 의심 | `EVIDENCE_STOPPED` | `40`, `41`, `42` | `rerun-webhook-execution.txt`, `rerun-action-audit.txt`, `retry-webhook-execution.txt`, `retry-agent-execution-log.txt` 중 확보된 파일 | 앱 종료 여부와 H2 잠금 여부를 먼저 확인 |
-
-- 종료 상태 이름 후보는 실제 구현에 그대로 박는 값이 아니라, 다음 단계에서 종료 흐름을 논의할 때 먼저 비교할 기준 이름이다.
-- 종료 코드 후보도 지금 단계에서는 고정 규칙이 아니라, 파일 후보별로 서로 다른 실패를 구분하기 위해 우선 검토할 값 묶음이다.
-- 따라서 이번 작업은 “어떤 실패를 같은 종료 상태로 묶을지”를 문서로 정리하는 단계이고, 실제 쉘 종료 코드 구현은 다음 단계 비대상이다.
-
-## 계속 수동으로 남길 확인 단계
-- rerun 단건 조회, 이력 조회, 관리자 조치 응답, 조치 후 단건 조회의 의미 비교
-- retry 응답과 파생 실행 단건 조회 응답의 의미 비교
-- `availableActions`, `retrySourceExecutionKey`, `currentActionState` 같은 필드 해석
+## 계속 수동으로 남는 확인 단계
+- 재실행 단건 조회, 조치 응답, 이력 응답, 조치 후 단건 조회와 재시도 응답, 파생 단건 조회의 의미 비교
+- `availableActions`, `failureDisposition`, `currentActionState`, `retrySourceExecutionKey` 같은 필드 해석
 - H2 `WEBHOOK_EXECUTION`, `AGENT_EXECUTION_LOG`, `MANUAL_RERUN_CONTROL_ACTION_AUDIT` 결과 의미 해석
 - H2 잠금 오류인지, 실행 순서 문제인지, 코드 문제인지 구분
-- 회고 작성과 제안 필요 여부 판단
-
-## 초안이 남기고 사람이 이어받는 출력 파일
-### 파일 후보별 인계 지점
-| 후보 파일 | 초안이 남기는 직접 출력 | 사람이 이어받을 때 먼저 볼 것 | 계속 수동으로 남는 판단 |
-| --- | --- | --- | --- |
-| `prepare-seed.sh` | `prepare.log` | 포트 충돌, H2 도구 중복 실행, SQL 실패 여부 | 잘못 고른 준비 데이터인지, 환경 문제인지 판단 |
-| `run-rerun.sh` | `rerun-query-before.json`, `rerun-history.json`, `rerun-action.json`, `rerun-query-after.json` | 어떤 응답 파일까지 성공했고 어디서 끊겼는지 | 응답 의미 비교, 현재 상태 해석, 다음 조치 판단 |
-| `run-retry.sh` | `retry-response.json`, `retry-derived-execution-key.txt`, `retry-derived-query.json` | 파생 실행 키가 실제로 추출됐는지, 마지막 응답 파일이 무엇인지 | retry 응답과 파생 실행 상태 의미 비교 |
-| `collect-evidence.sh` | `rerun-webhook-execution.txt`, `rerun-action-audit.txt`, `retry-webhook-execution.txt`, `retry-agent-execution-log.txt` | 앱 종료 여부, H2 잠금 여부, 어떤 조회 파일까지 확보됐는지 | H2 결과 의미 해석, 응답과 실행 근거 비교, 회고 작성 |
-
-### 사람이 이어받는 시점
-- 응답 파일 또는 H2 조회 결과 텍스트가 하나라도 남은 시점부터 사람의 확인 단계가 시작될 수 있다.
-- 다만 대표 검증 결론을 닫으려면 응답 파일과 H2 조회 결과가 모두 준비된 뒤에 의미 비교를 마쳐야 한다.
-- 즉 초안 후보는 결과 파일을 남기고 멈추는 데 집중하고, 사람이 이어받는 단계는 그 결과를 읽고 뜻을 비교하는 데 집중한다.
-
-## 기존 대표 검증 참고 순서
-이 절은 현재 가이드에 이미 있던 대표 검증 참고 순서를 유지한 부분이다.
-이번 단계에서 직접 닫는 범위는 위 `초안 파일 후보 구조`, `초안 입력 인자와 출력 파일 계약`, `초안이 직접 다룰 명령 묶음`, `초안이 멈춰야 하는 조건`, `계속 수동으로 남길 확인 단계`, `초안이 남기고 사람이 이어받는 출력 파일` 절까지로 본다.
-
-### retry
-1. 시작 전 확인 명령 실행
-2. 공통 정리 명령 실행
-3. retry 원본 실행 준비 명령 실행
-4. 앱 기동
-5. retry 응답 저장과 파생 실행 키 추출 명령 실행
-6. retry 파생 실행 단건 조회 명령 실행
-7. 앱 종료
-8. 앱 종료 후 확인 전 점검 명령 실행
-9. retry 파생 실행 근거 H2 조회 명령 실행
-
-### rerun-acknowledge / rerun-unacknowledge
-1. 시작 전 확인 명령 실행
-2. 공통 정리 명령 실행
-3. 확인 상태 시나리오 준비 명령 실행
-4. 앱 기동
-5. rerun 대표 검증 요청 명령 실행
-6. 앱 종료
-7. 앱 종료 후 확인 전 점검 명령 실행
-8. rerun 실행 근거 H2 조회 명령 실행
-
-## 이 문서에서 아직 하지 않는 것
-- 대표 검증 전체 절차를 한 번에 자동화하는 스크립트
-- 실제 대표 검증에서 얻은 UUID 값을 기준 파일이나 준비 데이터 파일에 바로 반영하는 작업
+- 회고와 제안 필요 여부 판단
 
 ## 현재 단계 판단
-- 현재 단계 기준으로는 실제 스크립트 초안 구현으로 넘어갈 출발점이 충분히 정리됐다.
-- 이유는 초안 파일 후보 구조, 입력/출력 파일, 종료 상태 이름 후보, 종료 코드 후보, 수동 확인 인계 지점이 한 문서에서 함께 읽히기 때문이다.
-- 따라서 다음 단계는 추가 검토를 반복하기보다 실제 스크립트 초안 구현 단계로 넘기는 편이 맞다. 단계 식별자로는 `SPEC-0030 운영용 조회 응답 준비 데이터 반복 검증 스크립트 초안 구현`을 쓴다.
-- 다만 다음 단계에서도 응답 의미 해석, H2 결과 해석, 잠금 오류와 코드 문제 구분, 회고 작성은 계속 수동 판단 단계로 남긴다.
-
-## 다음 단계에서 바로 구현 후보로 가져갈 것
-- `prepare-seed.sh`
-  - 시작 전 점검, 정리 SQL 실행, 준비 데이터 적용 SQL 실행
-- `run-rerun.sh`
-  - rerun 단건 조회, 이력 조회, 관리자 조치 요청, 조치 후 단건 조회, JSON 저장
-- `run-retry.sh`
-  - retry 요청, 파생 실행 키 추출, 파생 단건 조회, JSON 저장
-- `collect-evidence.sh`
-  - 앱 종료 확인, H2 조회, 텍스트 결과 저장
-
-## 다음 단계에서도 계속 수동으로 남길 것
-- 응답 값 의미 비교
-- H2 결과 의미 해석
-- H2 잠금 오류와 코드 문제 구분
-- 대표 검증 결론 작성
-- 회고와 제안 판단
-
-## 다음 단계 구현 시 먼저 확인할 것
-- 입력 인자 이름과 출력 파일 이름을 현재 문서 기준으로 그대로 가져갈지 다시 확인한다.
-- 파일 후보별 종료 상태 이름 후보와 종료 코드 후보를 실제 쉘 종료 코드로 어떻게 옮길지 다시 확인한다.
-- 결과 파일은 남기되, 의미 해석과 회고 작성은 계속 수동 단계로 남기는 경계를 유지한다.
+- 현재 단계 기준으로는 실제 초안 파일 네 개와 실제 앱/H2 대표 검증 흐름이 모두 연결됐다.
+- 즉 명령 실행은 초안 파일로 다시 수행할 수 있고, 사람은 응답 의미 해석과 H2 결과 비교, 회고 작성에 집중하면 된다.
+- 다음 단계는 초안 파일 자체를 더 늘리는 것보다, 이 초안 파일을 더 쉽게 적용하고 유지할 수 있게 정리하는 쪽이 맞다. 후속 단계 식별자는 `SPEC-0031 운영용 조회 응답 준비 데이터 반복 검증 스크립트 적용 검증 정리`를 쓴다.

@@ -152,7 +152,7 @@ if [[ "${EVIDENCE_MODE}" == "rerun" ]]; then
   RERUN_ACTION_FILE="${OUTPUT_DIR}/rerun-action-audit.txt"
 
   log "재실행 실행 근거 조회 시작"
-  if ! run_query "${RERUN_WEBHOOK_FILE}" "SELECT execution_key, status, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed FROM WEBHOOK_EXECUTION WHERE execution_key = '${RERUN_EXECUTION_KEY}';"; then
+  if ! run_query "${RERUN_WEBHOOK_FILE}" "SELECT execution_key, delivery_id, status, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed FROM WEBHOOK_EXECUTION WHERE execution_key = '${RERUN_EXECUTION_KEY}';"; then
     handle_query_failure "${RERUN_WEBHOOK_FILE}"
   fi
 
@@ -170,7 +170,7 @@ if [[ "${EVIDENCE_MODE}" == "retry" ]]; then
   RETRY_AGENT_FILE="${OUTPUT_DIR}/retry-agent-execution-log.txt"
 
   log "재시도 실행 근거 조회 시작"
-  if ! run_query "${RETRY_WEBHOOK_FILE}" "SELECT execution_key, retry_source_execution_key, status, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed FROM WEBHOOK_EXECUTION WHERE execution_key = '${RETRY_DERIVED_EXECUTION_KEY}';"; then
+  if ! run_query "${RETRY_WEBHOOK_FILE}" "SELECT execution_key, delivery_id, retry_source_execution_key, status, error_code, failure_disposition, execution_start_type, execution_control_mode, write_performed FROM WEBHOOK_EXECUTION WHERE execution_key = '${RETRY_DERIVED_EXECUTION_KEY}';"; then
     handle_query_failure "${RETRY_WEBHOOK_FILE}"
   fi
 
