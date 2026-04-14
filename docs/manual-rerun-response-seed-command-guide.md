@@ -26,6 +26,23 @@
 - 위 근거와 테스트가 그대로 유효하면, 다음 단계는 새 안전망을 만드는 대신 현재 가이드 정리부터 시작해도 된다.
 
 
+## 변경 시 함께 갱신해야 하는 문서와 기준 파일
+| 변경한 대상 | 같이 갱신할 문서 또는 기준 파일 | 같이 확인할 자동 검증 | 이유 |
+| --- | --- | --- | --- |
+| `prepare-seed.sh` 또는 준비 데이터 적용 방식 | 이 문서의 `빠른 적용 순서`, [manual-rerun-response-seed-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-seed-guide.md), 준비 데이터 예시 SQL | [ManualRerunSeedCommandScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunSeedCommandScriptTest.java), [ManualRerunResponseSeedSqlTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunResponseSeedSqlTest.java), [ManualRerunResponseSeedEvidenceSqlTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunResponseSeedEvidenceSqlTest.java) | 준비 데이터 적용 순서와 SQL 예시, H2 조회 근거가 함께 어긋나기 쉽다. |
+| `run-rerun.sh`, `run-retry.sh`, `collect-evidence.sh` | 이 문서의 `빠른 적용 순서`, `대표 검증 결과를 읽는 순서`, [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md), 마지막 대표 검증 회고 | [ManualRerunRunFlowScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunRunFlowScriptTest.java) | 요청 순서, 출력 파일, H2 근거 수집 방식이 같이 변하므로 한 파일만 바꾸면 의미가 끊긴다. |
+| 응답 해석 기준 또는 실행 키 읽는 위치 | [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md), 이 문서의 `대표 검증 결과를 읽는 순서`, 마지막 대표 검증 회고 | controller/service 관련 응답 테스트, [ManualRerunRunFlowScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunRunFlowScriptTest.java) | 응답 의미가 바뀌면 보조 명령 가이드의 읽는 순서와 마지막 판단 근거도 함께 달라진다. |
+
+## 문서와 기준 파일 역할 경계
+| 파일 | 먼저 바꿔야 하는 경우 | 이 파일만 바꾸면 안 되는 경우 |
+| --- | --- | --- |
+| [manual-rerun-response-seed-command-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-seed-command-guide.md) | 적용 순서, 입력·출력 흐름, 출력 파일 읽는 순서가 달라질 때 | 스크립트나 출력 파일 이름이 바뀌었는데 회고, 응답 가이드, 자동 검증은 그대로 둘 때 |
+| [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md) | 응답 필드 의미, 현재 상태 해석, 조치 응답 읽는 기준이 달라질 때 | 보조 명령 가이드의 읽는 순서와 대표 검증 회고를 그대로 둘 때 |
+| `src/test/java/com/agilerunner/client/agentruntime/` 아래 스크립트 관련 테스트 | 스크립트 입력, 출력 파일 이름, 실행 키 추출, H2 조회 방식이 달라질 때 | 문서만 바꾸고 자동 검증 기대값은 그대로 둘 때 |
+| 마지막 대표 검증 회고와 단계 요약 | 대표 검증 결과 파일 경로, 대표 실행 키, 전달 식별자, 마지막 판단 문장이 달라질 때 | 새 기준을 문서에만 적고 마지막 실제 근거 문서는 갱신하지 않을 때 |
+
+여기까지가 이번 작업에서 직접 정리한 범위다. 아래의 `빠른 적용 순서`, `대표 검증 결과를 읽는 순서`, `파일별 역할과 마지막 판단 기준`은 기존 참고 기준으로 유지하고, 출력 파일 이름 변경과 어긋남 감지 기준은 다음 작업에서 따로 닫는다.
+
 ## 빠른 적용 순서
 ### 재실행 대표 검증
 1. 공통 환경 변수와 출력 디렉토리를 먼저 잡는다.
