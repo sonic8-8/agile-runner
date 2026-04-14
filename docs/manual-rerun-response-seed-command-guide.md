@@ -13,11 +13,11 @@
 ## 같이 읽는 문서
 - 시나리오별 준비 데이터 파일 선택 기준과 파일 머리말은 [manual-rerun-response-seed-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-seed-guide.md) 에서 먼저 본다.
 - 응답 의미와 대표 검증 결과를 어떻게 읽는지는 [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md) 에서 본다.
-- 실제 초안 파일 기준 대표 검증이 어떻게 맞았는지는 [TASK-0004-script-draft-representative-verified.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0030/TASK-0004-script-draft-representative-verified.md) 를 참고한다.
+- 실제 초안 파일 기준 대표 검증이 어떻게 맞았는지는 [TASK-0004-script-application-representative-verified.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0031/TASK-0004-script-application-representative-verified.md) 를 참고한다.
 
 ## 시작 전에 먼저 확인할 근거
-- 직전 단계 전체 판단은 [SPEC-0030-summary.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0030/SPEC-0030-summary.md) 에서 먼저 본다.
-- 마지막 대표 검증에서 어떤 실행 키, 전달 식별자, 출력 파일을 함께 남겼는지는 [TASK-0004-script-draft-representative-verified.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0030/TASK-0004-script-draft-representative-verified.md) 에서 먼저 본다.
+- 직전 단계 전체 판단은 [SPEC-0031-summary.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0031/SPEC-0031-summary.md) 에서 먼저 본다.
+- 마지막 대표 검증에서 어떤 실행 키, 전달 식별자, 출력 파일을 함께 남겼는지는 [TASK-0004-script-application-representative-verified.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0031/TASK-0004-script-application-representative-verified.md) 에서 먼저 본다.
 - 현재 자동 검증 안전망은 아래 테스트가 맡는다.
   - [ManualRerunRunFlowScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunRunFlowScriptTest.java)
   - [ManualRerunSeedCommandScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunSeedCommandScriptTest.java)
@@ -68,7 +68,7 @@
 | 2 | `rerun-query-before.json` | 조치 전 현재 상태와 `availableActions` | [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md)의 `query` 설명 | 조치 전 현재 상태가 기대와 맞는지 |
 | 3 | `rerun-history.json`, `rerun-action.json`, `rerun-query-after.json` | 조치 직후 상태가 어떻게 바뀌었는지 | 응답 가이드의 `history`, `action`, `query` 설명 | 조치 후 응답 의미가 서로 맞는지 |
 | 4 | `rerun-webhook-execution.txt`, `rerun-action-audit.txt` | H2 실행 근거와 audit row가 남았는지 | 위 응답 파일과 같은 실행 키 | 응답과 H2가 같은 실행을 설명하는지 |
-| 5 | `TASK-0004-script-draft-representative-verified.md` | 실제 대표 검증에서 어떤 결론으로 닫았는지 | 위 출력 파일 전부 | 최종 사람 판단 근거 |
+| 5 | `TASK-0004-script-application-representative-verified.md` | 실제 대표 검증에서 어떤 결론으로 닫았는지 | 위 출력 파일 전부 | 최종 사람 판단 근거 |
 
 ### 재시도 대표 검증
 | 순서 | 먼저 여는 파일 | 여기서 먼저 확인하는 것 | 같이 대조할 문서나 파일 | 마지막에 닫는 판단 |
@@ -77,7 +77,7 @@
 | 2 | `retry-response.json` | 원본 실행 기준 재시도 응답과 파생 실행 키 | 응답 가이드의 `retry` 설명 | 어떤 파생 실행을 이후 단계에서 계속 볼지 |
 | 3 | `retry-derived-execution-key.txt`, `retry-derived-query.json` | 파생 실행 키와 파생 실행 현재 상태 | 응답 가이드의 `query` 설명 | 파생 실행 응답 의미가 기대와 맞는지 |
 | 4 | `retry-webhook-execution.txt`, `retry-agent-execution-log.txt` | H2에서 파생 실행과 원본 실행 연결이 보이는지 | `retry-response.json`, `retrySourceExecutionKey` | 원본 실행과 파생 실행 연결이 맞는지 |
-| 5 | `TASK-0004-script-draft-representative-verified.md` | 실제 대표 검증에서 어떤 결론으로 닫았는지 | 위 출력 파일 전부 | 최종 사람 판단 근거 |
+| 5 | `TASK-0004-script-application-representative-verified.md` | 실제 대표 검증에서 어떤 결론으로 닫았는지 | 위 출력 파일 전부 | 최종 사람 판단 근거 |
 
 ## 파일별 역할과 마지막 판단 기준
 | 파일 또는 문서 | 기본 역할 | 이 파일만으로 끝내면 안 되는 이유 | 마지막 판단에서 맡는 위치 |
@@ -85,7 +85,7 @@
 | `summary.json` | 대표 검증 결과를 기계적으로 다시 읽기 위한 요약 | 내부 키와 파생 값이 많아 사람 설명 없이 읽기 어렵다 | 빠른 인덱스 |
 | [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md) | 각 응답이 어떤 질문에 답하는지 설명 | 실제 대표 검증에서 어떤 파일이 남았는지 직접 보여 주지는 않는다 | 응답 의미 해석 기준 |
 | `prepare.log`, `rerun-*.json`, `retry-*.json`, `*-webhook-execution.txt`, `*-action-audit.txt`, `*-agent-execution-log.txt` | 대표 검증에서 실제로 남은 원시 근거 | 파일이 흩어져 있어 읽는 순서 없이 보면 해석 비용이 높다 | 실행별 직접 근거 |
-| `TASK-0004-script-draft-representative-verified.md` | 대표 검증에서 어떤 실행 키, 전달 식별자, 결론으로 닫았는지 설명 | 새 대표 검증을 다시 돌리면 값은 달라질 수 있다 | 최종 사람 판단 근거 |
+| `TASK-0004-script-application-representative-verified.md` | 대표 검증에서 어떤 실행 키, 전달 식별자, 결론으로 닫았는지 설명 | 새 대표 검증을 다시 돌리면 값은 달라질 수 있다 | 최종 사람 판단 근거 |
 
 ## 공통 전제
 - 앱은 `local` 프로필 기준으로 띄운다.
@@ -115,7 +115,7 @@ export APP_PORT=18080
 export BASE_URL="http://localhost:${APP_PORT}"
 export H2_DB_PATH="$HOME/.agile-runner/agent-runtime/agile-runner"
 export JDBC_URL="jdbc:h2:file:${H2_DB_PATH};MODE=PostgreSQL;DB_CLOSE_ON_EXIT=FALSE"
-export H2_JAR="$(find \"$HOME/.gradle/caches/modules-2/files-2.1/com.h2database/h2\" -name 'h2-*.jar' | sort | tail -n 1)"
+export H2_JAR="$(find "$HOME/.gradle/caches/modules-2/files-2.1/com.h2database/h2" -name 'h2-*.jar' | sort | tail -n 1)"
 export VERIFY_TS="$(date +%Y%m%d-%H%M%S)"
 export OUTPUT_ROOT="$PWD/.tmp/manual-rerun-response-${VERIFY_TS}"
 export RERUN_DIR="${OUTPUT_ROOT}/rerun"
@@ -292,4 +292,4 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 
 ## 참고: 마지막 확인 포인트
 - 이 문서 상단만 보면 적용 순서와 입력/출력 흐름을 다시 잡을 수 있다.
-- 응답 의미 비교와 H2 결과 해석이 필요하면 아래 참고 섹션과 [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md), [TASK-0004-script-draft-representative-verified.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0030/TASK-0004-script-draft-representative-verified.md) 를 함께 본다.
+- 응답 의미 비교와 H2 결과 해석이 필요하면 아래 참고 섹션과 [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md), [TASK-0004-script-application-representative-verified.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0031/TASK-0004-script-application-representative-verified.md) 를 함께 본다.
