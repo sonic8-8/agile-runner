@@ -349,7 +349,32 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 | `run-retry.sh` | 앱 기동 실패, 재시도 요청 실패, 파생 실행 키 추출 실패, 파생 단건 조회 실패 | `30`, `31`, `32`, `33` |
 | `collect-evidence.sh` | 앱 종료 미확인, H2 조회 실패, H2 잠금 의심 | `40`, `41`, `42` |
 
-- `collect-evidence.sh`가 `42`를 반환하면 바로 코드 문제로 단정하지 않고, H2 잠금 시그니처와 동시 조회 여부를 먼저 본다.
+## 종료 코드별 다음 확인 대상
+| 종료 코드 | 먼저 볼 파일 또는 대상 | 여기서 먼저 확인할 것 | 다음으로 이어서 볼 것 |
+| --- | --- | --- | --- |
+| `10` | `prepare.log` | 시작 전 포트 충돌 문구가 남았는지 | 현재 포트를 잡고 있는 프로세스 정리 뒤 `prepare-seed.sh` 재실행 |
+| `11` | `prepare.log` | H2 도구 중복 실행 문구가 남았는지 | 다른 H2 Shell 또는 CLI 종료 여부 확인 뒤 `prepare-seed.sh` 재실행 |
+| `12` | `prepare.log`, `SEED_RESET_SQL` | 정리 SQL 어느 구문에서 실패했는지 | 정리 SQL 구문과 현재 H2 상태 점검 |
+| `13` | `prepare.log`, `SEED_APPLY_SQL` | 준비 데이터 적용 SQL 어느 구문에서 실패했는지 | enum 값, 스키마, 삽입 대상 row 점검 |
+| `20` | `app.pid` 생성 여부 | 앱 기동 자체가 실패했는지 | 앱 기동 로그와 포트 점검 |
+| `21` | `rerun-query-before.json` 생성 여부 | 조치 전 단건 조회에서 멈췄는지 | `BASE_URL`, `RERUN_EXECUTION_KEY`, 단건 조회 응답 확인 |
+| `22` | `rerun-history.json` 생성 여부 | 이력 조회에서 멈췄는지 | `executionKey`와 history 응답 확인 |
+| `23` | `rerun-action.json` 생성 여부 | 관리자 조치 요청에서 멈췄는지 | action 요청 본문과 응답 확인 |
+| `24` | `rerun-query-after.json` 생성 여부 | 조치 후 단건 조회에서 멈췄는지 | 조치 직후 상태와 `availableActions` 확인 |
+| `30` | `app.pid` 생성 여부 | 앱 기동 자체가 실패했는지 | 앱 기동 로그와 포트 점검 |
+| `31` | `retry-response.json` 생성 여부 | 재시도 요청에서 멈췄는지 | 요청 본문과 retry 응답 확인 |
+| `32` | `retry-derived-execution-key.txt` 생성 여부 | 파생 실행 키 추출에서 멈췄는지 | retry 응답 본문에 `executionKey`가 있는지 확인 |
+| `33` | `retry-derived-query.json` 생성 여부 | 파생 단건 조회에서 멈췄는지 | 파생 실행 키와 query 응답 확인 |
+| `40` | `app.pid` | 앱 종료가 확인되지 않았는지 | 앱 종료 확인 뒤 `collect-evidence.sh` 재실행 |
+| `41` | H2 조회 대상 파일, H2 CLI 출력 | H2 조회 단계에서 멈췄는지 | JDBC 경로, SQL 구문, 조회 대상 execution key 확인 |
+| `42` | H2 CLI 출력 | H2 조회 단계에서 잠금 의심 종료 코드가 났는지 | 세부 분리 기준은 뒤 단계에서 확인 |
+
+## 멈춤 해석 순서
+1. 먼저 종료 코드를 확인한다.
+2. 그다음 위 표에서 같은 종료 코드의 `먼저 볼 파일 또는 대상`을 연다.
+3. 그 파일이 없으면, 바로 이전 단계 출력 파일이 마지막으로 어디까지 남았는지 본다.
+4. 출력 파일은 남았는데 내용이 비어 있거나 중간에서 끊기면, 해당 요청 입력값과 응답 본문을 먼저 다시 본다.
+
 - 실제 앱/H2 대표 검증은 위 종료 코드가 `0`인 상태와 남은 출력 파일을 함께 보고 닫는다.
 
 ## 계속 수동으로 남는 확인 단계
