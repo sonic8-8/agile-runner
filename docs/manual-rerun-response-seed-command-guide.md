@@ -377,6 +377,26 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 
 - 실제 앱/H2 대표 검증은 위 종료 코드가 `0`인 상태와 남은 출력 파일을 함께 보고 닫는다.
 
+## 출력 파일 누락 시 첫 점검 순서
+| 누락된 출력 파일 | 먼저 볼 스크립트와 로그 | 여기서 먼저 확인할 것 | 같이 볼 테스트와 문서 |
+| --- | --- | --- | --- |
+| `prepare.log` | `prepare-seed.sh`, `prepare.log` | 스크립트가 아예 시작되지 않았는지, 정리/적용 단계 문구가 남았는지 | [ManualRerunSeedCommandScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunSeedCommandScriptTest.java), 이 문서의 `빠른 적용 순서` |
+| `rerun-query-before.json` | `run-rerun.sh`, `run-rerun.log` | 앱 기동 직후 단건 조회 단계에서 멈췄는지 | [ManualRerunRunFlowScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunRunFlowScriptTest.java), `종료 코드별 다음 확인 대상`의 `20`, `21` |
+| `rerun-history.json` | `run-rerun.sh`, `run-rerun.log` | 조치 전 단건 조회까지는 끝났고 이력 조회에서 멈췄는지 | [ManualRerunRunFlowScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunRunFlowScriptTest.java), `종료 코드별 다음 확인 대상`의 `22` |
+| `rerun-action.json` | `run-rerun.sh`, `run-rerun.log` | 이력 조회까지는 끝났고 관리자 조치 요청에서 멈췄는지 | [ManualRerunRunFlowScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunRunFlowScriptTest.java), `종료 코드별 다음 확인 대상`의 `23` |
+| `rerun-query-after.json` | `run-rerun.sh`, `run-rerun.log` | 관리자 조치까지는 끝났고 조치 후 단건 조회에서 멈췄는지 | [ManualRerunRunFlowScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunRunFlowScriptTest.java), `종료 코드별 다음 확인 대상`의 `24` |
+| `retry-response.json` | `run-retry.sh`, `run-retry.log` | 앱 기동 직후 재시도 요청 단계에서 멈췄는지 | [ManualRerunRunFlowScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunRunFlowScriptTest.java), `종료 코드별 다음 확인 대상`의 `30`, `31` |
+| `retry-derived-execution-key.txt` | `run-retry.sh`, `run-retry.log`, `retry-response.json` | 재시도 응답은 왔지만 파생 실행 키 추출에서 멈췄는지 | [ManualRerunRunFlowScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunRunFlowScriptTest.java), `종료 코드별 다음 확인 대상`의 `32` |
+| `retry-derived-query.json` | `run-retry.sh`, `run-retry.log`, `retry-derived-execution-key.txt` | 파생 실행 키까지는 남았고 파생 단건 조회에서 멈췄는지 | [ManualRerunRunFlowScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunRunFlowScriptTest.java), `종료 코드별 다음 확인 대상`의 `33` |
+| `rerun-webhook-execution.txt`, `rerun-action-audit.txt`, `retry-webhook-execution.txt`, `retry-agent-execution-log.txt` | `collect-evidence.sh`, `collect-evidence.log` | 앱 종료 확인 뒤 실행 근거 조회 단계에서 멈췄는지 | [ManualRerunRunFlowScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunRunFlowScriptTest.java), `종료 코드별 다음 확인 대상`의 `40`, `41`, `42` |
+
+## 출력 파일 누락 시 다시 보는 순서
+1. 누락된 파일 이름이 어느 스크립트 구간에 속하는지 위 표에서 먼저 찾는다.
+2. 그 파일을 만드는 스크립트의 로그를 먼저 열어 마지막으로 남은 단계 문구를 확인한다.
+3. 같은 파일을 직접 기대하는 자동 검증 테스트가 무엇인지 함께 본다.
+4. 같은 종료 코드 표에서 연결된 다음 확인 대상을 다시 따라간다.
+5. 이 단계에서는 누락된 출력 파일이 어디서 끊겼는지까지만 좁히고, H2 잠금과 코드 오류를 어떻게 분리할지는 뒤 단계에서 따로 본다.
+
 ## 계속 수동으로 남는 확인 단계
 - 재실행 단건 조회, 조치 응답, 이력 응답, 조치 후 단건 조회와 재시도 응답, 파생 단건 조회의 의미 비교
 - `availableActions`, `failureDisposition`, `currentActionState`, `retrySourceExecutionKey` 같은 필드 해석

@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0033",
-    "task_id": "TASK-0002",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0033/TASK-0002-script-stop-code-interpretation.md",
+    "task_id": "TASK-0003",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0033/TASK-0003-output-missing-check-order.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0032/SPEC-0032-summary.md"
   },
   "proposals": [
