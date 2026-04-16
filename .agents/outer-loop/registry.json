@@ -1,9 +1,9 @@
 {
   "version": 1,
   "latest": {
-    "spec_id": "SPEC-0032",
-    "task_id": "TASK-0004",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0032/TASK-0004-script-maintenance-checklist-closeout.md",
+    "spec_id": "SPEC-0033",
+    "task_id": "TASK-0001",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0033/TASK-0001-script-error-safety-net.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0032/SPEC-0032-summary.md"
   },
   "proposals": [
