@@ -365,9 +365,9 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 | `31` | `retry-response.json` 생성 여부 | 재시도 요청에서 멈췄는지 | 요청 본문과 retry 응답 확인 |
 | `32` | `retry-derived-execution-key.txt` 생성 여부 | 파생 실행 키 추출에서 멈췄는지 | retry 응답 본문에 `executionKey`가 있는지 확인 |
 | `33` | `retry-derived-query.json` 생성 여부 | 파생 단건 조회에서 멈췄는지 | 파생 실행 키와 query 응답 확인 |
-| `40` | `app.pid` | 앱 종료가 확인되지 않았는지 | 앱 종료 확인 뒤 `collect-evidence.sh` 재실행 |
-| `41` | H2 조회 대상 파일, H2 CLI 출력 | H2 조회 단계에서 멈췄는지 | JDBC 경로, SQL 구문, 조회 대상 execution key 확인 |
-| `42` | H2 CLI 출력 | H2 조회 단계에서 잠금 의심 종료 코드가 났는지 | 세부 분리 기준은 뒤 단계에서 확인 |
+| `40` | `app.pid`, `collect-evidence.log` | 앱 종료가 확인되지 않았는지 | 앱 프로세스 종료 여부를 먼저 정리한 뒤 `collect-evidence.sh` 재실행 |
+| `41` | H2 조회 대상 파일, `collect-evidence.log`, H2 CLI 출력 | H2 조회 단계에서 잠금 시그니처 없이 멈췄는지 | JDBC 경로, SQL 구문, 조회 대상 execution key 확인 |
+| `42` | H2 CLI 출력, `collect-evidence.log` | H2 잠금 시그니처와 잠금 의심 종료 코드가 함께 남았는지 | 다른 H2 조회 프로세스와 앱 프로세스 종료 여부 확인 |
 
 ## 멈춤 해석 순서
 1. 먼저 종료 코드를 확인한다.
@@ -396,6 +396,25 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 3. 같은 파일을 직접 기대하는 자동 검증 테스트가 무엇인지 함께 본다.
 4. 같은 종료 코드 표에서 연결된 다음 확인 대상을 다시 따라간다.
 5. 이 단계에서는 누락된 출력 파일이 어디서 끊겼는지까지만 좁히고, H2 잠금과 코드 오류를 어떻게 분리할지는 뒤 단계에서 따로 본다.
+
+## H2 잠금과 코드 오류를 나눠 보는 순서
+| 상황 | 먼저 확인할 것 | 코드 오류로 바로 보지 않는 이유 | 다음 확인 |
+| --- | --- | --- | --- |
+| 종료 코드 `40` | `app.pid`, `collect-evidence.log`, 앱 프로세스 종료 여부 | 아직 앱이 살아 있으면 H2 조회 실패와 잠금 판단이 전부 뒤로 밀린다 | 앱 종료를 먼저 확인한 뒤 `collect-evidence.sh`를 다시 실행 |
+| 종료 코드 `41` | `collect-evidence.log`, 조회 SQL, 조회 대상 execution key | SQL 구문, JDBC 경로, execution key 오입력만으로도 같은 종료 코드가 날 수 있다 | 조회 대상 key와 SQL 구문을 먼저 다시 확인 |
+| 종료 코드 `42` | `collect-evidence.log`, H2 Shell 또는 CLI 동시 실행 여부, 앱 프로세스 종료 여부 | 잠금 시그니처가 보이면 코드 오류보다 파일 잠금 가능성을 먼저 봐야 한다 | 다른 H2 조회 프로세스와 앱 프로세스 종료 여부를 먼저 정리 |
+
+## H2 조회 단계 마지막 확인 질문
+- 앱이 완전히 종료된 뒤에 H2 조회를 시작했는가.
+- 같은 H2 file을 여는 다른 Shell 또는 CLI가 동시에 떠 있지 않은가.
+- `collect-evidence.log`에 잠금 시그니처가 남았는가.
+- 조회 대상 execution key와 SQL 구문이 현재 representative 값과 맞는가.
+- 위 네 항목을 먼저 확인하기 전에는 코드 오류로 단정하지 않았는가.
+
+## 이 단계 마감 기준
+- 종료 코드 `40`, `41`, `42`를 만났을 때 무엇을 먼저 확인해야 하는지 문서만으로 다시 따라갈 수 있어야 한다.
+- 앱 종료 여부, 동시 H2 조회 여부, 잠금 시그니처, SQL 또는 execution key 확인 순서가 한 문서 안에 같이 있어야 한다.
+- 출력 파일 누락 점검 순서와 H2 잠금 분리 기준이 서로 섞이지 않고, 앞 단계와 이번 단계 경계가 유지돼야 한다.
 
 ## 계속 수동으로 남는 확인 단계
 - 재실행 단건 조회, 조치 응답, 이력 응답, 조치 후 단건 조회와 재시도 응답, 파생 단건 조회의 의미 비교
