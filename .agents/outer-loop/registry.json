@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0034",
-    "task_id": "TASK-0001",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0034/TASK-0001-failure-example-safety-net.md",
+    "task_id": "TASK-0002",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0034/TASK-0002-stop-code-failure-examples.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0033/SPEC-0033-summary.md"
   },
   "proposals": [

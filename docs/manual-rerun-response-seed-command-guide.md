@@ -10,6 +10,11 @@
 - 재시도 응답에서 얻은 파생 실행 키를 이후 조회와 H2 확인에 어디까지 다시 써야 하는지 헷갈릴 때
 - 스크립트가 멈춘 뒤 어디까지는 파일이 남고, 어디서부터 사람이 의미를 직접 판단해야 하는지 다시 확인하고 싶을 때
 
+## 실패 로그를 바로 비교할 때 먼저 갈 곳
+- 종료 코드와 멈춤 예시는 [종료 코드와 멈춤 실패 사례 예시](#종료-코드와-멈춤-실패-사례-예시) 부터 본다.
+- 출력 파일이 비거나 안 남는 경우는 [출력 파일 누락 시 첫 점검 순서](#출력-파일-누락-시-첫-점검-순서) 로 바로 간다.
+- H2 조회 실패가 보이면 [H2 잠금과 코드 오류를 나눠 보는 순서](#h2-잠금과-코드-오류를-나눠-보는-순서) 를 바로 본다.
+
 ## 같이 읽는 문서
 - 시나리오별 준비 데이터 파일 선택 기준과 파일 머리말은 [manual-rerun-response-seed-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-seed-guide.md) 에서 먼저 본다.
 - 응답 의미와 대표 검증 결과를 어떻게 읽는지는 [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md) 에서 본다.
@@ -350,6 +355,8 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 | `collect-evidence.sh` | 앱 종료 미확인, H2 조회 실패, H2 잠금 의심 | `40`, `41`, `42` |
 
 ## 종료 코드별 다음 확인 대상
+- 이 표는 전체 종료 코드 인덱스다. 아래 실패 사례 예시는 `10`부터 `33`까지를 먼저 다루고, `40`부터 `42`는 아래 `H2 잠금과 코드 오류를 나눠 보는 순서`에서 따로 본다.
+
 | 종료 코드 | 먼저 볼 파일 또는 대상 | 여기서 먼저 확인할 것 | 다음으로 이어서 볼 것 |
 | --- | --- | --- | --- |
 | `10` | `prepare.log` | 시작 전 포트 충돌 문구가 남았는지 | 현재 포트를 잡고 있는 프로세스 정리 뒤 `prepare-seed.sh` 재실행 |
@@ -369,11 +376,42 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 | `41` | H2 조회 대상 파일, `collect-evidence.log`, H2 CLI 출력 | H2 조회 단계에서 잠금 시그니처 없이 멈췄는지 | JDBC 경로, SQL 구문, 조회 대상 execution key 확인 |
 | `42` | H2 CLI 출력, `collect-evidence.log` | H2 잠금 시그니처와 잠금 의심 종료 코드가 함께 남았는지 | 다른 H2 조회 프로세스와 앱 프로세스 종료 여부 확인 |
 
+## 종료 코드와 멈춤 실패 사례 예시
+### 준비 데이터 적용 단계 예시
+| 종료 코드 | 실제로 먼저 보이는 문구 예시 | 같이 보는 출력 파일과 힌트 | 이 예시를 보면 이렇게 읽는다 |
+| --- | --- | --- | --- |
+| `10` | `시작 전 포트 충돌` | `prepare.log`는 있고, 정리 SQL이나 적용 SQL 성공 문구는 없다 | 앱 기동 전에 포트 선점 문제로 바로 멈춘 경우 |
+| `11` | `H2 명령줄 도구 중복 실행` | `prepare.log`는 있고, H2 Shell 중복 확인 뒤 바로 멈춘다 | 정리 SQL로 들어가기 전에 다른 H2 CLI가 먼저 잡힌 경우 |
+| `12` | `정리 SQL 실행 실패` | `prepare.log`는 있고, 적용 SQL 완료 문구는 없다 | reset SQL 구문이나 현재 H2 상태 때문에 정리 단계에서 멈춘 경우 |
+| `13` | `준비 데이터 적용 SQL 실행 실패` | `prepare.log`는 있고, 정리 단계는 지났지만 적용 완료 문구는 없다 | apply SQL 단계에서 enum 값, 스키마, insert 대상 row 때문에 멈춘 경우 |
+
+### 재실행 흐름 예시
+| 종료 코드 | 실제로 먼저 보이는 문구 예시 | 같이 보는 출력 파일과 힌트 | 이 예시를 보면 이렇게 읽는다 |
+| --- | --- | --- | --- |
+| `20` | `앱 기동 시간 안에 포트 확인 실패` | `run-rerun.log`는 있고 `rerun-query-before.json`은 남지 않는다 | 앱이 떠야 시작할 단건 조회까지 못 간 경우 |
+| `21` | `재실행 단건 조회 실패` | `run-rerun.log` 실패 문구를 먼저 보고, 다음 단계 파일인 `rerun-history.json`이 없는지 같이 본다 | 조치 전 현재 상태 조회에서 바로 멈춘 경우 |
+| `22` | `재실행 이력 조회 실패` | `rerun-query-before.json`은 있고, 다음 단계 파일인 `rerun-action.json`은 없다 | 단건 조회는 성공했지만 history 조회에서 멈춘 경우 |
+| `23` | `재실행 관리자 조치 실패` | `run-rerun.log` 실패 문구와 함께 `rerun-query-after.json`이 없는지 같이 본다 | 이력은 읽었지만 action 요청이 실패한 경우 |
+| `24` | `재실행 조치 후 단건 조회 실패` | `run-rerun.log` 실패 문구를 먼저 보고, 조치 후 조회 응답 파일은 실패 본문이 남았는지 여부까지 같이 본다 | 조치 요청은 통과했지만 조치 후 상태 재조회에서 멈춘 경우 |
+
+### 재시도 흐름 예시
+| 종료 코드 | 실제로 먼저 보이는 문구 예시 | 같이 보는 출력 파일과 힌트 | 이 예시를 보면 이렇게 읽는다 |
+| --- | --- | --- | --- |
+| `30` | `앱 기동 시간 안에 포트 확인 실패` | `run-retry.log`는 있고 `retry-response.json`은 남지 않는다 | retry 요청 자체를 보내기 전에 앱 기동에서 멈춘 경우 |
+| `31` | `재시도 요청 실패` | `run-retry.log` 실패 문구를 먼저 보고, 다음 단계 파일인 `retry-derived-execution-key.txt`가 없는지 같이 본다 | retry API 호출 단계에서 바로 멈춘 경우 |
+| `32` | `재시도 파생 실행 키 추출 실패` | `retry-response.json`은 있고, `retry-derived-execution-key.txt`는 없다 | retry 응답은 왔지만 `executionKey`를 꺼내지 못한 경우 |
+| `33` | `재시도 파생 실행 단건 조회 실패` | `retry-derived-execution-key.txt`는 있고, `run-retry.log`가 단건 조회 실패를 남기는지 같이 본다 | 파생 실행 키까지는 구했지만 파생 실행 단건 조회에서 멈춘 경우 |
+
+- 위 예시는 [ManualRerunSeedCommandScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunSeedCommandScriptTest.java) 와 [ManualRerunRunFlowScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunRunFlowScriptTest.java) 에서 고정한 실제 로그 문구를 그대로 따른다.
+- `40`, `41`, `42`와 H2 조회 실패 구간은 아래 [H2 잠금과 코드 오류를 나눠 보는 순서](#h2-잠금과-코드-오류를-나눠-보는-순서) 에서 이어서 본다.
+- 출력 파일이 아예 비거나 안 남는 경우는 아래 [출력 파일 누락 시 첫 점검 순서](#출력-파일-누락-시-첫-점검-순서) 에서 이어서 본다.
+
 ## 멈춤 해석 순서
 1. 먼저 종료 코드를 확인한다.
-2. 그다음 위 표에서 같은 종료 코드의 `먼저 볼 파일 또는 대상`을 연다.
-3. 그 파일이 없으면, 바로 이전 단계 출력 파일이 마지막으로 어디까지 남았는지 본다.
-4. 출력 파일은 남았는데 내용이 비어 있거나 중간에서 끊기면, 해당 요청 입력값과 응답 본문을 먼저 다시 본다.
+2. 종료 코드가 `10`부터 `33`이면 바로 위 `종료 코드와 멈춤 실패 사례 예시`를 먼저 본다.
+3. 종료 코드가 `40`부터 `42`이면 아래 `H2 잠금과 코드 오류를 나눠 보는 순서`를 먼저 본다.
+4. 필요한 출력 파일이 없으면 아래 `출력 파일 누락 시 첫 점검 순서`로 바로 이동한다.
+5. 출력 파일이 남아 있으면 해당 입력값과 응답 본문을 함께 다시 본다.
 
 - 실제 앱/H2 대표 검증은 위 종료 코드가 `0`인 상태와 남은 출력 파일을 함께 보고 닫는다.
 
