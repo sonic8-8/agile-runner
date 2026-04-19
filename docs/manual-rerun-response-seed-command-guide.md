@@ -435,6 +435,21 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 - 실제 앱/H2 대표 검증은 위 종료 코드가 `0`인 상태와 남은 출력 파일을 함께 보고 닫는다.
 
 ## 출력 파일 누락 시 첫 점검 순서
+### 출력 파일 누락 빠른 참조 카드
+| 누락된 출력 파일 | 먼저 열 로그 | 먼저 던질 질문 |
+| --- | --- | --- |
+| `prepare.log` | `prepare-seed.sh` 실행 출력 | 스크립트가 아예 시작되지 않았는가 |
+| `rerun-query-before.json` | `run-rerun.log` | 앱 기동 직후 단건 조회 전에 멈췄는가 |
+| `rerun-history.json` | `run-rerun.log` | 조치 전 단건 조회 뒤 이력 조회에서 멈췄는가 |
+| `rerun-action.json` | `run-rerun.log` | 이력 조회 뒤 관리자 조치에서 멈췄는가 |
+| `rerun-query-after.json` | `run-rerun.log` | 관리자 조치 뒤 조치 후 단건 조회에서 멈췄는가 |
+| `retry-response.json` | `run-retry.log` | 앱 기동 뒤 재시도 요청 전에 멈췄는가 |
+| `retry-derived-execution-key.txt` | `run-retry.log` | 재시도 요청 뒤 파생 실행 키 추출 전에 멈췄는가 |
+| `retry-derived-query.json` | `run-retry.log`, `retry-derived-execution-key.txt` | 파생 실행 키 추출에서 멈췄는가, 아니면 파생 실행 단건 조회에서 멈췄는가 |
+| `rerun-webhook-execution.txt`, `rerun-action-audit.txt`, `retry-webhook-execution.txt`, `retry-agent-execution-log.txt` | `collect-evidence.log` | 앱 종료 뒤 실행 근거 조회에서 멈췄는가 |
+
+이 카드는 누락된 출력 파일을 먼저 어느 구간 실패로 볼지 좁히는 첫 카드다.
+
 | 누락된 출력 파일 | 먼저 볼 스크립트와 로그 | 여기서 먼저 확인할 것 | 같이 볼 테스트와 문서 |
 | --- | --- | --- | --- |
 | `prepare.log` | `prepare-seed.sh`, `prepare.log` | 스크립트가 아예 시작되지 않았는지, 정리/적용 단계 문구가 남았는지 | [ManualRerunSeedCommandScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunSeedCommandScriptTest.java), 이 문서의 `빠른 적용 순서` |
@@ -473,9 +488,19 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 2. 그 파일을 만드는 스크립트의 로그를 먼저 열어 마지막으로 남은 단계 문구를 확인한다.
 3. 같은 파일을 직접 기대하는 자동 검증 테스트가 무엇인지 함께 본다.
 4. 같은 종료 코드 표에서 연결된 다음 확인 대상을 다시 따라간다.
-5. 이 단계에서는 누락된 출력 파일이 어디서 끊겼는지까지만 좁히고, H2 잠금과 코드 오류를 어떻게 분리할지는 뒤 단계에서 따로 본다.
+5. 이 단계에서는 누락된 출력 파일이 어디서 끊겼는지까지만 좁힌다.
 
 ## H2 잠금과 코드 오류를 나눠 보는 순서
+### H2 조회 실패 빠른 참조 카드
+| 먼저 보이는 상황 | 먼저 보는 파일 | 먼저 던질 질문 |
+| --- | --- | --- |
+| 종료 코드 `40` | `app.pid`, `collect-evidence.log` | 앱이 아직 살아 있어 H2 조회가 밀린 것 아닌가 |
+| 종료 코드 `41` | `collect-evidence.log`, 조회 SQL | 잠금 시그니처 없이 조회 대상이나 SQL 자체가 잘못된 것 아닌가 |
+| 종료 코드 `42` | `collect-evidence.log`, H2 CLI 출력 | 잠금 시그니처가 보여 파일 잠금부터 풀어야 하는 것 아닌가 |
+| H2 출력 파일 자체가 안 남음 | `collect-evidence.log` | 앱 종료 확인 전에 H2 조회 단계까지 못 간 것 아닌가 |
+
+이 카드는 H2 조회 실패를 코드 오류로 볼지 잠금 문제로 볼지 먼저 가르는 첫 카드다.
+
 | 상황 | 먼저 확인할 것 | 코드 오류로 바로 보지 않는 이유 | 다음 확인 |
 | --- | --- | --- | --- |
 | 종료 코드 `40` | `app.pid`, `collect-evidence.log`, 앱 프로세스 종료 여부 | 아직 앱이 살아 있으면 H2 조회 실패와 잠금 판단이 전부 뒤로 밀린다 | 앱 종료를 먼저 확인한 뒤 `collect-evidence.sh`를 다시 실행 |
