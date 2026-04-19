@@ -2,9 +2,9 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0035",
-    "task_id": "TASK-0003",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0035/TASK-0003-output-missing-and-h2-quick-reference.md",
-    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0034/SPEC-0034-summary.md"
+    "task_id": "TASK-0004",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0035/TASK-0004-quick-reference-closeout.md",
+    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0035/SPEC-0035-summary.md"
   },
   "proposals": [
     {

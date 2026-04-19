@@ -483,6 +483,13 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 - 종료 코드와 실제 로그 문구를 먼저 좁힐 때는 [TASK-0002-stop-code-failure-examples.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0034/TASK-0002-stop-code-failure-examples.md) 를 함께 본다.
 - H2 실행 근거 출력 파일이 비거나 안 남는 경우는 [TASK-0004-script-h2-lock-separation-closeout.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0033/TASK-0004-script-h2-lock-separation-closeout.md) 와 [SPEC-0033-summary.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0033/SPEC-0033-summary.md) 를 함께 본다.
 
+## 빠른 참조를 본 뒤 상세 문서로 내려가는 순서
+1. 종료 코드 표로 먼저 좁혔으면 바로 아래 `종료 코드와 멈춤 실패 사례 예시` 표로 내려간다.
+2. 출력 파일 누락 카드로 먼저 좁혔으면 `출력 파일 누락 실패 사례 예시` 표로 내려간다.
+3. H2 조회 실패 카드로 먼저 좁혔으면 `H2 잠금 실패 사례 예시`와 `H2 조회 단계 마지막 확인 질문`으로 내려간다.
+4. 응답 필드 의미나 대표 검증 응답 비교가 필요하면 [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md) 를 함께 연다.
+5. 마지막 대표 검증 근거와 이전 판단이 필요하면 [TASK-0004-script-application-representative-verified.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0031/TASK-0004-script-application-representative-verified.md) 를 함께 본다.
+
 ## 출력 파일 누락 시 다시 보는 순서
 1. 누락된 파일 이름이 어느 스크립트 구간에 속하는지 위 표에서 먼저 찾는다.
 2. 그 파일을 만드는 스크립트의 로그를 먼저 열어 마지막으로 남은 단계 문구를 확인한다.
@@ -521,21 +528,26 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 - 앱이 완전히 종료된 뒤에 H2 조회를 시작했는가.
 - 같은 H2 file을 여는 다른 Shell 또는 CLI가 동시에 떠 있지 않은가.
 - `collect-evidence.log`에 잠금 시그니처가 남았는가.
-- 조회 대상 execution key와 SQL 구문이 현재 representative 값과 맞는가.
+- 조회 대상 execution key와 SQL 구문이 현재 대표 검증 값과 맞는가.
 - 위 네 항목을 먼저 확인하기 전에는 코드 오류로 단정하지 않았는가.
 
-## 이 단계 마감 기준
-- 종료 코드 `40`, `41`, `42`를 만났을 때 무엇을 먼저 확인해야 하는지 문서만으로 다시 따라갈 수 있어야 한다.
-- 앱 종료 여부, 동시 H2 조회 여부, 잠금 시그니처, SQL 또는 execution key 확인 순서가 한 문서 안에 같이 있어야 한다.
-- 출력 파일 누락 점검 순서와 H2 잠금 분리 기준이 서로 섞이지 않고, 앞 단계와 이번 단계 경계가 유지돼야 한다.
+## 문서만 보고 바로 다시 고를 수 있는 것
+- 종료 코드 `40`, `41`, `42`를 만났을 때 무엇을 먼저 확인해야 하는지 다시 고를 수 있어야 한다.
+- 앱 종료 여부, 동시 H2 조회 여부, 잠금 시그니처, SQL 또는 execution key 확인 순서를 한 문서 안에서 다시 찾을 수 있어야 한다.
+- 출력 파일 누락 점검 순서와 H2 조회 실패 분리 기준이 서로 섞이지 않아야 한다.
 
-## 계속 수동으로 남는 확인 단계
-- 재실행 단건 조회, 조치 응답, 이력 응답, 조치 후 단건 조회와 재시도 응답, 파생 단건 조회의 의미 비교
-- `availableActions`, `failureDisposition`, `currentActionState`, `retrySourceExecutionKey` 같은 필드 해석
-- H2 `WEBHOOK_EXECUTION`, `AGENT_EXECUTION_LOG`, `MANUAL_RERUN_CONTROL_ACTION_AUDIT` 결과 의미 해석
-- H2 잠금 오류인지, 실행 순서 문제인지, 코드 문제인지 구분
-- 회고와 제안 필요 여부 판단
+## 사람이 직접 비교해서 판단하는 것
+- 재실행 단건 조회, 조치 응답, 이력 응답, 조치 후 단건 조회, 재시도 응답, 파생 단건 조회가 같은 실행 키 기준으로 맞는지 비교
+- `availableActions`, `failureDisposition`, `currentActionState`, `retrySourceExecutionKey` 같은 필드가 현재 응답 의미와 맞는지 해석
+- H2 `WEBHOOK_EXECUTION`, `AGENT_EXECUTION_LOG`, `MANUAL_RERUN_CONTROL_ACTION_AUDIT` 결과가 응답과 같은 뜻인지 비교
+- H2 잠금 오류인지, 실행 순서 문제인지, 코드 문제인지 최종 판단
 
 ## 참고: 마지막 확인 포인트
 - 이 문서 상단만 보면 적용 순서와 입력/출력 흐름을 다시 잡을 수 있다.
-- 응답 의미 비교와 H2 결과 해석이 필요하면 아래 참고 섹션과 [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md), [TASK-0004-script-application-representative-verified.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0031/TASK-0004-script-application-representative-verified.md) 를 함께 본다.
+- 응답 의미 비교와 H2 결과 해석이 필요하면 [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md), [TASK-0004-script-application-representative-verified.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0031/TASK-0004-script-application-representative-verified.md) 를 함께 본다.
+
+## 빠른 참조 마감 전 마지막 확인 질문
+- 지금 보고 있는 실패가 종료 코드 표, 출력 파일 누락 카드, H2 조회 실패 카드 중 어디서 먼저 좁혀졌는가.
+- 첫 카드에서 고른 로그 또는 파일을 실제로 다시 열어 같은 실행 키 기준으로 확인했는가.
+- 상세 예시 표나 H2 마지막 확인 질문까지 내려가도 같은 실패 유형으로 읽히는가.
+- 응답 의미가 헷갈리면 `manual-rerun-response-guide.md`, 마지막 대표 검증 비교가 필요하면 `TASK-0004-script-application-representative-verified.md`를 실제로 함께 열었는가.
