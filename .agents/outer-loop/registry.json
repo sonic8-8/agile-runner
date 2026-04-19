@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0035",
-    "task_id": "TASK-0001",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0035/TASK-0001-quick-reference-safety-net.md",
+    "task_id": "TASK-0002",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0035/TASK-0002-stop-code-quick-reference.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0034/SPEC-0034-summary.md"
   },
   "proposals": [
