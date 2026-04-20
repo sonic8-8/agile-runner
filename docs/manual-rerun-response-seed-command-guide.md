@@ -373,7 +373,7 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 | `32` | `retry-derived-execution-key.txt` 생성 여부 | 파생 실행 키 추출에서 멈췄는지 | retry 응답 본문에 `executionKey`가 있는지 확인 |
 | `33` | `retry-derived-query.json` 생성 여부 | 파생 단건 조회에서 멈췄는지 | 파생 실행 키와 query 응답 확인 |
 | `40` | `app.pid`, `collect-evidence.log` | 앱 종료가 확인되지 않았는지 | 앱 프로세스 종료 여부를 먼저 정리한 뒤 `collect-evidence.sh` 재실행 |
-| `41` | H2 조회 대상 파일, `collect-evidence.log`, H2 CLI 출력 | H2 조회 단계에서 잠금 시그니처 없이 멈췄는지 | JDBC 경로, SQL 구문, 조회 대상 execution key 확인 |
+| `41` | H2 조회 대상 파일, `collect-evidence.log`, H2 CLI 출력 | H2 조회 단계에서 잠금 시그니처 없이 멈췄는지 | JDBC 경로, SQL 구문, 조회 대상 실행 키 확인 |
 | `42` | H2 CLI 출력, `collect-evidence.log` | H2 잠금 시그니처와 잠금 의심 종료 코드가 함께 남았는지 | 다른 H2 조회 프로세스와 앱 프로세스 종료 여부 확인 |
 
 ## 종료 코드와 멈춤 실패 사례 예시
@@ -508,16 +508,23 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 
 - `재시도 파생 실행 단건 조회 실패`는 [ManualRerunRunFlowScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunRunFlowScriptTest.java) 가 `run-retry.log` 실패 문구까지는 고정하지만, `retry-derived-query.json` 부재는 직접 단정하지 않는다. 이 경우는 로그 문구와 `retry-derived-execution-key.txt` 존재 여부를 먼저 보고, query 파일 본문은 사람이 직접 다시 확인한다.
 
-### 같이 보는 회고와 단계 요약
-- 종료 코드와 실제 로그 문구를 먼저 좁힐 때는 [TASK-0002-stop-code-failure-examples.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0034/TASK-0002-stop-code-failure-examples.md) 를 함께 본다.
-- H2 실행 근거 출력 파일이 비거나 안 남는 경우는 [TASK-0004-script-h2-lock-separation-closeout.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0033/TASK-0004-script-h2-lock-separation-closeout.md) 와 [SPEC-0033-summary.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0033/SPEC-0033-summary.md) 를 함께 본다.
+## 출력 파일 누락 빠른 참조 적용 예시
+| 실제 상황 예시 | 먼저 펼칠 카드 | 다음에 바로 열 상세 예시 표 | 같이 볼 보조 문서나 파일 |
+| --- | --- | --- | --- |
+| `run-rerun.log`는 남았지만 `rerun-history.json`이 없고, 로그 마지막이 단건 조회 실패 쪽으로 보인다 | `출력 파일 누락 빠른 참조 카드`에서 `rerun-history.json` 행을 먼저 본다 | `출력 파일 누락 실패 사례 예시`의 `rerun-history.json` 행으로 바로 내려간다 | 이 문서의 `출력 파일 누락 시 다시 보는 순서`, `run-rerun.log` |
+| `retry-response.json`은 남았지만 `retry-derived-query.json`이 없고, `retry-derived-execution-key.txt`는 있다 | `출력 파일 누락 빠른 참조 카드`에서 `retry-derived-query.json` 행을 먼저 본다 | `출력 파일 누락 실패 사례 예시`의 `retry-derived-query.json` 행으로 바로 내려간다 | 이 문서의 `출력 파일 누락 시 다시 보는 순서`, `retry-derived-execution-key.txt`, `run-retry.log` |
+| `collect-evidence.log`는 있는데 `rerun-webhook-execution.txt` 같은 H2 출력 파일이 비어 있다 | `출력 파일 누락 빠른 참조 카드`에서 H2 출력 파일 묶음 행을 먼저 본다 | 아래 `H2 조회 실패 적용 예시`로 바로 내려간다 | 이 문서의 `H2 잠금과 코드 오류를 나눠 보는 순서`, `collect-evidence.log` |
+
+### 같이 볼 참고 문서
+- 종료 코드와 실제 로그 문구 비교 예시를 더 자세히 보려면 [종료 코드 실패 예시 참고](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0034/TASK-0002-stop-code-failure-examples.md) 를 함께 본다.
+- H2 실행 근거 출력 파일이 비거나 안 남는 경우는 [H2 잠금 분리 기준 참고](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0033/TASK-0004-script-h2-lock-separation-closeout.md) 와 [해당 단계 요약](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0033/SPEC-0033-summary.md) 를 함께 본다.
 
 ## 빠른 참조를 본 뒤 상세 문서로 내려가는 순서
 1. 종료 코드 표로 먼저 좁혔으면 바로 아래 `종료 코드와 멈춤 실패 사례 예시` 표로 내려간다.
 2. 출력 파일 누락 카드로 먼저 좁혔으면 `출력 파일 누락 실패 사례 예시` 표로 내려간다.
 3. H2 조회 실패 카드로 먼저 좁혔으면 `H2 잠금 실패 사례 예시`와 `H2 조회 단계 마지막 확인 질문`으로 내려간다.
 4. 응답 필드 의미나 대표 검증 응답 비교가 필요하면 [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md) 를 함께 연다.
-5. 마지막 대표 검증 근거와 이전 판단이 필요하면 [TASK-0004-script-application-representative-verified.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0031/TASK-0004-script-application-representative-verified.md) 를 함께 본다.
+5. 마지막 대표 검증 근거와 이전 판단이 필요하면 [마지막 대표 검증 비교 참고](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0031/TASK-0004-script-application-representative-verified.md) 를 함께 본다.
 
 ## 출력 파일 누락 시 다시 보는 순서
 1. 누락된 파일 이름이 어느 스크립트 구간에 속하는지 위 표에서 먼저 찾는다.
@@ -531,7 +538,7 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 | 먼저 보이는 상황 | 먼저 보는 파일 | 먼저 던질 질문 |
 | --- | --- | --- |
 | 종료 코드 `40` | `app.pid`, `collect-evidence.log` | 앱이 아직 살아 있어 H2 조회가 밀린 것 아닌가 |
-| 종료 코드 `41` | `collect-evidence.log`, 조회 SQL | 잠금 시그니처 없이 조회 대상이나 SQL 자체가 잘못된 것 아닌가 |
+| 종료 코드 `41` | `collect-evidence.log`, 조회 SQL 문 | 잠금 시그니처 없이 조회 대상이나 SQL 자체가 잘못된 것 아닌가 |
 | 종료 코드 `42` | `collect-evidence.log`, H2 CLI 출력 | 잠금 시그니처가 보여 파일 잠금부터 풀어야 하는 것 아닌가 |
 | H2 출력 파일 자체가 안 남음 | `collect-evidence.log` | 앱 종료 확인 전에 H2 조회 단계까지 못 간 것 아닌가 |
 
@@ -540,7 +547,7 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 | 상황 | 먼저 확인할 것 | 코드 오류로 바로 보지 않는 이유 | 다음 확인 |
 | --- | --- | --- | --- |
 | 종료 코드 `40` | `app.pid`, `collect-evidence.log`, 앱 프로세스 종료 여부 | 아직 앱이 살아 있으면 H2 조회 실패와 잠금 판단이 전부 뒤로 밀린다 | 앱 종료를 먼저 확인한 뒤 `collect-evidence.sh`를 다시 실행 |
-| 종료 코드 `41` | `collect-evidence.log`, 조회 SQL, 조회 대상 execution key | SQL 구문, JDBC 경로, execution key 오입력만으로도 같은 종료 코드가 날 수 있다 | 조회 대상 key와 SQL 구문을 먼저 다시 확인 |
+| 종료 코드 `41` | `collect-evidence.log`, 조회 SQL 문, 조회 대상 실행 키 | SQL 구문, JDBC 경로, 실행 키 오입력만으로도 같은 종료 코드가 날 수 있다 | 조회 대상 실행 키와 조회 SQL 문을 먼저 다시 확인 |
 | 종료 코드 `42` | `collect-evidence.log`, H2 Shell 또는 CLI 동시 실행 여부, 앱 프로세스 종료 여부 | 잠금 시그니처가 보이면 코드 오류보다 파일 잠금 가능성을 먼저 봐야 한다 | 다른 H2 조회 프로세스와 앱 프로세스 종료 여부를 먼저 정리 |
 
 ## H2 잠금 실패 사례 예시
@@ -553,16 +560,23 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 - `41`은 같은 H2 프로세스가 떠 있어도 잠금 시그니처가 없으면 그대로 유지된다. 즉 `다른 H2 프로세스가 있다`와 `잠금 의심`은 같은 뜻이 아니다.
 - `42`는 `collect-evidence.log`에 잠금 시그니처가 실제로 남을 때만 읽는다. 잠금 문구가 없으면 먼저 `41` 쪽 질문을 다시 따른다.
 
+## H2 조회 실패 적용 예시
+| 실제 상황 예시 | 먼저 펼칠 카드 | 다음에 바로 열 상세 예시 표 | 같이 볼 보조 문서나 파일 |
+| --- | --- | --- | --- |
+| `collect-evidence.log`가 `앱 종료 미확인`으로 끝나고 종료 코드가 `40`이다 | `H2 조회 실패 빠른 참조 카드`에서 `40` 행을 먼저 본다 | `H2 잠금 실패 사례 예시`의 `40` 행으로 바로 내려간다 | 이 문서의 `H2 잠금과 코드 오류를 나눠 보는 순서`, `app.pid` |
+| `collect-evidence.log`에 잠금 문구 없이 `실행 근거 조회 실패`가 남고 종료 코드가 `41`이다 | `H2 조회 실패 빠른 참조 카드`에서 `41` 행을 먼저 본다 | `H2 잠금 실패 사례 예시`의 `41` 행으로 바로 내려간다 | 이 문서의 `H2 잠금과 코드 오류를 나눠 보는 순서`, 조회 SQL 문, 실행 키 입력값 |
+| `collect-evidence.log`에 잠금 의심 문구가 남고 종료 코드가 `42`다 | `H2 조회 실패 빠른 참조 카드`에서 `42` 행을 먼저 본다 | `H2 잠금 실패 사례 예시`의 `42` 행으로 바로 내려간다 | 이 문서의 `H2 잠금과 코드 오류를 나눠 보는 순서`, 다른 H2 조회 프로세스와 앱 종료 여부 |
+
 ## H2 조회 단계 마지막 확인 질문
 - 앱이 완전히 종료된 뒤에 H2 조회를 시작했는가.
-- 같은 H2 file을 여는 다른 Shell 또는 CLI가 동시에 떠 있지 않은가.
+- 같은 H2 파일을 여는 다른 Shell 또는 CLI가 동시에 떠 있지 않은가.
 - `collect-evidence.log`에 잠금 시그니처가 남았는가.
-- 조회 대상 execution key와 SQL 구문이 현재 대표 검증 값과 맞는가.
+- 조회 대상 실행 키와 조회 SQL 문이 현재 대표 검증 값과 맞는가.
 - 위 네 항목을 먼저 확인하기 전에는 코드 오류로 단정하지 않았는가.
 
 ## 문서만 보고 바로 다시 고를 수 있는 것
 - 종료 코드 `40`, `41`, `42`를 만났을 때 무엇을 먼저 확인해야 하는지 다시 고를 수 있어야 한다.
-- 앱 종료 여부, 동시 H2 조회 여부, 잠금 시그니처, SQL 또는 execution key 확인 순서를 한 문서 안에서 다시 찾을 수 있어야 한다.
+- 앱 종료 여부, 동시 H2 조회 여부, 잠금 시그니처, 조회 SQL 문 또는 실행 키 확인 순서를 한 문서 안에서 다시 찾을 수 있어야 한다.
 - 출력 파일 누락 점검 순서와 H2 조회 실패 분리 기준이 서로 섞이지 않아야 한다.
 
 ## 사람이 직접 비교해서 판단하는 것
@@ -573,10 +587,10 @@ RETRY_DERIVED_EXECUTION_KEY="${RETRY_DERIVED_EXECUTION_KEY}" \
 
 ## 참고: 마지막 확인 포인트
 - 이 문서 상단만 보면 적용 순서와 입력/출력 흐름을 다시 잡을 수 있다.
-- 응답 의미 비교와 H2 결과 해석이 필요하면 [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md), [TASK-0004-script-application-representative-verified.md](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0031/TASK-0004-script-application-representative-verified.md) 를 함께 본다.
+- 응답 의미 비교와 H2 결과 해석이 필요하면 [응답 의미 비교 참고](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md), [마지막 대표 검증 비교 참고](/home/seaung13/workspace/agile-runner/.agents/outer-loop/retrospectives/SPEC-0031/TASK-0004-script-application-representative-verified.md) 를 함께 본다.
 
 ## 빠른 참조 마감 전 마지막 확인 질문
 - 지금 보고 있는 실패가 종료 코드 표, 출력 파일 누락 카드, H2 조회 실패 카드 중 어디서 먼저 좁혀졌는가.
 - 첫 카드에서 고른 로그 또는 파일을 실제로 다시 열어 같은 실행 키 기준으로 확인했는가.
 - 상세 예시 표나 H2 마지막 확인 질문까지 내려가도 같은 실패 유형으로 읽히는가.
-- 응답 의미가 헷갈리면 `manual-rerun-response-guide.md`, 마지막 대표 검증 비교가 필요하면 `TASK-0004-script-application-representative-verified.md`를 실제로 함께 열었는가.
+- 응답 의미가 헷갈리면 `응답 의미 비교 참고`, 마지막 대표 검증 비교가 필요하면 `마지막 대표 검증 비교 참고`를 실제로 함께 열었는가.
