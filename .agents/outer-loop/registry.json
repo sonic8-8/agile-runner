@@ -2,9 +2,9 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0036",
-    "task_id": "TASK-0003",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0036/TASK-0003-output-missing-and-h2-application-example.md",
-    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0035/SPEC-0035-summary.md"
+    "task_id": "TASK-0004",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0036/TASK-0004-application-example-closeout.md",
+    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0036/SPEC-0036-summary.md"
   },
   "proposals": [
     {
