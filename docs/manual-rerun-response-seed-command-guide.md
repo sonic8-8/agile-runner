@@ -33,6 +33,15 @@
 
 ## 이전 작업에서 유지하는 기준
 
+### 적용 예시를 고칠 때 먼저 여는 문서
+| 지금 고치려는 것 | 먼저 여는 문서 | 같이 여는 문서와 기준 파일 | 먼저 확인할 자동 검증 |
+| --- | --- | --- | --- |
+| 종료 코드 적용 예시 문장 | 이 문서의 종료 코드 적용 예시 구간 | 종료 코드 상세 예시 회고, 마지막 대표 검증 회고, 응답 가이드 | `ManualRerunRunFlowScriptTest`, `ManualRerunSeedCommandScriptTest` |
+| 출력 파일 누락 적용 예시 문장 | 이 문서의 출력 파일 누락 적용 예시 구간 | 출력 파일 누락 상세 예시 회고, 마지막 대표 검증 회고 | `ManualRerunRunFlowScriptTest`, `ManualRerunSeedCommandScriptTest` |
+| H2 조회 실패 적용 예시 문장 | 이 문서의 H2 조회 실패 적용 예시 구간 | H2 잠금 실패 상세 예시 회고, 마지막 대표 검증 회고 | `ManualRerunSeedCommandScriptTest`, `ManualRerunResponseSeedEvidenceSqlTest` |
+| 실행 키, 응답 의미, H2 근거 설명 | [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md) | 이 문서의 `대표 검증 결과를 읽는 순서`, 마지막 대표 검증 회고 | 응답 관련 자동 검증, `ManualRerunRunFlowScriptTest` |
+| 출력 파일 이름, 경로, 생성 위치 설명 | 이 문서의 `출력 파일 이름 변경과 문서 어긋남 감지 기준` | 스크립트 파일, 스크립트 테스트, 마지막 대표 검증 회고 | `ManualRerunRunFlowScriptTest`, `ManualRerunSeedCommandScriptTest` |
+
 ### 변경 시 함께 갱신해야 하는 문서와 기준 파일
 | 변경한 대상 | 같이 갱신할 문서 또는 기준 파일 | 같이 확인할 자동 검증 | 이유 |
 | --- | --- | --- | --- |
@@ -48,57 +57,22 @@
 | `src/test/java/com/agilerunner/client/agentruntime/` 아래 스크립트 관련 테스트 | 스크립트 입력, 출력 파일 이름, 실행 키 추출, H2 조회 방식이 달라질 때 | 문서만 바꾸고 자동 검증 기대값은 그대로 둘 때 |
 | 마지막 대표 검증 회고와 단계 요약 | 대표 검증 결과 파일 경로, 대표 실행 키, 전달 식별자, 마지막 판단 문장이 달라질 때 | 새 기준을 문서에만 적고 마지막 실제 근거 문서는 갱신하지 않을 때 |
 
-위 두 섹션은 이전 작업에서 이미 정리한 기준을 유지하는 참고 범위다. 이번 작업에서 직접 닫는 범위는 아래 `출력 파일 이름 변경과 문서 어긋남 감지 기준`이다. 아래의 `빠른 적용 순서`, `대표 검증 결과를 읽는 순서`, `파일별 역할과 마지막 판단 기준`은 계속 참고 기준으로 유지한다.
+적용 예시를 고칠 때 먼저 볼 문서와 같이 갱신할 파일은 위 표와 경계 표에서 다시 고른다.
+
+출력 파일 이름이나 경로가 실제로 달라졌다면 바로 아래 구간으로 내려간다.
 
 ## 출력 파일 이름 변경과 문서 어긋남 감지 기준
-### 먼저 보는 순서
-| 순서 | 먼저 확인할 대상 | 여기서 먼저 잡는 어긋남 | 다음으로 이어서 볼 대상 |
-| --- | --- | --- | --- |
-| 1 | `run-rerun.sh`, `run-retry.sh`, `collect-evidence.sh`가 저장하는 출력 파일 이름 | 스크립트가 더 이상 가이드 문서에 적힌 파일 이름을 만들지 않는 경우 | 이 문서의 `빠른 적용 순서`, `빠른 적용 순서에서 다시 쓰는 입력, 출력, 다음 단계 입력` |
-| 2 | [ManualRerunRunFlowScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunRunFlowScriptTest.java), [ManualRerunSeedCommandScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunSeedCommandScriptTest.java) | 출력 파일 이름, 실행 키 추출, H2 조회 파일 이름이 자동 검증 기대값과 어긋난 경우 | 가이드 문서 본문과 관련 기준 파일 |
-| 3 | [manual-rerun-response-seed-command-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-seed-command-guide.md) 의 파일명 언급 구간 | 문서가 이전 파일 이름을 계속 가리키는 경우 | [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md), 마지막 대표 검증 회고 |
-| 4 | [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md) 와 마지막 대표 검증 회고 | 응답 의미 설명이나 대표 검증 근거가 이전 출력 파일 이름에 묶여 있는 경우 | 단계 요약과 최종 회고 |
+출력 파일 이름이나 경로 설명을 고칠 때 참고하는 구간이다.
 
-### 가장 먼저 잡아야 하는 어긋남
-- 스크립트가 실제로 남기는 출력 파일 이름과 가이드 문서에 적힌 출력 파일 이름이 다르면, 문서보다 스크립트와 테스트 기대값을 먼저 확인한다.
-- 테스트가 먼저 깨지면 문서 설명이 맞더라도 기준 파일과 가이드 문서가 함께 갱신돼야 하는 신호로 본다.
-- 문서는 맞아 보이는데 마지막 대표 검증 회고가 이전 파일 이름을 계속 가리키면, 현재 절차 설명이 아니라 마지막 실제 근거 문서가 어긋난 상태로 본다.
-- 출력 파일 이름을 실제로 바꾸지 않았는데 문서 표현만 바뀌면, 가이드 문서와 회고의 용어 차이인지 먼저 확인하고 실제 스크립트와 테스트 기대값은 유지한다.
-
-### 문서만 읽고 다시 찾는 점검 순서
-1. 먼저 스크립트가 어떤 파일을 만든다고 가정하는지 `빠른 적용 순서`와 `입력, 출력, 다음 단계 입력` 표에서 본다.
-2. 그다음 스크립트 관련 테스트가 같은 파일 이름을 기대하는지 확인한다.
-3. 이후 응답 가이드와 마지막 대표 검증 회고가 같은 파일 이름을 근거로 설명하는지 본다.
-4. 마지막으로 단계 요약과 회고 문서에서 변경 이유와 현재 기준을 다시 확인한다.
-
-### 자동 검증과 수동 점검 경계
-- 자동 검증은 파일 이름, 실행 키 추출, H2 조회 결과 저장 위치가 바뀌었을 때 가장 먼저 경고를 내는 위치다.
-- 수동 점검은 그 경고가 문서 어긋남인지, 대표 검증 근거 미갱신인지, 실제 스크립트 변경인지 구분하는 단계다.
-- 이번 작업에서는 출력 파일 이름 자체를 바꾸지 않고, 어긋남을 어디서 먼저 확인해야 하는지만 정리한다.
+- 참고 기준 파일
+  - `run-rerun.sh`, `run-retry.sh`, `collect-evidence.sh`
+  - [ManualRerunRunFlowScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunRunFlowScriptTest.java)
+  - [ManualRerunSeedCommandScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunSeedCommandScriptTest.java)
+  - [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md)
+  - 마지막 대표 검증 회고
 
 ## 유지 보수 체크리스트와 단계 마감 기준
-### 유지 보수 체크리스트
-1. 먼저 이번 변경이 `준비 데이터 적용 방식`, `대표 검증 실행 흐름`, `출력 파일 이름`, `응답 해석`, `근거 문서` 중 어디에 걸리는지 정한다.
-2. 변경 대상에 맞춰 이 문서의 `변경 시 함께 갱신해야 하는 문서와 기준 파일` 표에서 같이 열어야 하는 문서와 테스트를 바로 찾는다.
-3. 출력 파일 이름이나 경로와 연결되면 `출력 파일 이름 변경과 문서 어긋남 감지 기준` 순서대로 스크립트, 자동 검증, 가이드 문서, 대표 검증 회고를 차례로 확인한다.
-4. 관련 대상 테스트를 먼저 순차 실행해 자동 검증 기대값이 아직 맞는지 본다.
-5. 문서 설명을 고친 뒤에는 응답 가이드, 보조 명령 가이드, 마지막 대표 검증 회고 중 어떤 문서까지 같이 바꿔야 하는지 다시 확인한다.
-6. 전체 테스트를 순차 실행해 문서 정리 작업이 기존 자동 검증과 충돌하지 않는지 확인한다.
-7. 실제 앱/H2 대표 검증이 이번 변경 범위가 아니라면 비대상 사유를 회고에 남긴다. 실제 대표 검증 범위라면 기존 절차 순서에 따라 별도 작업에서 수행한다.
-8. 마지막으로 회고, 최신 포인터, 현재 단계 요약 문서 또는 다음 단계 경고를 같이 정리한다.
-
-### 단계 마감 기준
-- 유지 기준 정리 작업은 아래가 모두 맞아야 마감으로 본다.
-  - 가이드 문서에서 바뀐 기준과 유지한 기준 경계가 분명하다.
-  - 관련 대상 테스트와 전체 테스트가 순차 실행으로 통과한다.
-  - 실제 앱/H2 대표 검증이 비대상이면 그 이유가 회고에 남아 있다.
-  - 다음 변경에서 무엇을 먼저 보고 무엇을 나중에 봐야 하는지 문서만으로 다시 따라갈 수 있다.
-  - 최신 포인터와 단계 요약 문서가 현재 상태를 정확히 가리킨다.
-
-### 마지막으로 다시 확인할 질문
-- 이번 변경이 기존 스크립트 이름이나 출력 파일 이름을 실제로 바꾸는 작업인지, 아니면 유지 기준만 정리하는 작업인지 분명한가.
-- 자동 검증이 먼저 잡아야 하는 어긋남과 사람이 직접 해석해야 하는 부분이 문서에서 섞이지 않았는가.
-- 마지막 대표 검증 회고와 단계 요약이 여전히 현재 기준 파일 이름과 읽는 순서를 설명하는가.
+적용 예시 정리를 마감할 때는 이 제목 아래를 다시 확인한다.
 
 ## 빠른 적용 순서
 ### 재실행 대표 검증

@@ -2,8 +2,8 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0037",
-    "task_id": "TASK-0001",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0037/TASK-0001-application-maintenance-safety-net.md",
+    "task_id": "TASK-0002",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0037/TASK-0002-application-maintenance-update-boundary.md",
     "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0036/SPEC-0036-summary.md"
   },
   "proposals": [
