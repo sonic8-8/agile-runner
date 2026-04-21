@@ -62,17 +62,25 @@
 출력 파일 이름이나 경로가 실제로 달라졌다면 바로 아래 구간으로 내려간다.
 
 ## 출력 파일 이름 변경과 문서 어긋남 감지 기준
-출력 파일 이름이나 경로 설명을 고칠 때 참고하는 구간이다.
+출력 파일 이름이나 경로 설명이 어긋났는지, 적용 예시와 상세 예시 표가 어긋났는지 먼저 가르는 구간이다.
 
-- 참고 기준 파일
-  - `run-rerun.sh`, `run-retry.sh`, `collect-evidence.sh`
-  - [ManualRerunRunFlowScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunRunFlowScriptTest.java)
-  - [ManualRerunSeedCommandScriptTest.java](/home/seaung13/workspace/agile-runner/src/test/java/com/agilerunner/client/agentruntime/ManualRerunSeedCommandScriptTest.java)
-  - [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md)
-  - 마지막 대표 검증 회고
+### 적용 예시와 상세 예시 표가 어긋날 때 먼저 보는 순서
+| 먼저 여는 곳 | 여기서 먼저 확인하는 것 | 다음으로 이어서 볼 곳 |
+| --- | --- | --- |
+| `종료 코드 빠른 참조 적용 예시`, `출력 파일 누락 빠른 참조 적용 예시`, `H2 조회 실패 적용 예시` 중 지금 고치는 적용 예시 구간 | 적용 예시 문장이 어떤 빠른 참조 표와 어떤 상세 예시 표를 가리켜야 하는지 | 대응하는 상세 예시 표와 마지막 대표 검증 회고 |
+| 대응하는 상세 예시 표 (`준비 단계 종료 코드 적용 예시`, `재실행 종료 코드 적용 예시`, `재시도 종료 코드 적용 예시`, `출력 파일 누락 실패 사례 예시`, `H2 잠금 실패 사례 예시`) | 적용 예시 문장이 같은 실패 상황과 같은 출력 파일을 가리키는지 | 응답 가이드 또는 마지막 대표 검증 회고 |
+| [manual-rerun-response-guide.md](/home/seaung13/workspace/agile-runner/docs/manual-rerun-response-guide.md), 마지막 대표 검증 회고 | 실행 키, 응답 의미, H2 근거 설명이 적용 예시와 같은 실행을 설명하는지 | 관련 테스트와 단계 요약 문서 |
 
-## 유지 보수 체크리스트와 단계 마감 기준
-적용 예시 정리를 마감할 때는 이 제목 아래를 다시 확인한다.
+### 상세 예시 표와 보조 문서가 어긋날 때 먼저 보는 순서
+1. 상세 예시 표에서 지금 설명하려는 실패 상황과 출력 파일 이름을 먼저 다시 읽는다.
+2. 그다음 응답 가이드와 마지막 대표 검증 회고가 같은 실행 키, 같은 응답 의미, 같은 H2 근거를 설명하는지 본다.
+3. 마지막으로 단계 요약 문서와 관련 테스트가 같은 파일 이름과 같은 출력 위치를 기대하는지 본다.
+
+### 출력 파일 이름 어긋남과 문서 어긋남을 섞지 않는 기준
+- 스크립트 파일과 스크립트 테스트가 기대하는 출력 파일 이름이 달라졌다면, 문서 어긋남보다 실제 출력 파일 이름 변경으로 먼저 본다.
+- 스크립트 파일과 스크립트 테스트는 그대로인데 적용 예시 문장이나 상세 예시 표만 다르면, 문서 어긋남으로 먼저 본다.
+- 실행 키, 응답 의미, H2 근거 설명이 어긋나면 출력 파일 이름 구간보다 응답 가이드와 마지막 대표 검증 회고를 먼저 다시 본다.
+- 자동 검증이 먼저 잡는 것은 파일 이름, 실행 키 추출 결과, H2 조회 결과 저장 위치이고, 사람이 직접 판단할 것은 적용 예시 문장이 같은 실패 상황과 같은 실행을 가리키는지다.
 
 ## 빠른 적용 순서
 ### 재실행 대표 검증
