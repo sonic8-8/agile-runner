@@ -2,9 +2,9 @@
   "version": 1,
   "latest": {
     "spec_id": "SPEC-0037",
-    "task_id": "TASK-0003",
-    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0037/TASK-0003-application-maintenance-drift-order.md",
-    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0036/SPEC-0036-summary.md"
+    "task_id": "TASK-0004",
+    "retrospective_path": ".agents/outer-loop/retrospectives/SPEC-0037/TASK-0004-application-maintenance-closeout.md",
+    "spec_summary_path": ".agents/outer-loop/retrospectives/SPEC-0037/SPEC-0037-summary.md"
   },
   "proposals": [
     {
