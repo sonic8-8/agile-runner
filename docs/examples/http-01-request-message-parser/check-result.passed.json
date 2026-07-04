@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "mission": {
+    "id": "http-server",
+    "title": "HTTP 서버 직접 만들기"
+  },
+  "stage": {
+    "id": "request-message-parser",
+    "sequence": 1,
+    "title": "HTTP 요청 메시지 파서 만들기"
+  },
+  "status": "passed",
+  "summary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "warnings": 0,
+    "errors": 0
+  },
+  "checks": [
+    {
+      "id": "test-command",
+      "type": "command",
+      "name": "테스트 실행",
+      "status": "passed",
+      "severity": "error",
+      "message": "./gradlew test completed successfully.",
+      "details": {
+        "command": "./gradlew test",
+        "exitCode": 0,
+        "durationMs": 3421,
+        "stdoutTail": "BUILD SUCCESSFUL",
+        "stderrTail": ""
+      },
+      "remediation": null
+    },
+    {
+      "id": "reflection-file",
+      "type": "required-file",
+      "name": "회고 파일 확인",
+      "status": "passed",
+      "severity": "warning",
+      "message": ".agile/reflection.md exists.",
+      "details": {
+        "path": ".agile/reflection.md",
+        "exists": true
+      },
+      "remediation": null
+    }
+  ],
+  "metadata": {
+    "generatedAt": "2026-06-13T00:00:00Z",
+    "cliVersion": "0.0.2",
+    "manifestVersion": 1,
+    "manifestPath": ".agile/stage.yml"
+  }
+}

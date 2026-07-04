@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 1,
+  "mission": {
+    "id": "http-server",
+    "title": "HTTP 서버 직접 만들기"
+  },
+  "stage": {
+    "id": "request-message-parser",
+    "sequence": 1,
+    "title": "HTTP 요청 메시지 파서 만들기"
+  },
+  "status": "needs_changes",
+  "summary": {
+    "total": 6,
+    "passed": 4,
+    "failed": 2,
+    "warnings": 1,
+    "errors": 1
+  },
+  "checks": [
+    {
+      "id": "test-command",
+      "type": "command",
+      "name": "테스트 실행",
+      "status": "passed",
+      "severity": "error",
+      "message": "./gradlew test completed successfully.",
+      "details": {
+        "command": "./gradlew test",
+        "exitCode": 0,
+        "durationMs": 3421,
+        "stdoutTail": "BUILD SUCCESSFUL",
+        "stderrTail": ""
+      },
+      "remediation": null
+    },
+    {
+      "id": "forbidden-http-parser-dependency",
+      "type": "forbidden-dependency",
+      "name": "금지 HTTP parser dependency 확인",
+      "status": "passed",
+      "severity": "error",
+      "message": "No forbidden HTTP parser dependencies found.",
+      "details": {
+        "files": [
+          "build.gradle",
+          "build.gradle.kts"
+        ],
+        "matches": []
+      },
+      "remediation": null
+    },
+    {
+      "id": "forbidden-http-parser-import",
+      "type": "forbidden-import",
+      "name": "금지 HTTP parser import 확인",
+      "status": "failed",
+      "severity": "error",
+      "message": "Forbidden import found: org.springframework.http.HttpHeaders.",
+      "details": {
+        "include": [
+          "src/main/java/**/*.java"
+        ],
+        "matches": [
+          {
+            "file": "src/main/java/runner/HttpRequestParser.java",
+            "line": 3,
+            "pattern": "org.springframework.http.*",
+            "text": "import org.springframework.http.HttpHeaders;"
+          }
+        ]
+      },
+      "remediation": "Spring HTTP abstraction을 사용하지 말고 header를 직접 표현하는 값 객체를 구현하세요."
+    },
+    {
+      "id": "parser-test-file",
+      "type": "test-name-pattern",
+      "name": "요청 파서 테스트 확인",
+      "status": "passed",
+      "severity": "error",
+      "message": "HttpRequestParser test was found.",
+      "details": {
+        "include": [
+          "src/test/java/**/*.java"
+        ],
+        "minCount": 1,
+        "matchedCount": 1,
+        "patterns": [
+          "HttpRequestParser"
+        ],
+        "matches": [
+          {
+            "file": "src/test/java/runner/HttpRequestParserTest.java",
+            "line": 8,
+            "pattern": "HttpRequestParser",
+            "text": "class HttpRequestParserTest"
+          }
+        ]
+      },
+      "remediation": null
+    },
+    {
+      "id": "failure-case-tests",
+      "type": "test-name-pattern",
+      "name": "실패 케이스 테스트 확인",
+      "status": "failed",
+      "severity": "warning",
+      "message": "At least 2 failure case tests are required, but 1 was found.",
+      "details": {
+        "include": [
+          "src/test/java/**/*.java"
+        ],
+        "minCount": 2,
+        "matchedCount": 1,
+        "patterns": [
+          "invalid",
+          "malformed",
+          "contentLength",
+          "throws"
+        ],
+        "matches": [
+          {
+            "file": "src/test/java/runner/HttpRequestParserTest.java",
+            "line": 42,
+            "pattern": "throws",
+            "text": "void throwsExceptionWhenRequestLineIsMalformed()"
+          }
+        ]
+      },
+      "remediation": "잘못된 request line, 숫자가 아닌 Content-Length 같은 실패 케이스 테스트를 추가하세요."
+    },
+    {
+      "id": "reflection-file",
+      "type": "required-file",
+      "name": "회고 파일 확인",
+      "status": "passed",
+      "severity": "warning",
+      "message": ".agile/reflection.md exists.",
+      "details": {
+        "path": ".agile/reflection.md",
+        "exists": true
+      },
+      "remediation": null
+    }
+  ],
+  "metadata": {
+    "generatedAt": "2026-06-13T00:00:00Z",
+    "cliVersion": "0.0.2",
+    "manifestVersion": 1,
+    "manifestPath": ".agile/stage.yml"
+  }
+}

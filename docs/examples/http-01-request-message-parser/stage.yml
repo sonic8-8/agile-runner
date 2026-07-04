@@ -1,0 +1,75 @@
+manifestVersion: 1
+mission:
+  id: http-server
+  title: HTTP 서버 직접 만들기
+stage:
+  id: request-message-parser
+  sequence: 1
+  title: HTTP 요청 메시지 파서 만들기
+spec: README.md
+checks:
+  - id: test-command
+    type: command
+    name: 테스트 실행
+    severity: error
+    params:
+      command: ./gradlew test
+      timeoutSeconds: 120
+  - id: forbidden-http-parser-dependency
+    type: forbidden-dependency
+    name: 금지 HTTP parser dependency 확인
+    severity: error
+    params:
+      files:
+        - build.gradle
+        - build.gradle.kts
+      patterns:
+        - spring-boot-starter-web
+        - spring-web
+        - jakarta.servlet
+        - javax.servlet
+        - netty-codec-http
+  - id: forbidden-http-parser-import
+    type: forbidden-import
+    name: 금지 HTTP parser import 확인
+    severity: error
+    params:
+      include:
+        - src/main/java/**/*.java
+      patterns:
+        - org.springframework.http.*
+        - org.springframework.web.*
+        - javax.servlet.*
+        - jakarta.servlet.*
+        - io.netty.handler.codec.http.*
+  - id: parser-test-file
+    type: test-name-pattern
+    name: 요청 파서 테스트 확인
+    severity: error
+    params:
+      include:
+        - src/test/java/**/*.java
+      minCount: 1
+      patterns:
+        - HttpRequestParser
+  - id: failure-case-tests
+    type: test-name-pattern
+    name: 실패 케이스 테스트 확인
+    severity: warning
+    params:
+      include:
+        - src/test/java/**/*.java
+      minCount: 2
+      patterns:
+        - invalid
+        - malformed
+        - contentLength
+        - throws
+  - id: reflection-file
+    type: required-file
+    name: 회고 파일 확인
+    severity: warning
+    params:
+      path: .agile/reflection.md
+reflection:
+  path: .agile/reflection.md
